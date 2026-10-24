@@ -103,4 +103,16 @@ struct DayStatusTests {
         #expect(cells[101].phase == .future && cells[101].categoryID == "work")
         #expect(cells[102].categoryID == nil)
     }
+
+    @Test func timePickerStepsMoveWholeBlocks() {
+        let seven = 7 * 60
+        #expect(Schedule.snappedMinute(editing: seven, to: seven + 1) == seven + 5)       // ▲ on minutes
+        #expect(Schedule.snappedMinute(editing: seven, to: seven + 59) == seven - 5)      // ▼ wraps :00 to :59
+        #expect(Schedule.snappedMinute(editing: seven + 5, to: seven + 4) == seven)       // ▼
+        #expect(Schedule.snappedMinute(editing: seven + 55, to: seven + 56) == 8 * 60)    // ▲ past :55
+        #expect(Schedule.snappedMinute(editing: seven, to: seven + 60) == 8 * 60)         // hour field
+        #expect(Schedule.snappedMinute(editing: seven, to: seven + 32) == seven + 30)     // typed
+        #expect(Schedule.snappedMinute(editing: 23 * 60 + 55, to: 23 * 60 + 56) == 0)    // wraps past midnight
+        #expect(Schedule.snappedMinute(editing: 0, to: 59) == 23 * 60 + 55)
+    }
 }

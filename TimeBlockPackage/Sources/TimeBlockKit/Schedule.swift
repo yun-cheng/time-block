@@ -17,6 +17,19 @@ public struct Schedule: Hashable, Codable, Sendable {
         self.rolloverMinute = rolloverMinute ?? max(0, wakeMinute - 120)
     }
 
+    /// Snaps a time picker edit to a block boundary. Time pickers step minutes by one, so a ±1 minute change
+    /// from a block boundary (including the picker wrapping :00 down to :59) is a step to the next block;
+    /// anything else, like a typed time, rounds to the nearest block.
+    public static func snappedMinute(editing old: Int, to new: Int) -> Int {
+        let day = 24 * 60
+        let snapped = switch new - old {
+        case 1, -59: old + blockMinutes
+        case -1, 59: old - blockMinutes
+        default: (new + blockMinutes / 2) / blockMinutes * blockMinutes
+        }
+        return (snapped % day + day) % day
+    }
+
     public static let standard = Schedule(wakeMinute: 7 * 60, bedMinute: 23 * 60)
 
     /// Bedtime on the day's timeline, which keeps counting past midnight (01:00 → 1500).

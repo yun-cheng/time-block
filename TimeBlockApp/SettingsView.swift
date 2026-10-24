@@ -42,7 +42,7 @@ struct SettingsView: View {
             let parts = calendar.dateComponents([.hour, .minute], from: date)
             let minute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
             var schedule = model.settings.schedule
-            schedule[keyPath: field] = minute / Schedule.blockMinutes * Schedule.blockMinutes
+            schedule[keyPath: field] = Schedule.snappedMinute(editing: schedule[keyPath: field], to: minute)
             // Rebuild so the day's rollover point follows the new wake time.
             model.settings.schedule = Schedule(wakeMinute: schedule.wakeMinute, bedMinute: schedule.bedMinute)
         }
