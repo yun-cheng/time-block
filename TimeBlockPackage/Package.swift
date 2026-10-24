@@ -6,9 +6,11 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "TimeBlockKit", targets: ["TimeBlockKit"]),
+        .library(name: "TimeBlockUI", targets: ["TimeBlockUI"]),
     ],
     targets: [
         .target(name: "TimeBlockKit"),
+        .target(name: "TimeBlockUI", dependencies: ["TimeBlockKit"]),
         .testTarget(name: "TimeBlockKitTests", dependencies: ["TimeBlockKit"]),
     ]
 )
