@@ -14,7 +14,7 @@ public struct DaySnapshot: Sendable {
     public let categories: [String: BlockCategory]
     /// Everything this track's blocks can be logged as now (retired activities aside), for search.
     public let trackCategories: [BlockCategory]
-    /// This track's starred categories, in palette order.
+    /// This track's starred categories, by group: the palette.
     public let favorites: [BlockCategory]
 
     /// Only logs whose category belongs to `track` are drawn. `favorites` are category ids; without them
@@ -28,9 +28,10 @@ public struct DaySnapshot: Sendable {
         self.track = track
         cells = DayGrid.cells(status: status, logs: logs.filter { byID[$0.categoryID]?.track == track })
         self.categories = byID
-        trackCategories = categories.filter { $0.track == track && !$0.isRetired }
-        self.favorites = favorites.map {
-            $0.compactMap { byID[$0] }.filter { $0.track == track && !$0.isRetired }
+        let trackCategories = categories.filter { $0.track == track && !$0.isRetired }
+        self.trackCategories = trackCategories
+        self.favorites = favorites.map { ids in
+            BlockCategory.byGroup(trackCategories.filter { ids.contains($0.id) })
         } ?? trackCategories
     }
 

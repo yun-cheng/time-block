@@ -5,7 +5,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var schedule: Schedule
     /// The view shown in the app window and menu bar. Each widget picks its own.
     public var track: Track
-    /// Starred activities (and postures), in palette order. The palette shows these; search finds the rest.
+    /// Starred activities (and postures). The palette shows these, by group; search finds the rest.
     public var favorites: [String]
     /// Activities the user added to the built-in ones.
     public var customCategories: [BlockCategory]

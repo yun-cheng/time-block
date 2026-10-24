@@ -111,9 +111,10 @@ time-logging coaches split a day, with plain names:
 | Leisure | yellow | Rest, Nap, TV and shows, Gaming, Hobby, Café |
 | Drift | muted plum | Doomscroll, Social media, Videos, Procrastinating |
 - Grey = unlogged, red = taken from sleep. Leisure is rest you chose; Drift is time that slipped away.
-- **Starred** activities make up the palette, in order; common ones are starred out of the box. A search field
-  above it finds any other by name, by other words ("meal" finds Lunch, "slack" finds Work chat) or by group;
-  Return logs the best match. Right-click a chip, or use Settings, to star or unstar.
+- **Starred** activities make up the palette, listed by group (no manual order); common ones are starred out
+  of the box. A search field above it finds any other by name, by other words ("meal" finds Lunch, "slack" finds
+  Work chat) or by group; Return logs the best match. Right-click a chip, or star it in Settings' library, to star
+  or unstar.
 - Summaries (legend, story bar) report time per **group** ("Life 2h 10m"), not per activity.
 - Your own activities pick a name, group and SF Symbol. The Body view keeps its five postures, each its own color.
 - Built-in activities are **retired** rather than removed (so far Meal, replaced by Breakfast/Lunch/Dinner/Snack,
@@ -169,7 +170,7 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
-              (built-ins live in code; AppSettings keeps favorites (palette order) and customCategories)
+              (built-ins live in code; AppSettings keeps favorites and customCategories)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, logs: one JSON file per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;

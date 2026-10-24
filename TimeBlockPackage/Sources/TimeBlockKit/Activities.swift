@@ -18,7 +18,7 @@ extension BlockCategory {
         Self.retired.contains { $0.id == id }
     }
 
-    /// Starred out of the box, in palette order: what most days are made of. Everything else is a search away.
+    /// Starred out of the box: what most days are made of. Everything else is a search away.
     public static let defaultFavorites: [String] = [
         "work", "meeting", "email", "study", "reading",
         "breakfast", "lunch", "dinner", "coffee", "cooking", "chores", "shower",
@@ -27,6 +27,14 @@ extension BlockCategory {
         "rest", "nap", "shows", "hobby",
         "doomscroll",
     ] + body.map(\.id)
+
+    /// `categories` group by group, in the groups' order; within a group (and in Body) they keep their order.
+    public static func byGroup(_ categories: [BlockCategory]) -> [BlockCategory] {
+        let rank = { (category: BlockCategory) in category.group.flatMap(CategoryGroup.allCases.firstIndex) ?? 0 }
+        return categories.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element)
+    }
 
     /// Body runs from cool to warm: the more you move, the warmer the block.
     static let body: [BlockCategory] = [

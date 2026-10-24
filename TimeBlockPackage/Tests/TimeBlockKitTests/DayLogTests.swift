@@ -115,7 +115,8 @@ struct DayLogTests {
         let snapshot = DaySnapshot(
             status: DayStatus(schedule: schedule, nowMinute: 9 * 60), logs: log.logs(for: schedule),
             categories: BlockCategory.defaults, favorites: ["lunch", "sitting", "work"])
-        #expect(snapshot.favorites.map(\.id) == ["lunch", "work"])
+        // By group, whatever order they were starred in: Work comes before Life.
+        #expect(snapshot.favorites.map(\.id) == ["work", "lunch"])
         #expect(snapshot.cells[0].categoryID == "snack")
         // Snack and Lunch are both Life, and are summed up together.
         #expect(snapshot.legendTotals.first.map { [$0.name, "\($0.blocks)"] } == ["Life", "4"])
