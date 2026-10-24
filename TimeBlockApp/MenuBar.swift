@@ -88,16 +88,11 @@ struct NowLogger: View {
                 Text("Now, \(clock(schedule.clockMinute(ofBlock: current)))")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
-                FlowLayout(spacing: 8) {
-                    ForEach(snapshot.favorites) { category in
-                        CategoryChip(
-                            category: category, theme: theme, isSelected: snapshot.currentCell?.categoryID == category.id
-                        ) {
-                            model.logNow(category.id)
-                        }
-                    }
-                }
-                .padding(3)
+                CategoryPalette(
+                    categories: snapshot.trackCategories, favorites: snapshot.favorites,
+                    selected: snapshot.currentCell?.categoryID.map(Brush.category), theme: theme, showsClear: false,
+                    choose: { if let id = $0.categoryID { model.logNow(id) } },
+                    toggleFavorite: model.toggleFavorite)
                 if !gap.isEmpty {
                     Toggle(isOn: $model.fillsGap) {
                         Text("Also fill \(durationText(blocks: gap.count)) unlogged since \(clock(schedule.clockMinute(ofBlock: gap.lowerBound)))")

@@ -11,15 +11,18 @@ public struct DayEditor {
     public var paint: (Range<Int>, Brush) -> Void
     /// Writes a note on the logged blocks of a range, or takes it off with nil.
     public var annotate: ((Range<Int>, String?) -> Void)?
+    /// Stars or unstars a category.
+    public var toggleFavorite: ((String) -> Void)?
 
     public init(
         brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void,
-        annotate: ((Range<Int>, String?) -> Void)? = nil
+        annotate: ((Range<Int>, String?) -> Void)? = nil, toggleFavorite: ((String) -> Void)? = nil
     ) {
         self.brush = brush
         self.selection = selection
         self.paint = paint
         self.annotate = annotate
+        self.toggleFavorite = toggleFavorite
     }
 
     /// The grid picked out `range`: log it with the brush, or else select it.
@@ -114,8 +117,9 @@ public struct DayView: View {
             if let editor {
                 Divider().overlay(theme.secondaryText.opacity(0.3))
                 CategoryPalette(
-                    categories: snapshot.favorites, selected: paletteChoice(editor), theme: theme,
-                    choose: editor.chose)
+                    categories: snapshot.trackCategories, favorites: snapshot.favorites,
+                    selected: paletteChoice(editor), theme: theme, choose: editor.chose,
+                    toggleFavorite: editor.toggleFavorite)
                     // Clicks between the chips shouldn't drop the selection.
                     .contentShape(Rectangle())
                     .onTapGesture {}
@@ -165,10 +169,11 @@ public struct DayView: View {
             let schedule = snapshot.status.schedule
             let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
             return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected. "
-                + "Click a category to log it, Clear to empty it, or click off the blocks to deselect."
+                + "Pick an activity to log it, Clear to empty it, or click off the blocks to deselect."
         }
         guard let brush = editor.brush.wrappedValue else {
-            return "Select blocks, then click a category. Or click a category first, then drag across blocks."
+            return "Select blocks, then pick an activity, or pick one first and drag across blocks. "
+                + "Right-click an activity to star or unstar it."
         }
         guard let name = brush.categoryID.flatMap({ snapshot.categories[$0] })?.name else {
             return "Drag across blocks to clear them."

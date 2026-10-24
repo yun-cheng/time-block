@@ -96,6 +96,15 @@ final class AppModel {
         set(start..<(current + 1), to: categoryID)
     }
 
+    /// Stars a category (adding it to the end of the palette) or unstars it.
+    func toggleFavorite(_ id: String) {
+        if let index = settings.favorites.firstIndex(of: id) {
+            settings.favorites.remove(at: index)
+        } else {
+            settings.favorites.append(id)
+        }
+    }
+
     /// Switches to the next day's logs once the day rolls over.
     private func loadDayIfNeeded() {
         let day = settings.schedule.dayID(for: now)

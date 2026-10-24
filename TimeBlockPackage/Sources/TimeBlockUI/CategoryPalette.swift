@@ -69,33 +69,112 @@ public struct CategoryChip: View {
     }
 }
 
-/// This track's categories, then Clear. `selected` is drawn as picked; clicks go to `choose`.
+/// Picks what to log: a search field over every category in the track, the starred ones (then Clear) while it
+/// is empty, and the matches while typing. Return takes the best match. Right-clicking a chip stars or unstars it.
 public struct CategoryPalette: View {
     let categories: [BlockCategory]
+    let favorites: [BlockCategory]
     let selected: Brush?
     let theme: MoodTheme
+    let showsClear: Bool
     let choose: (Brush) -> Void
+    let toggleFavorite: ((String) -> Void)?
+    @State private var query = ""
 
-    public init(categories: [BlockCategory], selected: Brush?, theme: MoodTheme, choose: @escaping (Brush) -> Void) {
+    /// `categories` are what search looks through; `favorites` are shown until something is typed.
+    public init(
+        categories: [BlockCategory], favorites: [BlockCategory], selected: Brush?, theme: MoodTheme,
+        showsClear: Bool = true, choose: @escaping (Brush) -> Void, toggleFavorite: ((String) -> Void)? = nil
+    ) {
         self.categories = categories
+        self.favorites = favorites
         self.selected = selected
         self.theme = theme
+        self.showsClear = showsClear
         self.choose = choose
+        self.toggleFavorite = toggleFavorite
+    }
+
+    private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// Matches while searching; otherwise the favorites, plus the picked category when it isn't one.
+    private var shown: [BlockCategory] {
+        if isSearching { return Array(ActivitySearch.results(for: query, in: categories).prefix(30)) }
+        guard let id = selected?.categoryID, !favorites.contains(where: { $0.id == id }),
+              let picked = categories.first(where: { $0.id == id })
+        else { return favorites }
+        return favorites + [picked]
     }
 
     public var body: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(categories) { category in
-                CategoryChip(category: category, theme: theme, isSelected: selected == .category(category.id)) {
-                    choose(.category(category.id))
+        let shown = shown
+        VStack(alignment: .leading, spacing: 8) {
+            searchField(firstMatch: shown.first)
+            FlowLayout(spacing: 8) {
+                ForEach(shown) { category in
+                    CategoryChip(category: category, theme: theme, isSelected: selected == .category(category.id)) {
+                        pick(.category(category.id))
+                    }
+                    .contextMenu {
+                        if let toggleFavorite {
+                            let isFavorite = favorites.contains { $0.id == category.id }
+                            Button(isFavorite ? "Unstar" : "Star", systemImage: isFavorite ? "star.slash" : "star") {
+                                toggleFavorite(category.id)
+                            }
+                        }
+                    }
+                }
+                if showsClear, !isSearching {
+                    CategoryChip(name: "Clear", symbol: "eraser", color: theme.text, theme: theme, isSelected: selected == .clear) {
+                        pick(.clear)
+                    }
                 }
             }
-            CategoryChip(name: "Clear", symbol: "eraser", color: theme.text, theme: theme, isSelected: selected == .clear) {
-                choose(.clear)
+            // Room for the selected chip's ring.
+            .padding(3)
+            if isSearching, shown.isEmpty {
+                Text("Nothing matches \u{201C}\(query)\u{201D}.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryText)
             }
         }
-        // Room for the selected chip's ring.
-        .padding(3)
+    }
+
+    private func searchField(firstMatch: BlockCategory?) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(theme.secondaryText)
+            TextField("Find an activity", text: $query)
+                .textFieldStyle(.plain)
+                .foregroundStyle(theme.text)
+                .onSubmit {
+                    if isSearching, let firstMatch { pick(.category(firstMatch.id)) }
+                }
+                .onKeyPress(.escape) {
+                    guard isSearching else { return .ignored }
+                    query = ""
+                    return .handled
+                }
+            if isSearching {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+                .help("Clear search")
+            }
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 7).fill(theme.text.opacity(0.07)))
+    }
+
+    private func pick(_ choice: Brush) {
+        query = ""
+        choose(choice)
     }
 }
 
