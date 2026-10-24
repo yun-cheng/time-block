@@ -3,12 +3,12 @@ import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
 
-/// The current view's activities: the starred ones the palette shows, in order, and the whole library to
-/// star more from or add your own to. Editors open in the list rather than a popover: closing a popover
-/// hands focus to the first time picker, which scrolls the settings back to the top.
+/// The current view's whole library, to star activities for the palette or add your own. Starred ones aren't
+/// listed apart: the palette shows them, and unstars them too. Editors open in the list rather than a popover:
+/// closing a popover hands focus to the first time picker, which scrolls the settings back to the top.
 struct ActivitySettings: View {
     @Bindable var model: AppModel
-    /// The row whose editor is open, as "starred:<id>" or "all:<id>", since one activity can be in both lists.
+    /// The id of the activity whose editor is open.
     @State private var editing: String?
     @State private var query = ""
     /// Library groups showing their activities.
@@ -17,27 +17,12 @@ struct ActivitySettings: View {
     var body: some View {
         let track = model.settings.track
         let all = model.settings.categories.filter { $0.track == track && !$0.isRetired }
-        let byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let starred = model.settings.favorites.compactMap { byID[$0] }
-        Section {
-            ForEach(starred) { category in
-                row(category, list: "starred")
-            }
-            Button("New Activity", systemImage: "plus") {
-                editing = "starred:" + model.addActivity(in: track)
-            }
-        } header: {
-            Text(track == .activity ? "Starred" : "Starred \(track.name) Activities")
-        } footer: {
-            Text("The palette shows these, in this order. Search there finds every other activity.")
-                .foregroundStyle(.secondary)
-        }
         Section {
             TextField("Search", text: $query, prompt: Text("Search \(all.count) activities"))
                 .labelsHidden()
             if !query.trimmingCharacters(in: .whitespaces).isEmpty {
                 ForEach(ActivitySearch.results(for: query, in: all)) { category in
-                    row(category, list: "all")
+                    row(category)
                 }
             } else if track == .activity {
                 ForEach(CategoryGroup.allCases, id: \.self) { group in
@@ -63,29 +48,34 @@ struct ActivitySettings: View {
                     .buttonStyle(.plain)
                     if isExpanded {
                         ForEach(members) { category in
-                            row(category, list: "all")
+                            row(category)
                         }
                     }
                 }
             } else {
                 ForEach(all) { category in
-                    row(category, list: "all")
+                    row(category)
                 }
             }
+            Button("New Activity", systemImage: "plus") {
+                let id = model.addActivity(in: track)
+                // Show the new activity, with its editor open, wherever it's listed.
+                query = ""
+                if let group = model.settings.categories.first(where: { $0.id == id })?.group { expanded.insert(group) }
+                editing = id
+            }
         } header: {
-            Text(track == .activity ? "All Activities" : "All \(track.name) Activities")
+            Text(track == .activity ? "Activities" : "\(track.name) Activities")
         } footer: {
-            Text("Activities in a group share its color, and are summed up together.")
+            Text("Starred activities make up the palette, by group; search there finds the rest. Activities in a group share its color, and are summed up together.")
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func row(_ category: BlockCategory, list: String) -> some View {
-        let key = "\(list):\(category.id)"
+    private func row(_ category: BlockCategory) -> some View {
+        let key = category.id
         let isStarred = model.settings.favorites.contains(category.id)
         let isOwn = model.settings.customCategories.contains { $0.id == category.id }
-        // Built-in activities have nothing to edit outside the starred list, where they can be moved.
-        let isEditable = isOwn || list == "starred"
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 let label = HStack {
@@ -96,7 +86,8 @@ struct ActivitySettings: View {
                     Spacer()
                 }
                 .contentShape(Rectangle())
-                if isEditable {
+                // Built-in activities have nothing to edit.
+                if isOwn {
                     Button {
                         editing = editing == key ? nil : key
                     } label: {
@@ -115,11 +106,8 @@ struct ActivitySettings: View {
                 .buttonStyle(.borderless)
                 .help(isStarred ? "Unstar" : "Star")
             }
-            if editing == key {
-                ActivityEditor(
-                    category: binding(for: category), isOwn: isOwn,
-                    move: list == "starred" ? { model.moveFavorite(category.id, by: $0) } : nil,
-                    done: { editing = nil })
+            if isOwn, editing == key {
+                ActivityEditor(category: binding(for: category), done: { editing = nil })
             }
         }
     }
@@ -134,62 +122,50 @@ struct ActivitySettings: View {
     }
 }
 
-/// Moves a starred activity, and edits the name, group and icon of one of your own.
+/// Edits the name, group and icon of an activity of your own.
 private struct ActivityEditor: View {
     @Binding var category: BlockCategory
-    let isOwn: Bool
-    /// Moves the activity up (-1) or down (+1) in the palette; nil outside the starred list.
-    let move: ((Int) -> Void)?
     let done: () -> Void
     @State private var symbolName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if isOwn {
-                TextField("Name", text: $category.name)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                if category.group != nil {
-                    Picker("Group", selection: groupBinding) {
-                        ForEach(CategoryGroup.allCases, id: \.self) { group in
-                            Text(group.name).tag(group)
-                        }
-                    }
-                } else {
-                    ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
-                }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 26, maximum: 30), spacing: 2)], spacing: 2) {
-                    ForEach(Self.symbols, id: \.self) { symbol in
-                        symbolButton(symbol)
+            TextField("Name", text: $category.name)
+                .textFieldStyle(.roundedBorder)
+                .labelsHidden()
+            if category.group != nil {
+                Picker("Group", selection: groupBinding) {
+                    ForEach(CategoryGroup.allCases, id: \.self) { group in
+                        Text(group.name).tag(group)
                     }
                 }
-                TextField("Other SF Symbol name", text: $symbolName)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .onSubmit {
-                        let name = symbolName.trimmingCharacters(in: .whitespaces)
-                        if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil {
-                            category.symbol = name
-                            symbolName = ""
-                        }
-                    }
+            } else {
+                ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
             }
-            HStack {
-                if let move {
-                    Button("Move Up", systemImage: "arrow.up") { move(-1) }
-                        .help("Move Up")
-                    Button("Move Down", systemImage: "arrow.down") { move(1) }
-                        .help("Move Down")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 26, maximum: 30), spacing: 2)], spacing: 2) {
+                ForEach(Self.symbols, id: \.self) { symbol in
+                    symbolButton(symbol)
                 }
+            }
+            TextField("Other SF Symbol name", text: $symbolName)
+                .textFieldStyle(.roundedBorder)
+                .labelsHidden()
+                .onSubmit {
+                    let name = symbolName.trimmingCharacters(in: .whitespaces)
+                    if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil {
+                        category.symbol = name
+                        symbolName = ""
+                    }
+                }
+            HStack {
                 Spacer()
                 Button("Done", action: done)
             }
         }
-        .labelStyle(.iconOnly)
         .padding(.leading, 28)
         .padding(.bottom, 4)
         .onDisappear {
-            if isOwn, category.name.trimmingCharacters(in: .whitespaces).isEmpty { category.name = "Untitled" }
+            if category.name.trimmingCharacters(in: .whitespaces).isEmpty { category.name = "Untitled" }
         }
     }
 

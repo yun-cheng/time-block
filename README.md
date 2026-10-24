@@ -39,8 +39,7 @@ PLAN.md.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
-- **Settings:** reorder starred activities, browse the whole library by group to star more, or add your own
-  with a name, group and icon.
+- **Settings:** browse the whole library by group to star more, or add your own with a name, group and icon.
 
 ## Layout
 

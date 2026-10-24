@@ -96,24 +96,13 @@ final class AppModel {
         set(start..<(current + 1), to: categoryID)
     }
 
-    /// Stars a category (adding it to the end of the palette) or unstars it.
+    /// Stars a category, adding it to the palette, or unstars it.
     func toggleFavorite(_ id: String) {
         if let index = settings.favorites.firstIndex(of: id) {
             settings.favorites.remove(at: index)
         } else {
             settings.favorites.append(id)
         }
-    }
-
-    /// Moves a favorite one place up (-1) or down (+1) among its view's favorites.
-    func moveFavorite(_ id: String, by step: Int) {
-        let trackOf = Dictionary(settings.categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
-        let favorites = settings.favorites
-        guard let track = trackOf[id] else { return }
-        let slots = favorites.indices.filter { trackOf[favorites[$0]] == track }
-        guard let position = slots.firstIndex(where: { favorites[$0] == id }), slots.indices.contains(position + step)
-        else { return }
-        settings.favorites.swapAt(slots[position], slots[position + step])
     }
 
     /// Adds an activity of your own to `track`, starred, and returns its id.
