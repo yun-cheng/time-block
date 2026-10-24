@@ -120,7 +120,8 @@ time-logging coaches split a day, with plain names:
   built-in groups. Built-in activities and groups can be edited the same way, saved as edits over the originals
   so Reset brings them back. The Body view keeps its five postures, each its own color.
 - Settings' library opens one group at a time. An activity moved to another group takes its open editor along,
-  opening that group.
+  opening that group. A name left empty goes back to the built-in one (or, for your own, to what it was), so
+  nothing ends up nameless.
 - Built-in activities are **retired** rather than removed (so far Meal, replaced by Breakfast/Lunch/Dinner/Snack,
   and the vague Screen time): blocks already logged keep their name and color, but they leave search, the
   library and the palette. Ids of built-ins never change, since logs refer to them.

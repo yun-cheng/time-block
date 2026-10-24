@@ -204,13 +204,17 @@ private struct GroupEditor: View {
     let reset: () -> Void
     let remove: () -> Void
     let done: () -> Void
+    @State private var nameBefore: String?
+    @FocusState private var focusesName: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                TextField("Group name", text: $group.name)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
+                ClearableField(text: $group.name) {
+                    TextField("Group name", text: $group.name, prompt: Text(builtInName ?? nameBefore ?? "Group name"))
+                        .focused($focusesName)
+                        .onSubmit(keepName)
+                }
                 ColorPicker("Color", selection: color, supportsOpacity: false)
                     .labelsHidden()
             }
@@ -228,10 +232,18 @@ private struct GroupEditor: View {
         }
         .padding(.leading, 28)
         .padding(.bottom, 4)
-        .onDisappear {
-            if group.name.trimmingCharacters(in: .whitespaces).isEmpty { group.name = "Untitled" }
-        }
+        .onAppear { nameBefore = group.name }
+        .onChange(of: focusesName) { _, focused in if !focused { keepName() } }
+        .onDisappear(perform: keepName)
     }
+
+    /// A name left empty goes back to the built-in one, or to what it was before (shown as the empty field's prompt).
+    private func keepName() {
+        guard group.name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        group.name = builtInName ?? nameBefore ?? "Untitled"
+    }
+
+    private var builtInName: String? { CategoryGroup.builtIn.first { $0.id == group.id }?.name }
 
     private var color: Binding<Color> {
         Binding {
@@ -252,6 +264,7 @@ private struct ActivityEditor: View {
     let reset: () -> Void
     let done: () -> Void
     @State private var picksIcon = false
+    @State private var nameBefore: String?
     @FocusState private var focusesName: Bool
 
     var body: some View {
@@ -276,10 +289,11 @@ private struct ActivityEditor: View {
                     // keep it here instead.
                     if !isOpen { focusesName = true }
                 }
-                TextField("Name", text: $category.name)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .focused($focusesName)
+                ClearableField(text: $category.name) {
+                    TextField("Name", text: $category.name, prompt: Text(builtInName ?? nameBefore ?? "Name"))
+                        .focused($focusesName)
+                        .onSubmit(keepName)
+                }
             }
             if category.group != nil {
                 Picker("Group", selection: groupBinding) {
@@ -301,10 +315,18 @@ private struct ActivityEditor: View {
         }
         .padding(.leading, 28)
         .padding(.bottom, 4)
-        .onDisappear {
-            if category.name.trimmingCharacters(in: .whitespaces).isEmpty { category.name = "Untitled" }
-        }
+        .onAppear { nameBefore = category.name }
+        .onChange(of: focusesName) { _, focused in if !focused { keepName() } }
+        .onDisappear(perform: keepName)
     }
+
+    /// A name left empty goes back to the built-in one, or to what it was before (shown as the empty field's prompt).
+    private func keepName() {
+        guard category.name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        category.name = builtInName ?? nameBefore ?? "Untitled"
+    }
+
+    private var builtInName: String? { BlockCategory.defaults.first { $0.id == category.id }?.name }
 
     private var groupBinding: Binding<String> {
         Binding {
@@ -321,6 +343,33 @@ private struct ActivityEditor: View {
             guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
             category.color = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent)
         }
+    }
+}
+
+/// A text field with a button that clears it, drawn like the icon search so the button sits beside the text rather
+/// than over it.
+private struct ClearableField<Field: View>: View {
+    @Binding var text: String
+    @ViewBuilder let field: Field
+
+    var body: some View {
+        HStack(spacing: 4) {
+            field
+                .textFieldStyle(.plain)
+                .labelsHidden()
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear")
+            }
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(.primary.opacity(0.07)))
     }
 }
 

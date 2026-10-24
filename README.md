@@ -41,7 +41,8 @@ PLAN.md.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
 - **Settings:** browse the whole library by group, one open at a time, to star more. Edit any activity (name,
   group, and an icon from a searchable picker: `meal` finds the fork and knife) or group (name, color), built-in
-  ones too (Reset puts them back), and add your own groups and activities. New ones start unstarred.
+  ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and
+  activities. New ones start unstarred.
 
 ## Layout
 
