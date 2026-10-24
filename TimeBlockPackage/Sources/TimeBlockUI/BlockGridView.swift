@@ -1,3 +1,6 @@
+#if canImport(AppKit)
+import AppKit
+#endif
 import SwiftUI
 import TimeBlockKit
 
@@ -11,16 +14,41 @@ public struct BlockGridView: View {
     var showsHourLabels: Bool
     /// Animation clock in seconds. 0 draws a still frame, which is all a widget can show.
     var time: Double
+    /// Side of one block in points; nil scales the grid to fill the space it gets.
+    var blockSize: CGFloat?
+    /// What dragging across blocks logs, previewed on the block under the pointer. With none, a drag selects.
+    var brush: Brush?
+    /// Blocks picked out to log next, outlined until something is done with them.
+    var selection: Range<Int>?
+    /// Called with the blocks dragged across. Without it the grid doesn't respond to the pointer at all.
+    /// With no brush, a click reports the whole run it lands on, and a double click just the one block.
+    var onDrag: ((Range<Int>) -> Void)?
+    /// Called when a click should drop the selection: one off the blocks, inside the selection, or a
+    /// drag over exactly the selection again.
+    var onDeselect: (() -> Void)?
+
+    /// First and last block of the drag in progress.
+    @State private var drag: (start: Int, end: Int)?
+    @State private var hovered: Int?
+    /// The last single click, to spot a double click.
+    @State private var lastClick: (index: Int, time: Date)?
 
     public init(
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
-        showsHourLabels: Bool = true, time: Double = 0
+        showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
+        brush: Brush? = nil, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
+        onDeselect: (() -> Void)? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
         self.rows = rows
         self.showsHourLabels = showsHourLabels
         self.time = time
+        self.blockSize = blockSize
+        self.brush = brush
+        self.selection = selection
+        self.onDrag = onDrag
+        self.onDeselect = onDeselect
     }
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
@@ -39,40 +67,136 @@ public struct BlockGridView: View {
 
     public var body: some View {
         Canvas { context, size in draw(in: &context, size: size) }
+            .frame(
+                width: blockSize.map { GridLayout.width(side: $0, labelWidth: labelWidth) + 2 * margin },
+                height: blockSize.map { GridLayout.height(side: $0, rows: resolvedRows.count) + 2 * margin })
+            .overlay {
+                if onDrag != nil {
+                    GeometryReader { proxy in
+                        let layout = layout(size: proxy.size)
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(paintGesture(size: proxy.size))
+                            .onContinuousHover { phase in
+                                if case .active(let point) = phase {
+                                    hovered = layout.index(at: point, count: snapshot.cells.count, clamped: false)
+                                } else {
+                                    hovered = nil
+                                }
+                            }
+                        if let range = labeled {
+                            BlockInfo(snapshot: snapshot, theme: theme, range: range, brush: brush)
+                                .fixedSize()
+                                .position(infoPosition(for: range, layout: layout, size: proxy.size))
+                                .allowsHitTesting(false)
+                        }
+                    }
+                }
+            }
+    }
+
+    private var dragged: Range<Int>? {
+        drag.map { min($0.start, $0.end)..<(max($0.start, $0.end) + 1) }
+    }
+
+    /// What the pointer is over: with a brush, the one block it would paint; otherwise the whole selection
+    /// when over it, or the run of one category around a logged block.
+    private var hoveredRange: Range<Int>? {
+        guard let hovered else { return nil }
+        if brush != nil { return hovered..<(hovered + 1) }
+        if let selection, selection.contains(hovered) { return selection }
+        return snapshot.run(around: hovered)
+    }
+
+    /// Blocks the label describes: the drag in progress, else what the pointer is over, else the selection.
+    private var labeled: Range<Int>? {
+        dragged ?? hoveredRange ?? selection
+    }
+
+    /// Just above the first highlighted block, or below it on the top row.
+    private func infoPosition(for range: Range<Int>, layout: GridLayout, size: CGSize) -> CGPoint {
+        let frame = layout.frame(range.lowerBound)
+        let y = frame.minY > 30 ? frame.minY - 16 : frame.maxY + 16
+        return CGPoint(x: min(max(frame.midX, 90), size.width - 90), y: y)
+    }
+
+    private var resolvedRows: Range<Int> { rows ?? 0..<Self.rowCount(for: snapshot) }
+    private var labelWidth: CGFloat { showsHourLabels ? 24 : 0 }
+    /// Room around a fixed-size grid for what reaches past the blocks, like the current block's ring.
+    private var margin: CGFloat { blockSize.map { $0 * 0.4 } ?? 0 }
+
+    private func layout(size: CGSize) -> GridLayout {
+        GridLayout(
+            size: size, rows: resolvedRows, offset: snapshot.status.schedule.gridOffset, labelWidth: labelWidth,
+            margin: margin)
+    }
+
+    private func paintGesture(size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                let layout = layout(size: size)
+                let count = snapshot.cells.count
+                guard let start = drag?.start ?? layout.index(at: value.startLocation, count: count, clamped: false),
+                      let end = layout.index(at: value.location, count: count, clamped: true)
+                else { return }
+                drag = (start, end)
+            }
+            .onEnded { _ in
+                defer { drag = nil }
+                guard let dragged else {
+                    onDeselect?()
+                    return
+                }
+                if brush != nil {
+                    onDrag?(dragged)
+                } else if dragged.count == 1 {
+                    let index = dragged.lowerBound
+                    let now = Date()
+                    let isDouble = lastClick.map { $0.index == index && now.timeIntervalSince($0.time) < Self.doubleClickInterval } ?? false
+                    lastClick = isDouble ? nil : (index, now)
+                    if isDouble {
+                        onDrag?(dragged)
+                    } else if let selection, selection.contains(index) {
+                        onDeselect?()
+                    } else {
+                        onDrag?(snapshot.run(around: index))
+                    }
+                } else if dragged == selection {
+                    onDeselect?()
+                } else {
+                    onDrag?(dragged)
+                }
+            }
+    }
+
+    private static var doubleClickInterval: TimeInterval {
+        #if canImport(AppKit)
+        NSEvent.doubleClickInterval
+        #else
+        0.4
+        #endif
     }
 
     private func draw(in context: inout GraphicsContext, size: CGSize) {
         let perRow = Schedule.blocksPerHour
-        let rows = self.rows ?? 0..<Self.rowCount(for: snapshot)
+        let grid = layout(size: size)
+        let rows = grid.rows
         guard !rows.isEmpty else { return }
 
         let mood = snapshot.mood
         let animated = time > 0
         let tick = Int(time * 9)
-        let gapRatio: CGFloat = 0.24
-        let labelWidth: CGFloat = showsHourLabels ? 24 : 0
-        let columns = CGFloat(perRow)
-        let rowCount = CGFloat(rows.count)
-        let side = min(
-            (size.width - labelWidth) / (columns + (columns - 1) * gapRatio),
-            size.height / (rowCount + (rowCount - 1) * gapRatio))
-        let gap = side * gapRatio
-        let radius = side * 0.28
-        let gridWidth = columns * side + (columns - 1) * gap
-        let originX = labelWidth + (size.width - labelWidth - gridWidth) / 2
+        let side = grid.side
+        let gap = grid.gap
+        let radius = grid.radius
+        let gridWidth = grid.gridWidth
+        let originX = grid.originX
+        let originY = grid.originY
         let schedule = snapshot.status.schedule
         let awake = schedule.awakeBlocks
         let offset = schedule.gridOffset
         let visible = snapshot.cells.filter { rows.contains(($0.index + offset) / perRow) }
-
-        func frame(_ index: Int) -> CGRect {
-            let slot = index + offset
-            let row = slot / perRow - rows.lowerBound
-            let column = slot % perRow
-            return CGRect(
-                x: originX + CGFloat(column) * (side + gap), y: CGFloat(row) * (side + gap),
-                width: side, height: side)
-        }
+        let frame = grid.frame
 
         if showsHourLabels {
             let fontSize = min(11, max(7, side * 0.8))
@@ -81,7 +205,7 @@ public struct BlockGridView: View {
                 let text = Text(String(format: "%02d", schedule.hour(ofRow: row)))
                     .font(.system(size: fontSize, weight: .medium, design: mood >= .uneasy ? .monospaced : .rounded))
                     .foregroundColor(first >= awake ? theme.accent : theme.secondaryText)
-                let y = CGFloat(row - rows.lowerBound) * (side + gap) + side / 2
+                let y = originY + CGFloat(row - rows.lowerBound) * (side + gap) + side / 2
                 context.draw(text, at: CGPoint(x: originX - 6, y: y), anchor: .trailing)
             }
         }
@@ -119,6 +243,28 @@ public struct BlockGridView: View {
                 context.fill(path, with: .color(color))
             }
 
+            if onDrag != nil {
+                // The brush previews on the drag or the hovered block: the new color over the old block, or a
+                // dashed outline when clearing. Without a brush, dragged and selected blocks are outlined.
+                let line = max(1.5, side * 0.12)
+                let previewed = dragged ?? (brush != nil ? hovered.map { $0..<($0 + 1) } : nil)
+                if let brush, previewed?.contains(cell.index) == true {
+                    if let color = brush.categoryID.flatMap({ snapshot.categories[$0] }).map(theme.color(of:)) {
+                        context.fill(path, with: .color(color.opacity(0.7)))
+                        context.stroke(path, with: .color(color), lineWidth: line)
+                    } else {
+                        context.stroke(
+                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
+                    }
+                } else if (dragged ?? selection)?.contains(cell.index) == true {
+                    context.fill(path, with: .color(theme.text.opacity(0.2)))
+                    context.stroke(path, with: .color(theme.text), lineWidth: line)
+                } else if brush == nil, drag == nil, let run = hoveredRange, run.contains(cell.index) {
+                    // The stretch of one category (or one gap) under the pointer.
+                    context.stroke(path, with: .color(theme.text.opacity(0.75)), lineWidth: line)
+                }
+            }
+
             if cell.phase == .current {
                 let pulse = animated ? 0.55 + 0.45 * sin(time * 4) : 1
                 let ring = frame(cell.index).insetBy(dx: -gap * 0.55, dy: -gap * 0.55)
@@ -137,7 +283,7 @@ public struct BlockGridView: View {
         let boundaryRow = boundary / perRow
         if snapshot.status.overtimeBlocks > 0, rows.contains(boundaryRow) {
             let column = boundary % perRow
-            let top = CGFloat(boundaryRow - rows.lowerBound) * (side + gap) - gap / 2
+            let top = originY + CGFloat(boundaryRow - rows.lowerBound) * (side + gap) - gap / 2
             let bottom = top + side + gap
             let x = originX + CGFloat(column) * (side + gap) - gap / 2
             let left = originX - 2
@@ -179,6 +325,126 @@ public struct BlockGridView: View {
                 Path(ellipseIn: CGRect(x: x + width / 2 - drop / 2, y: stem.maxY - drop * 0.8, width: drop, height: drop * 1.15)),
                 with: .color(color))
         }
+    }
+}
+
+/// "12:20 · Study → Exercise" or "18:20–19:25 · Social · 1h 5m": when the blocks are, what they hold
+/// (when it is one thing), how long, and what the brush would make them.
+private struct BlockInfo: View {
+    let snapshot: DaySnapshot
+    let theme: MoodTheme
+    let range: Range<Int>
+    let brush: Brush?
+
+    var body: some View {
+        let schedule = snapshot.status.schedule
+        let cells = snapshot.cells[range.clamped(to: snapshot.cells.indices)]
+        // Named when every block holds the same thing.
+        let shared = cells.first.flatMap { first in cells.allSatisfy { $0.categoryID == first.categoryID } ? first : nil }
+        HStack(spacing: 5) {
+            let start = clock(schedule.clockMinute(ofBlock: range.lowerBound))
+            Text(range.count == 1 ? start : "\(start)–\(clock(schedule.clockMinute(ofBlock: range.upperBound)))")
+                .monospacedDigit()
+                .foregroundStyle(theme.text)
+            if let shared {
+                content(of: shared)
+            }
+            if range.count > 1 {
+                Text(durationText(blocks: range.count)).foregroundStyle(theme.secondaryText)
+            }
+            if let brush, shared?.categoryID != brush.categoryID || shared == nil {
+                Image(systemName: "arrow.right").foregroundStyle(theme.secondaryText)
+                if let category = brush.categoryID.flatMap({ snapshot.categories[$0] }) {
+                    Label(category.name, systemImage: category.symbol).foregroundStyle(theme.color(of: category))
+                } else {
+                    Label("Clear", systemImage: "eraser").foregroundStyle(theme.text)
+                }
+            }
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(theme.backgroundTop).shadow(color: .black.opacity(0.3), radius: 4, y: 1))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(theme.text.opacity(0.15)))
+    }
+
+    @ViewBuilder private func content(of cell: BlockCell) -> some View {
+        if let category = cell.categoryID.flatMap({ snapshot.categories[$0] }) {
+            Label(cell.phase == .future ? "\(category.name) (planned)" : category.name, systemImage: category.symbol)
+                .foregroundStyle(theme.color(of: category))
+        } else if cell.isOvertime {
+            Text("Past bedtime").foregroundStyle(theme.accent)
+        } else {
+            Text(cell.phase == .future ? "Nothing planned" : "Unlogged").foregroundStyle(theme.secondaryText)
+        }
+    }
+
+    private func clock(_ minute: Int) -> String {
+        String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
+    }
+}
+
+/// Where each block sits in a grid of `rows` hour rows fitted into `size`, `margin` in from its edges.
+struct GridLayout {
+    let rows: Range<Int>
+    let offset: Int
+    let side: CGFloat
+    let gap: CGFloat
+    let radius: CGFloat
+    let gridWidth: CGFloat
+    let originX: CGFloat
+    let originY: CGFloat
+
+    static let gapRatio: CGFloat = 0.24
+
+    /// Grid width for blocks of `side` points.
+    static func width(side: CGFloat, labelWidth: CGFloat) -> CGFloat {
+        let columns = CGFloat(Schedule.blocksPerHour)
+        return labelWidth + columns * side + (columns - 1) * side * gapRatio
+    }
+
+    static func height(side: CGFloat, rows: Int) -> CGFloat {
+        CGFloat(rows) * side + CGFloat(max(0, rows - 1)) * side * gapRatio
+    }
+
+    init(size: CGSize, rows: Range<Int>, offset: Int, labelWidth: CGFloat, margin: CGFloat = 0) {
+        let gapRatio = Self.gapRatio
+        let columns = CGFloat(Schedule.blocksPerHour)
+        let rowCount = CGFloat(max(1, rows.count))
+        self.rows = rows
+        self.offset = offset
+        let available = CGSize(width: size.width - 2 * margin, height: size.height - 2 * margin)
+        side = min(
+            (available.width - labelWidth) / (columns + (columns - 1) * gapRatio),
+            available.height / (rowCount + (rowCount - 1) * gapRatio))
+        gap = side * gapRatio
+        radius = side * 0.28
+        gridWidth = columns * side + (columns - 1) * gap
+        originX = margin + labelWidth + (available.width - labelWidth - gridWidth) / 2
+        originY = margin
+    }
+
+    func frame(_ index: Int) -> CGRect {
+        let slot = index + offset
+        let row = slot / Schedule.blocksPerHour - rows.lowerBound
+        let column = slot % Schedule.blocksPerHour
+        return CGRect(
+            x: originX + CGFloat(column) * (side + gap), y: originY + CGFloat(row) * (side + gap),
+            width: side, height: side)
+    }
+
+    /// The block under `point`, out of `count`. Unclamped, points off the blocks give nil;
+    /// clamped, they give the nearest block, so a drag can run past the grid's edge.
+    func index(at point: CGPoint, count: Int, clamped: Bool) -> Int? {
+        let step = side + gap
+        let column = Int(((point.x - originX + gap / 2) / step).rounded(.down))
+        let row = Int(((point.y - originY + gap / 2) / step).rounded(.down))
+        let columns = Schedule.blocksPerHour
+        if !clamped, !(0..<columns).contains(column) || !(0..<rows.count).contains(row) { return nil }
+        let slot = (min(max(row, 0), rows.count - 1) + rows.lowerBound) * columns + min(max(column, 0), columns - 1)
+        let index = slot - offset
+        if clamped { return count > 0 ? min(max(index, 0), count - 1) : nil }
+        return (0..<count).contains(index) ? index : nil
     }
 }
 
