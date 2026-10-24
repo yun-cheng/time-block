@@ -22,6 +22,7 @@ struct SettingsView: View {
                 Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.")
                     .foregroundStyle(.secondary)
             }
+            ActivitySettings(model: model)
         }
         .formStyle(.grouped)
     }

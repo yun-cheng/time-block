@@ -105,6 +105,25 @@ final class AppModel {
         }
     }
 
+    /// Moves a favorite one place up (-1) or down (+1) among its view's favorites.
+    func moveFavorite(_ id: String, by step: Int) {
+        let trackOf = Dictionary(settings.categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
+        let favorites = settings.favorites
+        guard let track = trackOf[id] else { return }
+        let slots = favorites.indices.filter { trackOf[favorites[$0]] == track }
+        guard let position = slots.firstIndex(where: { favorites[$0] == id }), slots.indices.contains(position + step)
+        else { return }
+        settings.favorites.swapAt(slots[position], slots[position + step])
+    }
+
+    /// Adds an activity of your own to `track`, starred, and returns its id.
+    func addActivity(in track: Track) -> String {
+        let category = BlockCategory.new(in: track)
+        settings.customCategories.append(category)
+        settings.favorites.append(category.id)
+        return category.id
+    }
+
     /// Switches to the next day's logs once the day rolls over.
     private func loadDayIfNeeded() {
         let day = settings.schedule.dayID(for: now)

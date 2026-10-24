@@ -2,7 +2,7 @@ import SwiftUI
 import TimeBlockKit
 
 extension Color {
-    init(rgb: RGB, opacity: Double = 1) {
+    public init(rgb: RGB, opacity: Double = 1) {
         self.init(.sRGB, red: rgb.r, green: rgb.g, blue: rgb.b, opacity: opacity)
     }
 
