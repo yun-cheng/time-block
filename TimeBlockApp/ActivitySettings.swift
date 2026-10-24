@@ -215,13 +215,36 @@ private struct ActivityEditor: View {
     let isEdited: Bool
     let reset: () -> Void
     let done: () -> Void
-    @State private var symbolName = ""
+    @State private var picksIcon = false
+    @FocusState private var focusesName: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextField("Name", text: $category.name)
-                .textFieldStyle(.roundedBorder)
-                .labelsHidden()
+            HStack {
+                Button {
+                    picksIcon.toggle()
+                } label: {
+                    Image(systemName: category.symbol)
+                        .foregroundStyle(Color(rgb: category.color))
+                        .frame(width: 22, height: 18)
+                }
+                .help("Choose Icon")
+                .popover(isPresented: $picksIcon, arrowEdge: .bottom) {
+                    IconPicker(selected: category.symbol, color: Color(rgb: category.color)) { symbol in
+                        category.symbol = symbol
+                        picksIcon = false
+                    }
+                }
+                .onChange(of: picksIcon) { _, isOpen in
+                    // Closing a popover hands focus to the first time picker, scrolling the settings to the top;
+                    // keep it here instead.
+                    if !isOpen { focusesName = true }
+                }
+                TextField("Name", text: $category.name)
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                    .focused($focusesName)
+            }
             if category.group != nil {
                 Picker("Group", selection: groupBinding) {
                     ForEach(groups) { group in
@@ -231,21 +254,6 @@ private struct ActivityEditor: View {
             } else {
                 ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 26, maximum: 30), spacing: 2)], spacing: 2) {
-                ForEach(Self.symbols, id: \.self) { symbol in
-                    symbolButton(symbol)
-                }
-            }
-            TextField("Other SF Symbol name", text: $symbolName)
-                .textFieldStyle(.roundedBorder)
-                .labelsHidden()
-                .onSubmit {
-                    let name = symbolName.trimmingCharacters(in: .whitespaces)
-                    if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil {
-                        category.symbol = name
-                        symbolName = ""
-                    }
-                }
             HStack {
                 if isEdited {
                     Button("Reset", action: reset)
@@ -278,25 +286,119 @@ private struct ActivityEditor: View {
             category.color = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent)
         }
     }
+}
 
-    private func symbolButton(_ symbol: String) -> some View {
-        let isSelected = symbol == category.symbol
+/// The icons the built-in activities use, searchable by the icon's own name ("fork.knife") or by the activities
+/// that use it ("lunch", "meal"). Any other SF Symbol can be typed by its exact name.
+private struct IconPicker: View {
+    let selected: String
+    let color: Color
+    let choose: (String) -> Void
+    @State private var query = ""
+
+    var body: some View {
+        let icons = Self.results(for: query)
+        VStack(alignment: .leading, spacing: 10) {
+            // Laid out like the palette's search, so the clear button sits beside the text rather than over it.
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search icons", text: $query)
+                    .textFieldStyle(.plain)
+                    .onSubmit { if let first = icons.first { choose(first) } }
+                    // Escape clears a search first, then closes the popover.
+                    .onKeyPress(.escape) {
+                        guard !query.isEmpty else { return .ignored }
+                        query = ""
+                        return .handled
+                    }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear search")
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(RoundedRectangle(cornerRadius: 7).fill(.primary.opacity(0.07)))
+            .padding(.horizontal, Self.margin)
+            // AppKit's scroll bar would run out past the popover's bubble; this one stays in the margin.
+            AppScrollView(lane: Self.margin) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(Self.cell), spacing: Self.gap), count: Self.columns),
+                          spacing: Self.gap) {
+                    ForEach(icons, id: \.self) { symbol in
+                        iconButton(symbol)
+                    }
+                }
+                .padding(.horizontal, Self.margin)
+                .padding(.bottom, Self.margin)
+            }
+            .frame(width: Self.width, height: Self.height)
+            .overlay {
+                if icons.isEmpty {
+                    Text("No icon named “\(query)”").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.top, Self.margin)
+        .frame(width: Self.width)
+    }
+
+    private static let height: CGFloat = 240
+    private static let margin: CGFloat = 14
+    private static let width = CGFloat(columns) * (cell + gap) - gap + 2 * margin
+
+    private static let columns = 9
+    private static let cell: CGFloat = 30
+    private static let gap: CGFloat = 4
+
+    private func iconButton(_ symbol: String) -> some View {
+        let isSelected = symbol == selected
         return Button {
-            category.symbol = symbol
+            choose(symbol)
         } label: {
             Image(systemName: symbol)
-                .frame(width: 26, height: 22)
-                .foregroundStyle(isSelected ? Color.white : Color(rgb: category.color))
-                .background(RoundedRectangle(cornerRadius: 5).fill(isSelected ? Color(rgb: category.color) : .clear))
+                .font(.system(size: 14))
+                .frame(width: Self.cell, height: 26)
+                .foregroundStyle(isSelected ? Color.white : color)
+                .background(RoundedRectangle(cornerRadius: 5).fill(isSelected ? color : .clear))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(symbol)
     }
 
-    /// Every icon the built-in activities use, once each.
-    private static let symbols: [String] = {
-        var seen = Set<String>()
-        return BlockCategory.defaults.map(\.symbol).filter { seen.insert($0).inserted }
+    private static func fold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+    }
+
+    /// Each icon once, with the words it can be found by.
+    private static let catalog: [(symbol: String, words: [String])] = {
+        var order: [String] = []
+        var words: [String: Set<String>] = [:]
+        for category in BlockCategory.defaults {
+            if words[category.symbol] == nil { order.append(category.symbol) }
+            let terms = [category.symbol, category.name] + category.keywords
+            let split = terms.flatMap { fold($0).split { !$0.isLetter && !$0.isNumber }.map(String.init) }
+            words[category.symbol, default: []].formUnion(split)
+        }
+        return order.map { ($0, Array(words[$0] ?? [])) }
     }()
+
+    /// Icons with a word starting with every word of `query`, plus the SF Symbol named exactly `query`.
+    static func results(for query: String) -> [String] {
+        let query = fold(query).trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return catalog.map(\.symbol) }
+        let tokens = query.split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        var found = catalog.filter { icon in
+            tokens.allSatisfy { token in icon.words.contains { $0.hasPrefix(token) } }
+        }.map(\.symbol)
+        if !found.contains(query), NSImage(systemSymbolName: query, accessibilityDescription: nil) != nil {
+            found.insert(query, at: 0)
+        }
+        return found
+    }
 }
