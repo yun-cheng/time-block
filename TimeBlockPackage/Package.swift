@@ -11,6 +11,7 @@ let package = Package(
     targets: [
         .target(name: "TimeBlockKit"),
         .target(name: "TimeBlockUI", dependencies: ["TimeBlockKit"]),
+        .executableTarget(name: "TimeBlockPrototype", dependencies: ["TimeBlockKit", "TimeBlockUI"]),
         .testTarget(name: "TimeBlockKitTests", dependencies: ["TimeBlockKit"]),
     ]
 )
