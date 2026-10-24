@@ -28,22 +28,60 @@ public struct DayLog: Codable, Hashable, Sendable {
     }
 
     /// Gives `range` to a category, or clears it with nil. Only logs in the category's track (or `track`,
-    /// when clearing) change: parts outside `range` are kept, and runs of one category join up.
+    /// when clearing) change: parts outside `range` are kept, and runs of one category join up. A run that
+    /// is given another category as a whole keeps its note.
     public mutating func set(
         _ range: Range<Int>, to categoryID: String?, in track: Track, schedule: Schedule,
         categories: [BlockCategory] = BlockCategory.defaults
     ) {
         guard !range.isEmpty else { return }
+        rebase(to: schedule)
+        let (kept, cut) = split(range, in: track, categories: categories)
+        var logs = kept
+        if let categoryID {
+            let notes = Set(cut.map(\.note))
+            let note = cut.allSatisfy({ range.contains($0.range) }) && notes.count == 1 ? notes.first ?? nil : nil
+            logs.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID, note: note))
+        }
+        self.logs = Self.joined(logs)
+    }
+
+    /// Writes `note` on the logged blocks of `range` in `track`, or takes their note off with nil or blank.
+    /// Logs reaching past `range` are split, so the note covers exactly those blocks.
+    public mutating func setNote(
+        _ note: String?, for range: Range<Int>, in track: Track, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults
+    ) {
+        guard !range.isEmpty else { return }
+        rebase(to: schedule)
+        let note = note?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let (kept, cut) = split(range, in: track, categories: categories)
+        let noted = cut.map { log in
+            let inside = log.range.clamped(to: range)
+            return BlockLog(
+                startIndex: inside.lowerBound, length: inside.count, categoryID: log.categoryID,
+                note: note?.isEmpty == false ? note : nil, source: log.source)
+        }
+        logs = Self.joined(kept + noted)
+    }
+
+    /// Counts block indexes from `schedule`'s wake time from now on.
+    private mutating func rebase(to schedule: Schedule) {
         logs = logs(for: schedule)
         wakeMinute = schedule.wakeMinute
+    }
 
-        let trackOf = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.track) })
+    /// The logs with `track`'s blocks in `range` taken out, and the logs in `track` that overlapped it.
+    private func split(_ range: Range<Int>, in track: Track, categories: [BlockCategory]) -> (kept: [BlockLog], cut: [BlockLog]) {
+        let trackOf = Dictionary(categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
         var kept: [BlockLog] = []
+        var cut: [BlockLog] = []
         for log in logs {
             guard trackOf[log.categoryID] == track, log.range.overlaps(range) else {
                 kept.append(log)
                 continue
             }
+            cut.append(log)
             if log.startIndex < range.lowerBound {
                 var left = log
                 left.length = range.lowerBound - log.startIndex
@@ -55,12 +93,13 @@ public struct DayLog: Codable, Hashable, Sendable {
                     categoryID: log.categoryID, note: log.note, source: log.source))
             }
         }
-        if let categoryID {
-            kept.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID))
-        }
+        return (kept, cut)
+    }
 
+    /// Sorted, with touching logs of the same category, source and note made one.
+    private static func joined(_ logs: [BlockLog]) -> [BlockLog] {
         var joined: [BlockLog] = []
-        for log in kept.sorted(by: { $0.startIndex < $1.startIndex }) {
+        for log in logs.sorted(by: { $0.startIndex < $1.startIndex }) {
             if let i = joined.lastIndex(where: {
                 $0.range.upperBound == log.startIndex && $0.categoryID == log.categoryID
                     && $0.source == log.source && $0.note == log.note
@@ -70,7 +109,7 @@ public struct DayLog: Codable, Hashable, Sendable {
                 joined.append(log)
             }
         }
-        logs = joined
+        return joined
     }
 }
 

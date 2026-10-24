@@ -14,7 +14,7 @@ struct DayLogTests {
     }
 
     private func summary(_ log: DayLog) -> [String] {
-        log.logs.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound)" }
+        log.logs.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound)" + ($0.note.map { " \"\($0)\"" } ?? "") }
     }
 
     @Test func paintingNextToARunJoinsIt() {
@@ -79,5 +79,34 @@ struct DayLogTests {
         // 09:00 is block 24: the gap so far (with the block in progress) and the empty rest of the day are apart.
         #expect(snapshot.run(around: 20) == 9..<25)
         #expect(snapshot.run(around: 30) == 25..<schedule.awakeBlocks)
+    }
+
+    @Test func aNoteCoversExactlyTheBlocksItIsWrittenOn() {
+        var log = painted([(0..<10, "work", .activity), (0..<10, "sitting", .body)])
+        log.setNote("Wrote PLAN.md", for: 2..<5, in: .activity, schedule: schedule)
+        #expect(Set(summary(log)) == ["work 0..<2", "work 2..<5 \"Wrote PLAN.md\"", "work 5..<10", "sitting 0..<10"])
+        log.setNote("  ", for: 0..<10, in: .activity, schedule: schedule)
+        #expect(Set(summary(log)) == ["work 0..<10", "sitting 0..<10"])
+    }
+
+    @Test func aRunGivenAnotherCategoryKeepsItsNote() {
+        var log = painted([(0..<10, "work", .activity)])
+        log.setNote("Standup", for: 2..<4, in: .activity, schedule: schedule)
+        log.set(2..<4, to: "meeting", in: .activity, schedule: schedule)
+        #expect(summary(log) == ["work 0..<2", "meeting 2..<4 \"Standup\"", "work 4..<10"])
+        // Painting over part of it doesn't take the note along.
+        log.set(3..<5, to: "coffee", in: .activity, schedule: schedule)
+        #expect(summary(log) == ["work 0..<2", "meeting 2..<3 \"Standup\"", "coffee 3..<5", "work 5..<10"])
+    }
+
+    @Test func aNoteMakesItsOwnRun() {
+        var log = painted([(0..<10, "work", .activity)])
+        log.setNote("Review", for: 4..<6, in: .activity, schedule: schedule)
+        let snapshot = DaySnapshot(
+            status: DayStatus(schedule: schedule, nowMinute: 9 * 60), logs: log.logs(for: schedule),
+            categories: BlockCategory.defaults)
+        #expect(snapshot.run(around: 1) == 0..<4)
+        #expect(snapshot.run(around: 4) == 4..<6)
+        #expect(snapshot.cells[5].note == "Review")
     }
 }

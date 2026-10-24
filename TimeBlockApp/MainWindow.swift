@@ -13,9 +13,10 @@ struct MainWindow: View {
                     DayView(
                         snapshot: model.snapshot(at: context.date),
                         time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
-                        editor: DayEditor(brush: $model.brush, selection: $model.selection) { range, brush in
-                            model.set(range, to: brush.categoryID)
-                        })
+                        editor: DayEditor(
+                            brush: $model.brush, selection: $model.selection,
+                            paint: { model.set($0, to: $1.categoryID) },
+                            annotate: { model.setNote($1, for: $0) }))
                 }
                 // Fill the window, but scroll when it is too short for the whole day.
                 .frame(minHeight: window.size.height - 20)

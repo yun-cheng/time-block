@@ -67,6 +67,17 @@ final class AppModel {
     func set(_ range: Range<Int>, to categoryID: String?) {
         loadDayIfNeeded()
         dayLog.set(range, to: categoryID, in: settings.track, schedule: settings.schedule)
+        save()
+    }
+
+    /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
+    func setNote(_ note: String?, for range: Range<Int>) {
+        loadDayIfNeeded()
+        dayLog.setNote(note, for: range, in: settings.track, schedule: settings.schedule)
+        save()
+    }
+
+    private func save() {
         do {
             try store.save(dayLog)
         } catch {

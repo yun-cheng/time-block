@@ -152,6 +152,7 @@ public struct BlockCell: Hashable, Sendable {
     public let isOvertime: Bool
     public let categoryID: String?
     public let source: BlockLog.Source?
+    public let note: String?
 }
 
 public enum DayGrid {
@@ -167,7 +168,7 @@ public enum DayGrid {
             let log = logAt[index]
             return BlockCell(
                 index: index, phase: phase, isOvertime: index >= status.schedule.awakeBlocks,
-                categoryID: log?.categoryID, source: log?.source)
+                categoryID: log?.categoryID, source: log?.source, note: log?.note)
         }
     }
 }

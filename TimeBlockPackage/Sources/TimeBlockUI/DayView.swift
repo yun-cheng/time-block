@@ -4,16 +4,22 @@ import TimeBlockKit
 /// Lets the day view log blocks, either way round: select blocks, then click a category; or pick a
 /// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
 /// its category can be changed again; a brush is put down after one drag, so the next click can't
-/// log by accident.
+/// log by accident. Selected blocks that are logged can be given a note.
 public struct DayEditor {
     public var brush: Binding<Brush?>
     public var selection: Binding<Range<Int>?>
     public var paint: (Range<Int>, Brush) -> Void
+    /// Writes a note on the logged blocks of a range, or takes it off with nil.
+    public var annotate: ((Range<Int>, String?) -> Void)?
 
-    public init(brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void) {
+    public init(
+        brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void,
+        annotate: ((Range<Int>, String?) -> Void)? = nil
+    ) {
         self.brush = brush
         self.selection = selection
         self.paint = paint
+        self.annotate = annotate
     }
 
     /// The grid picked out `range`: log it with the brush, or else select it.
@@ -113,6 +119,9 @@ public struct DayView: View {
                     // Clicks between the chips shouldn't drop the selection.
                     .contentShape(Rectangle())
                     .onTapGesture {}
+                if let range = editor.selection.wrappedValue, let annotate = editor.annotate {
+                    noteField(for: range, annotate: annotate, theme: theme)
+                }
                 Text(hint(for: editor))
                     .font(.system(size: 11))
                     .foregroundStyle(theme.secondaryText)
@@ -136,6 +145,21 @@ public struct DayView: View {
         return .category(category)
     }
 
+    /// Edits the note of the selected blocks that are logged; there is none to edit while none are.
+    @ViewBuilder private func noteField(
+        for range: Range<Int>, annotate: @escaping (Range<Int>, String?) -> Void, theme: MoodTheme
+    ) -> some View {
+        let logged = snapshot.cells[range.clamped(to: snapshot.cells.indices)].filter { $0.categoryID != nil }
+        if !logged.isEmpty {
+            let notes = Set(logged.map(\.note))
+            NoteField(
+                note: notes.count == 1 ? notes.first ?? nil : nil, isMixed: notes.count > 1, theme: theme
+            ) { annotate(range, $0) }
+                // A new selection starts a new edit.
+                .id(range)
+        }
+    }
+
     private func hint(for editor: DayEditor) -> String {
         if let range = editor.selection.wrappedValue {
             let schedule = snapshot.status.schedule
@@ -157,5 +181,51 @@ public struct DayView: View {
             Text(value).font(.system(size: 13, weight: .bold).monospacedDigit()).foregroundStyle(color ?? theme.text)
             Text(label).font(.system(size: 12)).foregroundStyle(theme.secondaryText)
         }
+    }
+}
+
+/// A one-line note for the selected blocks. It is saved on Return, when the field loses focus, and when the
+/// selection changes or goes away.
+private struct NoteField: View {
+    let note: String?
+    /// The blocks hold different notes; typing one replaces them all.
+    let isMixed: Bool
+    let theme: MoodTheme
+    let save: (String?) -> Void
+    @State private var text: String
+    @FocusState private var isFocused: Bool
+
+    init(note: String?, isMixed: Bool, theme: MoodTheme, save: @escaping (String?) -> Void) {
+        self.note = note
+        self.isMixed = isMixed
+        self.theme = theme
+        self.save = save
+        _text = State(initialValue: note ?? "")
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "text.bubble")
+                .foregroundStyle(theme.secondaryText)
+            TextField(isMixed ? "Several notes" : "Add a note", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFocused)
+                .onSubmit(commit)
+        }
+        .font(.system(size: 12))
+        .onChange(of: isFocused) { _, focused in
+            if !focused { commit() }
+        }
+        .onDisappear(perform: commit)
+        // Clicks here shouldn't drop the selection.
+        .contentShape(Rectangle())
+        .onTapGesture {}
+    }
+
+    private func commit() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Leaving a mixed field empty keeps the notes it had.
+        guard trimmed != (note ?? ""), !(isMixed && trimmed.isEmpty) else { return }
+        save(trimmed.isEmpty ? nil : trimmed)
     }
 }

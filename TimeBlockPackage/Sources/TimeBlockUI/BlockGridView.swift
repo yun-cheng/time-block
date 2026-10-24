@@ -328,8 +328,8 @@ public struct BlockGridView: View {
     }
 }
 
-/// "12:20 · Study → Exercise" or "18:20–19:25 · Social · 1h 5m": when the blocks are, what they hold
-/// (when it is one thing), how long, and what the brush would make them.
+/// "12:20 · Study → Exercise" or "18:20–19:25 · Social · 1h 5m · Dinner": when the blocks are, what they
+/// hold (when it is one thing), how long, their note, and what the brush would make them.
 private struct BlockInfo: View {
     let snapshot: DaySnapshot
     let theme: MoodTheme
@@ -351,6 +351,12 @@ private struct BlockInfo: View {
             }
             if range.count > 1 {
                 Text(durationText(blocks: range.count)).foregroundStyle(theme.secondaryText)
+            }
+            if let note = shared?.note, cells.allSatisfy({ $0.note == note }) {
+                // The label is drawn at its natural size, so a long note is shortened here.
+                Text(note.count > 40 ? note.prefix(39) + "…" : note)
+                    .italic()
+                    .foregroundStyle(theme.text)
             }
             if let brush, shared?.categoryID != brush.categoryID || shared == nil {
                 Image(systemName: "arrow.right").foregroundStyle(theme.secondaryText)
