@@ -42,19 +42,33 @@ struct DayProvider: AppIntentTimelineProvider {
     private static let entryCount = 12 * Schedule.blocksPerHour
 
     func placeholder(in context: Context) -> DayEntry {
-        DayEntry(date: .now, snapshot: AppSettings.standard.snapshot(at: .now))
+        DayEntry(date: .now, snapshot: Self.sample(at: .now, track: .activity))
     }
 
     func snapshot(for configuration: ViewIntent, in context: Context) async -> DayEntry {
-        DayEntry(date: .now, snapshot: SettingsStore.load().snapshot(at: .now, track: configuration.view.track))
+        // The widget gallery shows a filled-in day rather than an empty one.
+        let track = configuration.view.track
+        if context.isPreview { return DayEntry(date: .now, snapshot: Self.sample(at: .now, track: track)) }
+        let settings = SettingsStore.load()
+        let log = LogStore.shared.load(day: settings.schedule.dayID(for: .now), wakeMinute: settings.schedule.wakeMinute)
+        return DayEntry(date: .now, snapshot: settings.snapshot(at: .now, log: log, track: track))
     }
 
     func timeline(for configuration: ViewIntent, in context: Context) async -> Timeline<DayEntry> {
         let settings = SettingsStore.load()
-        let entries = BlockClock.boundaries(from: .now, count: Self.entryCount).map {
-            DayEntry(date: $0, snapshot: settings.snapshot(at: $0, track: configuration.view.track))
+        var logs: [String: DayLog] = [:]
+        let entries = BlockClock.boundaries(from: .now, count: Self.entryCount).map { date in
+            let day = settings.schedule.dayID(for: date)
+            let log = logs[day] ?? LogStore.shared.load(day: day, wakeMinute: settings.schedule.wakeMinute)
+            logs[day] = log
+            return DayEntry(date: date, snapshot: settings.snapshot(at: date, log: log, track: configuration.view.track))
         }
         return Timeline(entries: entries, policy: .atEnd)
+    }
+
+    private static func sample(at date: Date, track: Track) -> DaySnapshot {
+        let schedule = Schedule.standard
+        return SampleDay.snapshot(schedule: schedule, nowMinute: schedule.timelineMinute(for: date), track: track)
     }
 }
 

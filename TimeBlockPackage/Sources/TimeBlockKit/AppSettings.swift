@@ -3,36 +3,28 @@ import Foundation
 /// User settings shared between the app and its widget through the App Group.
 public struct AppSettings: Codable, Hashable, Sendable {
     public var schedule: Schedule
-    /// Fills the day with the sample logs until real logging arrives (M2).
-    public var showsSampleLogs: Bool
     /// The view shown in the app window and menu bar. Each widget picks its own.
     public var track: Track
 
-    public init(schedule: Schedule, showsSampleLogs: Bool, track: Track = .activity) {
+    public init(schedule: Schedule, track: Track = .activity) {
         self.schedule = schedule
-        self.showsSampleLogs = showsSampleLogs
         self.track = track
     }
 
-    public static let standard = AppSettings(schedule: .standard, showsSampleLogs: true)
+    public static let standard = AppSettings(schedule: .standard)
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schedule = try container.decode(Schedule.self, forKey: .schedule)
-        showsSampleLogs = try container.decode(Bool.self, forKey: .showsSampleLogs)
         // Settings saved before views existed have no track.
         track = try container.decodeIfPresent(Track.self, forKey: .track) ?? .activity
     }
 
-    public func snapshot(at date: Date, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
-        let now = schedule.timelineMinute(for: date, calendar: calendar)
-        let track = track ?? self.track
-        if showsSampleLogs {
-            return SampleDay.snapshot(schedule: schedule, nowMinute: now, track: track)
-        }
-        return DaySnapshot(
-            status: DayStatus(schedule: schedule, nowMinute: now), logs: [], categories: SampleDay.categories,
-            track: track)
+    /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).
+    public func snapshot(at date: Date, log: DayLog, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
+        DaySnapshot(
+            status: DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar)),
+            logs: log.logs(for: schedule), categories: BlockCategory.defaults, track: track ?? self.track)
     }
 }
 

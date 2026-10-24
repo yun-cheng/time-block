@@ -22,12 +22,6 @@ struct SettingsView: View {
                 Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.")
                     .foregroundStyle(.secondary)
             }
-            Section {
-                Toggle("Show a sample day", isOn: $model.settings.showsSampleLogs)
-            } footer: {
-                Text("Fills the grid with example logs until logging arrives in the next milestone.")
-                    .foregroundStyle(.secondary)
-            }
         }
         .formStyle(.grouped)
     }

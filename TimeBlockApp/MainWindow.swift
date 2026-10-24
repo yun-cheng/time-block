@@ -6,13 +6,22 @@ struct MainWindow: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
-        TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
-            DayView(
-                snapshot: model.settings.snapshot(at: context.date),
-                time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000))
+        GeometryReader { window in
+            ScrollView {
+                // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
+                TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
+                    DayView(
+                        snapshot: model.snapshot(at: context.date),
+                        time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
+                        editor: DayEditor(brush: $model.brush, selection: $model.selection) { range, brush in
+                            model.set(range, to: brush.categoryID)
+                        })
+                }
+                // Fill the window, but scroll when it is too short for the whole day.
+                .frame(minHeight: window.size.height - 20)
+                .padding(10)
+            }
         }
-        .padding(10)
         .frame(minWidth: 400, minHeight: 600)
         .inspector(isPresented: $model.showsSettings) {
             SettingsView(model: model)

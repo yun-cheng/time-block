@@ -14,12 +14,12 @@ struct AppSettingsTests {
     }
 
     @Test func settingsRoundTripThroughJSON() throws {
-        let settings = AppSettings(schedule: Schedule(wakeMinute: 8 * 60 + 30, bedMinute: 30), showsSampleLogs: false)
+        let settings = AppSettings(schedule: Schedule(wakeMinute: 8 * 60 + 30, bedMinute: 30), track: .body)
         let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
         #expect(decoded == settings)
     }
 
-    @Test func settingsSavedBeforeViewsStillLoad() throws {
+    @Test func oldSettingsStillLoad() throws {
         let old = #"{"schedule":{"wakeMinute":420,"bedMinute":1380,"rolloverMinute":300},"showsSampleLogs":true}"#
         let decoded = try JSONDecoder().decode(AppSettings.self, from: Data(old.utf8))
         #expect(decoded.track == .activity)
