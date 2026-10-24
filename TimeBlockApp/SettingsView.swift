@@ -11,6 +11,8 @@ struct SettingsView: View {
         Form {
             Section {
                 DatePicker("Wake up", selection: minuteBinding(\.wakeMinute), displayedComponents: .hourAndMinute)
+                    // On a row, since the form's scroll view is around its rows rather than the form.
+                    .appScrollBar()
                 DatePicker("Bedtime", selection: minuteBinding(\.bedMinute), displayedComponents: .hourAndMinute)
                 LabeledContent("Usable blocks") {
                     Text("\(schedule.awakeBlocks)")

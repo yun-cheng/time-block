@@ -7,7 +7,8 @@ struct MainWindow: View {
 
     var body: some View {
         GeometryReader { window in
-            ScrollView {
+            // The app's scroll bar drawn in SwiftUI: AppKit's would sit under the inspector, showing through it.
+            AppScrollView(lane: 10) {
                 // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
                 TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
                     DayView(
