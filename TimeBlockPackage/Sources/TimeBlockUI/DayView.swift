@@ -1,15 +1,63 @@
 import SwiftUI
 import TimeBlockKit
 
+/// Lets the day view log blocks, either way round: select blocks, then click a category; or pick a
+/// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
+/// its category can be changed again; a brush is put down after one drag, so the next click can't
+/// log by accident.
+public struct DayEditor {
+    public var brush: Binding<Brush?>
+    public var selection: Binding<Range<Int>?>
+    public var paint: (Range<Int>, Brush) -> Void
+
+    public init(brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void) {
+        self.brush = brush
+        self.selection = selection
+        self.paint = paint
+    }
+
+    /// The grid picked out `range`: log it with the brush, or else select it.
+    func dragged(_ range: Range<Int>) {
+        if let brush = brush.wrappedValue {
+            log(range, brush)
+        } else {
+            selection.wrappedValue = range
+        }
+    }
+
+    /// A chip was clicked: log the selection with it (keeping it selected), or else pick it up as the
+    /// brush (or put it down).
+    func chose(_ choice: Brush) {
+        if let range = selection.wrappedValue {
+            paint(range, choice)
+        } else {
+            brush.wrappedValue = brush.wrappedValue == choice ? nil : choice
+        }
+    }
+
+    func deselect() {
+        selection.wrappedValue = nil
+    }
+
+    private func log(_ range: Range<Int>, _ choice: Brush) {
+        paint(range, choice)
+        brush.wrappedValue = nil
+        selection.wrappedValue = nil
+    }
+}
+
 /// The main app's day screen. Unlike widgets, it animates.
 public struct DayView: View {
     let snapshot: DaySnapshot
     var time: Double
+    /// Without one the day is read-only.
+    var editor: DayEditor?
     @Environment(\.colorScheme) private var colorScheme
 
-    public init(snapshot: DaySnapshot, time: Double = 0) {
+    public init(snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil) {
         self.snapshot = snapshot
         self.time = time
+        self.editor = editor
     }
 
     private var clockLabel: String {
@@ -49,14 +97,59 @@ public struct DayView: View {
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(theme.accent)
             }
-            BlockGridView(snapshot: snapshot, theme: theme, time: time)
+            BlockGridView(
+                snapshot: snapshot, theme: theme, time: time, blockSize: 20, brush: editor?.brush.wrappedValue,
+                selection: editor?.selection.wrappedValue, onDrag: editor.map { editor in { editor.dragged($0) } },
+                onDeselect: editor?.deselect)
+                .frame(maxWidth: .infinity)
             NowChip(snapshot: snapshot, theme: theme)
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
+            if let editor {
+                Divider().overlay(theme.secondaryText.opacity(0.3))
+                CategoryPalette(
+                    categories: snapshot.trackCategories, selected: paletteChoice(editor), theme: theme,
+                    choose: editor.chose)
+                    // Clicks between the chips shouldn't drop the selection.
+                    .contentShape(Rectangle())
+                    .onTapGesture {}
+                Text(hint(for: editor))
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryText)
+            }
         }
         .padding(22)
+        // Extra space goes below the day rather than into bigger blocks.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // A click anywhere off the blocks and chips drops the selection.
+        .contentShape(Rectangle())
+        .onTapGesture { editor?.deselect() }
         .background(MoodBackground(theme: theme, time: time))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// The chip to show as picked: the category the selected blocks share, or else the brush.
+    private func paletteChoice(_ editor: DayEditor) -> Brush? {
+        guard let range = editor.selection.wrappedValue else { return editor.brush.wrappedValue }
+        let categories = Set(snapshot.cells[range.clamped(to: snapshot.cells.indices)].map(\.categoryID))
+        guard categories.count == 1, let category = categories.first ?? nil else { return nil }
+        return .category(category)
+    }
+
+    private func hint(for editor: DayEditor) -> String {
+        if let range = editor.selection.wrappedValue {
+            let schedule = snapshot.status.schedule
+            let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
+            return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected. "
+                + "Click a category to log it, Clear to empty it, or click off the blocks to deselect."
+        }
+        guard let brush = editor.brush.wrappedValue else {
+            return "Select blocks, then click a category. Or click a category first, then drag across blocks."
+        }
+        guard let name = brush.categoryID.flatMap({ snapshot.categories[$0] })?.name else {
+            return "Drag across blocks to clear them."
+        }
+        return "Drag across blocks to log them as \(name). Click \(name) again to stop."
     }
 
     private func stat(_ value: String, _ label: String, _ theme: MoodTheme, color: Color? = nil) -> some View {
