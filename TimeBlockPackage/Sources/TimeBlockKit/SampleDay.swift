@@ -13,23 +13,23 @@ public enum SampleDay {
     // Gaps (07:50–08:00, 12:45–13:00, 15:15–15:30) are left unlogged on purpose.
     private static let entries: [Entry] = [
         Entry(from: "07:00", to: "07:30", category: "exercise", source: .manual),
-        Entry(from: "07:30", to: "07:50", category: "meal", source: .template, note: "Breakfast"),
+        Entry(from: "07:30", to: "07:50", category: "breakfast", source: .template),
         Entry(from: "08:00", to: "08:30", category: "commute", source: .manual),
         Entry(from: "08:30", to: "10:00", category: "work", source: .manual),
         Entry(from: "10:00", to: "10:10", category: "coffee", source: .template),
         Entry(from: "10:10", to: "10:30", category: "work", source: .manual),
         Entry(from: "10:30", to: "11:00", category: "meeting", source: .calendar, note: "Standup"),
         Entry(from: "11:00", to: "12:00", category: "work", source: .manual),
-        Entry(from: "12:00", to: "12:45", category: "meal", source: .template, note: "Lunch"),
+        Entry(from: "12:00", to: "12:45", category: "lunch", source: .template),
         Entry(from: "13:00", to: "15:00", category: "work", source: .manual),
         Entry(from: "15:00", to: "15:15", category: "coffee", source: .template),
         Entry(from: "15:30", to: "16:30", category: "meeting", source: .calendar, note: "Design review"),
         Entry(from: "16:30", to: "18:00", category: "work", source: .manual),
         Entry(from: "18:00", to: "18:30", category: "commute", source: .manual),
         Entry(from: "18:30", to: "19:00", category: "rest", source: .manual),
-        Entry(from: "19:00", to: "19:45", category: "meal", source: .template, note: "Dinner"),
+        Entry(from: "19:00", to: "19:45", category: "dinner", source: .template),
         Entry(from: "19:45", to: "21:30", category: "social", source: .manual),
-        Entry(from: "21:30", to: "02:59", category: "screen", source: .manual),
+        Entry(from: "21:30", to: "02:59", category: "doomscroll", source: .manual),
 
         // Body track. 15:15–15:30 is left unlogged.
         Entry(from: "07:00", to: "07:30", category: "exercising", source: .manual),

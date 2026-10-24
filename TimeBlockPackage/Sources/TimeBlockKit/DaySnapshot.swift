@@ -12,17 +12,26 @@ public struct DaySnapshot: Sendable {
     public let track: Track
     public let cells: [BlockCell]
     public let categories: [String: BlockCategory]
-    /// This track's categories, in palette order.
+    /// Everything this track's blocks can be logged as now (retired activities aside), for search.
     public let trackCategories: [BlockCategory]
+    /// This track's starred categories, in palette order.
+    public let favorites: [BlockCategory]
 
-    /// Only logs whose category belongs to `track` are drawn.
-    public init(status: DayStatus, logs: [BlockLog], categories: [BlockCategory], track: Track = .activity) {
-        let byID = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+    /// Only logs whose category belongs to `track` are drawn. `favorites` are category ids; without them
+    /// every category is a favorite.
+    public init(
+        status: DayStatus, logs: [BlockLog], categories: [BlockCategory], favorites: [String]? = nil,
+        track: Track = .activity
+    ) {
+        let byID = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         self.status = status
         self.track = track
         cells = DayGrid.cells(status: status, logs: logs.filter { byID[$0.categoryID]?.track == track })
         self.categories = byID
-        trackCategories = categories.filter { $0.track == track }
+        trackCategories = categories.filter { $0.track == track && !$0.isRetired }
+        self.favorites = favorites.map {
+            $0.compactMap { byID[$0] }.filter { $0.track == track && !$0.isRetired }
+        } ?? trackCategories
     }
 
     public var mood: Mood { status.mood }

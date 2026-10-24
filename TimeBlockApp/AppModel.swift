@@ -66,14 +66,14 @@ final class AppModel {
     /// Logs `range` in the current view as a category, or clears it with nil.
     func set(_ range: Range<Int>, to categoryID: String?) {
         loadDayIfNeeded()
-        dayLog.set(range, to: categoryID, in: settings.track, schedule: settings.schedule)
+        dayLog.set(range, to: categoryID, in: settings.track, schedule: settings.schedule, categories: settings.categories)
         save()
     }
 
     /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
     func setNote(_ note: String?, for range: Range<Int>) {
         loadDayIfNeeded()
-        dayLog.setNote(note, for: range, in: settings.track, schedule: settings.schedule)
+        dayLog.setNote(note, for: range, in: settings.track, schedule: settings.schedule, categories: settings.categories)
         save()
     }
 

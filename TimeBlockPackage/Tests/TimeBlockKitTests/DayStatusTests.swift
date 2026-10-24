@@ -87,7 +87,7 @@ struct DayStatusTests {
         #expect(activity.cells[standup].categoryID == "meeting")
         #expect(body.cells[standup].categoryID == "standing")
         #expect(body.legendTotals.first?.name == "Sitting")
-        #expect(activity.legendTotals.first?.name == "Focus")
+        #expect(activity.legendTotals.first?.name == "Work")
         // Two unbroken hours of sitting (08:30–10:30 and 13:00–15:00) is the longest so far.
         #expect(body.longestRun(of: "sitting") == 24)
     }

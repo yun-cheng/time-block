@@ -109,4 +109,15 @@ struct DayLogTests {
         #expect(snapshot.run(around: 4) == 4..<6)
         #expect(snapshot.cells[5].note == "Review")
     }
+
+    @Test func onlyFavoritesOfTheTrackAreInThePalette() {
+        let log = painted([(0..<2, "snack", .activity), (2..<4, "lunch", .activity)])
+        let snapshot = DaySnapshot(
+            status: DayStatus(schedule: schedule, nowMinute: 9 * 60), logs: log.logs(for: schedule),
+            categories: BlockCategory.defaults, favorites: ["lunch", "sitting", "work"])
+        #expect(snapshot.favorites.map(\.id) == ["lunch", "work"])
+        #expect(snapshot.cells[0].categoryID == "snack")
+        // Snack and Lunch are both Life, and are summed up together.
+        #expect(snapshot.legendTotals.first.map { [$0.name, "\($0.blocks)"] } == ["Life", "4"])
+    }
 }

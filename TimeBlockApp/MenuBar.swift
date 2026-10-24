@@ -89,7 +89,7 @@ struct NowLogger: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 FlowLayout(spacing: 8) {
-                    ForEach(snapshot.trackCategories) { category in
+                    ForEach(snapshot.favorites) { category in
                         CategoryChip(
                             category: category, theme: theme, isSelected: snapshot.currentCell?.categoryID == category.id
                         ) {

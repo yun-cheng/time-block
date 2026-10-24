@@ -114,7 +114,7 @@ public struct DayView: View {
             if let editor {
                 Divider().overlay(theme.secondaryText.opacity(0.3))
                 CategoryPalette(
-                    categories: snapshot.trackCategories, selected: paletteChoice(editor), theme: theme,
+                    categories: snapshot.favorites, selected: paletteChoice(editor), theme: theme,
                     choose: editor.chose)
                     // Clicks between the chips shouldn't drop the selection.
                     .contentShape(Rectangle())
