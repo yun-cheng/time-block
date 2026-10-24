@@ -30,7 +30,11 @@ struct ScenarioBoard: View {
             }
             labeled("Large widget") { WidgetMock(.large, snapshot: snapshot) }
             labeled(time > 0 ? "App (animated)" : "App") {
-                DayView(snapshot: snapshot, time: time).frame(width: 440, height: 660)
+                // Blocks keep their size, so a long night makes the app taller rather than smaller.
+                DayView(snapshot: snapshot, time: time)
+                    .frame(width: 440)
+                    .frame(minHeight: 660)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
