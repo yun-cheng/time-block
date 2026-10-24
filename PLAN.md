@@ -36,7 +36,7 @@ TimeBlockPackage/          shared Swift package
 └── TimeBlockPrototype     M0 playground: time slider + widget previews; `--render` writes PNGs
 
 TimeBlock.xcodeproj        depends on TimeBlockPackage; source folders sync automatically
-├── TimeBlockApp/          Mac app: day window, menu bar extra, Settings
+├── TimeBlockApp/          Mac app: day window with a settings inspector (⌘,), menu bar extra
 ├── TimeBlockWidget/       WidgetKit extension (small / medium / large), view picked per widget
 └── Config/                entitlements, widget Info.plist
 

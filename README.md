@@ -19,8 +19,8 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 ## Status
 
-The display is built: Mac app window, menu bar extra, Settings, and a WidgetKit widget in three sizes.
-Logging isn't yet; until M2 the app shows a sample day (Settings ▸ Show a sample day).
+The display is built: Mac app window with settings in a side panel (gear button or ⌘,), menu bar extra, and a
+WidgetKit widget in three sizes. Logging isn't yet; until M2 the app shows a sample day (settings ▸ Show a sample day).
 
 ## Layout
 

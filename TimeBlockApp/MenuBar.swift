@@ -50,10 +50,12 @@ struct MenuBarPanel: View {
                     Image(systemName: "macwindow")
                 }
                 .help("Open Time Block")
-                SettingsLink {
+                Button {
+                    showSettings(model, openWindow: openWindow)
+                } label: {
                     Image(systemName: "gearshape")
                 }
-                .simultaneousGesture(TapGesture().onEnded { NSApp.activate() })
+                .help("Settings")
                 Button {
                     NSApp.terminate(nil)
                 } label: {

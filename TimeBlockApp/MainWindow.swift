@@ -14,9 +14,21 @@ struct MainWindow: View {
         }
         .padding(10)
         .frame(minWidth: 400, minHeight: 600)
+        .inspector(isPresented: $model.showsSettings) {
+            SettingsView(model: model)
+                .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TrackPicker(track: $model.settings.track)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    model.showsSettings.toggle()
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help(model.showsSettings ? "Hide Settings" : "Show Settings")
             }
         }
     }

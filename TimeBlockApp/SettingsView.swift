@@ -1,6 +1,8 @@
+import AppKit
 import SwiftUI
 import TimeBlockKit
 
+/// Settings live in the main window's inspector, not a separate window.
 struct SettingsView: View {
     @Bindable var model: AppModel
 
@@ -11,13 +13,13 @@ struct SettingsView: View {
                 DatePicker("Wake up", selection: minuteBinding(\.wakeMinute), displayedComponents: .hourAndMinute)
                 DatePicker("Bedtime", selection: minuteBinding(\.bedMinute), displayedComponents: .hourAndMinute)
                 LabeledContent("Usable blocks") {
-                    Text("\(schedule.awakeBlocks)  (\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake)")
+                    Text("\(schedule.awakeBlocks)")
                         .monospacedDigit()
                 }
             } header: {
                 Text("Schedule")
             } footer: {
-                Text("Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.")
+                Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.")
                     .foregroundStyle(.secondary)
             }
             Section {
@@ -28,8 +30,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Edits one of the schedule's minute-of-day fields with a time picker, snapped to 5 minutes.
@@ -45,6 +45,27 @@ struct SettingsView: View {
             schedule[keyPath: field] = minute / Schedule.blockMinutes * Schedule.blockMinutes
             // Rebuild so the day's rollover point follows the new wake time.
             model.settings.schedule = Schedule(wakeMinute: schedule.wakeMinute, bedMinute: schedule.bedMinute)
+        }
+    }
+}
+
+/// Opens the main window with its settings inspector showing.
+@MainActor
+func showSettings(_ model: AppModel, openWindow: OpenWindowAction) {
+    model.showsSettings = true
+    openWindow(id: "main")
+    NSApp.activate()
+}
+
+/// Time Block ▸ Settings… (⌘,) shows the inspector instead of a separate Settings window.
+struct SettingsCommands: Commands {
+    let model: AppModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { showSettings(model, openWindow: openWindow) }
+                .keyboardShortcut(",", modifiers: .command)
         }
     }
 }

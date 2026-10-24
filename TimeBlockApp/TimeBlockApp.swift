@@ -11,7 +11,10 @@ struct TimeBlockApp: App {
             MainWindow(model: model)
         }
         .defaultSize(width: 480, height: 720)
-        .commands { TrackCommands(model: model) }
+        .commands {
+            TrackCommands(model: model)
+            SettingsCommands(model: model)
+        }
 
         MenuBarExtra {
             MenuBarPanel(model: model)
@@ -19,9 +22,5 @@ struct TimeBlockApp: App {
             MenuBarLabel(snapshot: model.snapshot)
         }
         .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView(model: model)
-        }
     }
 }

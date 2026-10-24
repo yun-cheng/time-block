@@ -14,6 +14,9 @@ final class AppModel {
         }
     }
 
+    /// Whether the main window shows the settings inspector.
+    var showsSettings = false
+
     /// Ticks often enough for the menu bar count to flip on time at each 5-minute boundary.
     private(set) var now = Date()
     @ObservationIgnored private var timer: Timer?
