@@ -1,0 +1,56 @@
+import SwiftUI
+import TimeBlockKit
+import TimeBlockUI
+
+struct MainWindow: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
+        TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
+            DayView(
+                snapshot: model.settings.snapshot(at: context.date),
+                time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000))
+        }
+        .padding(10)
+        .frame(minWidth: 400, minHeight: 600)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TrackPicker(track: $model.settings.track)
+            }
+        }
+    }
+}
+
+/// Switches between views of the day: Activity, Body, …
+struct TrackPicker: View {
+    @Binding var track: Track
+
+    var body: some View {
+        Picker("View", selection: $track) {
+            ForEach(Track.allCases, id: \.self) { track in
+                Label(track.name, systemImage: track.symbol)
+                    .accessibilityLabel(track.name)
+                    .help(track.name)
+                    .tag(track)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+}
+
+/// View ▸ Activity (⌘1), Body (⌘2), …
+struct TrackCommands: Commands {
+    let model: AppModel
+
+    var body: some Commands {
+        CommandGroup(before: .toolbar) {
+            ForEach(Array(Track.allCases.enumerated()), id: \.element) { number, track in
+                Button(track.name) { model.settings.track = track }
+                    .keyboardShortcut(KeyEquivalent(Character("\(number + 1)")), modifiers: .command)
+            }
+            Divider()
+        }
+    }
+}
