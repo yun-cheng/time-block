@@ -12,6 +12,8 @@ public struct DaySnapshot: Sendable {
     public let track: Track
     public let cells: [BlockCell]
     public let categories: [String: BlockCategory]
+    /// This track's categories, in palette order.
+    public let trackCategories: [BlockCategory]
 
     /// Only logs whose category belongs to `track` are drawn.
     public init(status: DayStatus, logs: [BlockLog], categories: [BlockCategory], track: Track = .activity) {
@@ -20,6 +22,7 @@ public struct DaySnapshot: Sendable {
         self.track = track
         cells = DayGrid.cells(status: status, logs: logs.filter { byID[$0.categoryID]?.track == track })
         self.categories = byID
+        trackCategories = categories.filter { $0.track == track }
     }
 
     public var mood: Mood { status.mood }
@@ -50,6 +53,30 @@ public struct DaySnapshot: Sendable {
         return counts
             .map { LegendItem(id: $0.key, name: $0.value.name, color: $0.value.color, blocks: $0.value.blocks) }
             .sorted { $0.blocks > $1.blocks }
+    }
+
+    /// The unbroken run of blocks around `index` holding the same category. Unlogged blocks run together
+    /// too, but a gap that has already happened stays apart from empty time still to come and from overtime.
+    public func run(around index: Int) -> Range<Int> {
+        guard cells.indices.contains(index) else { return index..<(index + 1) }
+        let cell = cells[index]
+        func sameKind(_ other: BlockCell) -> Bool {
+            guard other.categoryID == cell.categoryID else { return false }
+            return cell.categoryID != nil
+                || ((other.phase == .future) == (cell.phase == .future) && other.isOvertime == cell.isOvertime)
+        }
+        var start = index
+        var end = index + 1
+        while start > 0, sameKind(cells[start - 1]) { start -= 1 }
+        while end < cells.count, sameKind(cells[end]) { end += 1 }
+        return start..<end
+    }
+
+    /// The unlogged blocks right before `index`, back to the last logged block or wake time.
+    public func unloggedRun(before index: Int) -> Range<Int> {
+        var start = min(index, cells.count)
+        while start > 0, cells[start - 1].categoryID == nil { start -= 1 }
+        return start..<min(index, cells.count)
     }
 
     public var unloggedCount: Int {

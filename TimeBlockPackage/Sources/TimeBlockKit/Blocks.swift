@@ -86,9 +86,35 @@ public struct BlockCategory: Identifiable, Hashable, Sendable {
     }
 }
 
+extension BlockCategory {
+    /// The built-in categories, in the order the palette shows them.
+    public static let defaults: [BlockCategory] = [
+        BlockCategory(id: "work", name: "Work", group: .focus, symbol: "laptopcomputer"),
+        BlockCategory(id: "meeting", name: "Meeting", group: .focus, color: RGB(hex: 0x7FA6FF), symbol: "person.2.fill"),
+        BlockCategory(id: "study", name: "Study", group: .focus, color: RGB(hex: 0x4A55E8), symbol: "book.fill"),
+        BlockCategory(id: "meal", name: "Meal", group: .fuel, symbol: "fork.knife"),
+        BlockCategory(id: "coffee", name: "Coffee", group: .fuel, color: RGB(hex: 0xC9803F), symbol: "cup.and.saucer.fill"),
+        BlockCategory(id: "exercise", name: "Exercise", group: .body, symbol: "figure.run"),
+        BlockCategory(id: "outdoor", name: "Outdoor", group: .body, color: RGB(hex: 0x84CC16), symbol: "tree.fill"),
+        BlockCategory(id: "social", name: "Social", group: .people, symbol: "bubble.left.and.bubble.right.fill"),
+        BlockCategory(id: "family", name: "Family", group: .people, color: RGB(hex: 0xF58BBE), symbol: "house.fill"),
+        BlockCategory(id: "commute", name: "Commute", group: .transit, symbol: "tram.fill"),
+        BlockCategory(id: "rest", name: "Rest", group: .recharge, symbol: "sofa.fill"),
+        BlockCategory(id: "nap", name: "Nap", group: .recharge, color: RGB(hex: 0xE8B931), symbol: "powersleep"),
+        BlockCategory(id: "screen", name: "Screen time", group: .drift, symbol: "play.rectangle.fill"),
+        BlockCategory(id: "doomscroll", name: "Doomscroll", group: .drift, color: RGB(hex: 0x6E4F7E), symbol: "iphone"),
+        // Body runs from cool to warm: the more you move, the warmer the block.
+        BlockCategory(id: "lying", name: "Lying", track: .body, color: RGB(hex: 0x5B4FC4), symbol: "bed.double.fill"),
+        BlockCategory(id: "sitting", name: "Sitting", track: .body, color: RGB(hex: 0x5C86C9), symbol: "chair.fill"),
+        BlockCategory(id: "standing", name: "Standing", track: .body, color: RGB(hex: 0x26B5A5), symbol: "figure.stand"),
+        BlockCategory(id: "walking", name: "Walking", track: .body, color: RGB(hex: 0x3DCB5F), symbol: "figure.walk"),
+        BlockCategory(id: "exercising", name: "Exercising", track: .body, color: RGB(hex: 0xFF9A1F), symbol: "figure.run"),
+    ]
+}
+
 /// A run of blocks given to one category.
-public struct BlockLog: Identifiable, Hashable, Sendable {
-    public enum Source: String, Hashable, Sendable {
+public struct BlockLog: Identifiable, Codable, Hashable, Sendable {
+    public enum Source: String, Codable, Hashable, Sendable {
         case manual
         /// A recurring pre-log such as a meal.
         case template

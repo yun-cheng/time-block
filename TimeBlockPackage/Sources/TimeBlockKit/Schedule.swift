@@ -60,6 +60,15 @@ public struct Schedule: Hashable, Codable, Sendable {
         return timelineMinute(clockMinute: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
     }
 
+    /// The day a moment belongs to, as "2026-10-24". Before the rollover it is still the previous day.
+    public func dayID(for date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        let clockMinute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        let day = clockMinute < rolloverMinute ? calendar.date(byAdding: .day, value: -1, to: date) ?? date : date
+        let ymd = calendar.dateComponents([.year, .month, .day], from: day)
+        return String(format: "%04d-%02d-%02d", ymd.year ?? 0, ymd.month ?? 0, ymd.day ?? 0)
+    }
+
     /// Index of the block containing a clock time, counted from wake time.
     public func blockIndex(clockMinute: Int) -> Int {
         let offset = timelineMinute(clockMinute: clockMinute) - wakeMinute
