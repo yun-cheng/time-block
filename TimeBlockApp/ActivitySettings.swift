@@ -69,6 +69,11 @@ struct ActivitySettings: View {
             Text("Starred activities make up the palette, by group; search there finds the rest. Activities in a group share its color, and are summed up together.")
                 .foregroundStyle(.secondary)
         }
+        // An activity moved to another group takes its open editor along: show that group (the editor scrolls
+        // itself into view there).
+        .onChange(of: editing.flatMap { id in all.first { $0.id == id }?.group?.id }) { old, new in
+            if let new, old != nil { expanded = new }
+        }
     }
 
     /// How far a group's activities sit in from it.
@@ -143,6 +148,9 @@ struct ActivitySettings: View {
             }
         }
         .padding(.leading, indented ? Self.indent : 0)
+        .background {
+            if editing == category.id { ScrollIntoView() }
+        }
     }
 
     private func groupBinding(for group: CategoryGroup) -> Binding<CategoryGroup> {
@@ -163,8 +171,9 @@ struct ActivitySettings: View {
     }
 }
 
-/// Scrolls the settings to show what it's behind once it's in a window: a group just opened. (`ScrollViewReader`
-/// doesn't reach into a `Form`'s rows.)
+/// Scrolls the settings to show what it's behind once it's in a window: a group just opened, or a row whose editor
+/// opened near the bottom or moved along with its activity to another group. (`ScrollViewReader` doesn't reach
+/// into a `Form`'s rows.)
 private struct ScrollIntoView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { Probe() }
     func updateNSView(_ nsView: NSView, context: Context) {}
