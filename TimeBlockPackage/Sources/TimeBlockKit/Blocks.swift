@@ -87,6 +87,8 @@ public struct BlockCategory: Identifiable, Codable, Hashable, Sendable {
     public var symbol: String
     /// Other words search should find it by, such as "meal" for Lunch.
     public var keywords: [String]
+    /// Whether you removed it (see `AppSettings.removedCategories`). Not saved with it: settings keep the list.
+    public var isRemoved = false
 
     /// An Activity, in its group's color.
     public init(id: String, name: String, group: CategoryGroup, symbol: String, keywords: [String] = []) {

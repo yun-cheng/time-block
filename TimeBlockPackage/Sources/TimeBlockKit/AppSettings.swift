@@ -15,11 +15,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var editedCategories: [BlockCategory]
     /// Built-in groups as the user renamed or recolored them, replacing the originals.
     public var editedGroups: [CategoryGroup]
+    /// Ids of activities (and postures) the user removed. They're kept, retired, so blocks logged with them keep
+    /// their name and color, and can be put back.
+    public var removedCategories: [String]
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
         customCategories: [BlockCategory] = [], customGroups: [CategoryGroup] = [],
-        editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = []
+        editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = []
     ) {
         self.schedule = schedule
         self.track = track
@@ -28,6 +31,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.customGroups = customGroups
         self.editedCategories = editedCategories
         self.editedGroups = editedGroups
+        self.removedCategories = removedCategories
     }
 
     /// Every activity group as it is now, in order: the built-in ones, then your own.
@@ -36,16 +40,22 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 
     /// Everything a block can be logged as, in every track, with your edits: activities group by group (your own
-    /// after the built-in ones in each), then postures, then retired activities.
+    /// after the built-in ones in each), then postures, then retired activities. The ones you removed stay in
+    /// place, retired.
     public var categories: [BlockCategory] {
         let groups = groups
         let edits = Dictionary(editedCategories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let resolve = { (category: BlockCategory) in Self.resolved(edits[category.id] ?? category, in: groups) }
+        let removed = Set(removedCategories)
+        let resolve = { (category: BlockCategory) in
+            var category = Self.resolved(edits[category.id] ?? category, in: groups)
+            category.isRemoved = removed.contains(category.id)
+            return category
+        }
         let byGroup = Dictionary(grouping: (BlockCategory.activities + customCategories).map(resolve)) {
             $0.group?.id ?? ""
         }
         return groups.flatMap { byGroup[$0.id] ?? [] } + BlockCategory.body.map(resolve)
-            + customCategories.filter { $0.track != .activity } + BlockCategory.retired.map(resolve)
+            + customCategories.filter { $0.track != .activity }.map(resolve) + BlockCategory.retired.map(resolve)
     }
 
     /// An activity with its group as it is now (renamed or recolored), or in Life when its group is gone.
@@ -91,6 +101,17 @@ public struct AppSettings: Codable, Hashable, Sendable {
         }
     }
 
+    /// Takes an activity (or posture) out of the palette, search and library. Blocks logged with it keep it, and
+    /// it keeps its star for when it's put back.
+    public mutating func remove(_ id: String) {
+        if !removedCategories.contains(id) { removedCategories.append(id) }
+    }
+
+    /// Puts a removed activity back as it was.
+    public mutating func restore(_ id: String) {
+        removedCategories.removeAll { $0 == id }
+    }
+
     /// Puts a built-in activity or group back the way it came.
     public mutating func reset(_ id: String) {
         editedCategories.removeAll { $0.id == id }
@@ -112,6 +133,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         customGroups = try container.decodeIfPresent([CategoryGroup].self, forKey: .customGroups) ?? []
         editedCategories = try container.decodeIfPresent([BlockCategory].self, forKey: .editedCategories) ?? []
         editedGroups = try container.decodeIfPresent([CategoryGroup].self, forKey: .editedGroups) ?? []
+        removedCategories = try container.decodeIfPresent([String].self, forKey: .removedCategories) ?? []
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -126,7 +148,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups
+        case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
+             removedCategories
         case legacyCategories = "categories"
     }
 
@@ -139,6 +162,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(customGroups, forKey: .customGroups)
         try container.encode(editedCategories, forKey: .editedCategories)
         try container.encode(editedGroups, forKey: .editedGroups)
+        try container.encode(removedCategories, forKey: .removedCategories)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).

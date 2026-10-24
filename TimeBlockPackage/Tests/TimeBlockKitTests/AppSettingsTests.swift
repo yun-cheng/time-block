@@ -90,6 +90,28 @@ struct AppSettingsTests {
         #expect(reloaded.editedCategories.isEmpty)
     }
 
+    @Test func removedActivitiesStayKnownAndCanBePutBack() throws {
+        var settings = AppSettings.standard
+        let piano = BlockCategory.new(in: .activity, name: "Piano")
+        settings.customCategories = [piano]
+        settings.favorites += [piano.id]
+        settings.remove("lunch")
+        settings.remove(piano.id)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        // Still known, so blocks logged with them keep their name and color, but retired.
+        let lunch = try #require(decoded.categories.first { $0.id == "lunch" })
+        #expect(lunch.name == "Lunch" && lunch.isRetired)
+        #expect(decoded.categories.first { $0.id == piano.id }?.isRetired == true)
+        let snapshot = decoded.snapshot(at: .now, log: DayLog(day: "2026-01-01", wakeMinute: decoded.schedule.wakeMinute))
+        #expect(!snapshot.trackCategories.contains { $0.id == "lunch" || $0.id == piano.id })
+        #expect(!snapshot.favorites.contains { $0.id == "lunch" || $0.id == piano.id })
+        // Put back as it was, starred.
+        settings.restore("lunch")
+        #expect(settings.categories.first { $0.id == "lunch" }?.isRetired == false)
+        let restored = settings.snapshot(at: .now, log: DayLog(day: "2026-01-01", wakeMinute: settings.schedule.wakeMinute))
+        #expect(restored.favorites.contains { $0.id == "lunch" })
+    }
+
     @Test func categoriesSavedBeforeFavoritesCarryOver() throws {
         let old = #"""
         {"schedule":{"wakeMinute":420,"bedMinute":1380,"rolloverMinute":300},"track":"activity","categories":[

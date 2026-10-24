@@ -13,9 +13,10 @@ extension BlockCategory {
         BlockCategory(id: "screen", name: "Screen time", group: .drift, symbol: "iphone.gen3"),
     ]
 
-    /// Whether this is a retired built-in activity: it shows on old blocks but can't be logged again.
+    /// Whether this is retired, by the app (a built-in activity no longer offered) or by you (removed): it shows
+    /// on old blocks but can't be logged again.
     public var isRetired: Bool {
-        Self.retired.contains { $0.id == id }
+        isRemoved || Self.retired.contains { $0.id == id }
     }
 
     /// Starred out of the box: what most days are made of. Everything else is a search away.
