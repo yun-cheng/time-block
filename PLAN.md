@@ -125,6 +125,8 @@ time-logging coaches split a day, with plain names:
 - Built-in activities are **retired** rather than removed (so far Meal, replaced by Breakfast/Lunch/Dinner/Snack,
   and the vague Screen time): blocks already logged keep their name and color, but they leave search, the
   library and the palette. Ids of built-ins never change, since logs refer to them.
+- Removing an activity (built-in or your own, or a posture) retires it the same way, so logs never lose a name.
+  Settings lists the removed ones under Removed to put back; they keep their star meanwhile.
 
 ### 3.4 Pre‑logging
 - **Recurring templates:** "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks, weekdays".
@@ -175,8 +177,9 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
-              (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups, and
-              editedCategories/editedGroups over the built-ins; a category saves its group by id)
+              (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups,
+              editedCategories/editedGroups over the built-ins, and removedCategories ids; a category saves its
+              group by id)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, logs: one JSON file per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;

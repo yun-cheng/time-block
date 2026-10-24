@@ -4,8 +4,8 @@ import TimeBlockKit
 import TimeBlockUI
 
 /// The current view's whole library: star activities for the palette, edit any activity or group (built-in ones
-/// too, with a way back), or add your own. Starred ones aren't listed apart: the palette shows them, and unstars
-/// them too. Editors open in the list rather than a popover: closing a popover hands focus to the first time
+/// too, with a way back), add your own, or remove activities (listed under Removed to put back). Starred ones
+/// aren't listed apart: the palette shows them, and unstars them too. Editors open in the list rather than a popover: closing a popover hands focus to the first time
 /// picker, which scrolls the settings back to the top.
 struct ActivitySettings: View {
     @Bindable var model: AppModel
@@ -55,6 +55,7 @@ struct ActivitySettings: View {
                     expanded = id
                     editingGroup = id
                 }
+                removedList(in: track)
             } else {
                 ForEach(all) { category in
                     row(category)
@@ -62,6 +63,7 @@ struct ActivitySettings: View {
                 Button("New Activity", systemImage: "plus") {
                     editing = model.addActivity(in: track)
                 }
+                removedList(in: track)
             }
         } header: {
             Text(track == .activity ? "Activities" : "\(track.name) Activities")
@@ -82,24 +84,10 @@ struct ActivitySettings: View {
     private func groupRow(_ group: CategoryGroup, count: Int) -> some View {
         let isExpanded = expanded == group.id
         return HStack {
-            // A plain row rather than a DisclosureGroup, which ignored clicks in this form.
-            Button {
-                expanded = isExpanded ? nil : group.id
-            } label: {
-                HStack {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
-                    Circle().fill(Color(rgb: group.color)).frame(width: 10, height: 10)
-                    Text(group.name)
-                    Spacer()
-                    Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
-                }
-                .contentShape(Rectangle())
+            disclosure(group.id, count: count) {
+                Circle().fill(Color(rgb: group.color)).frame(width: 10, height: 10)
+                Text(group.name)
             }
-            .buttonStyle(.plain)
             Button {
                 editingGroup = editingGroup == group.id ? nil : group.id
             } label: {
@@ -113,6 +101,60 @@ struct ActivitySettings: View {
             if isExpanded { ScrollIntoView() }
         }
     }
+
+    /// A row that opens to show what's under it (closing whatever was open), with how many that is.
+    private func disclosure(_ id: String, count: Int, @ViewBuilder label: () -> some View) -> some View {
+        let isExpanded = expanded == id
+        // A plain row rather than a DisclosureGroup, which ignored clicks in this form.
+        return Button {
+            expanded = isExpanded ? nil : id
+        } label: {
+            HStack {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 12)
+                label()
+                Spacer()
+                Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Opens to the view's removed activities, each with a way back. Not there when none are removed.
+    @ViewBuilder
+    private func removedList(in track: Track) -> some View {
+        let removed = model.settings.categories.filter { $0.track == track && $0.isRemoved }
+        if !removed.isEmpty {
+            disclosure(Self.removedID, count: removed.count) {
+                Image(systemName: "trash").foregroundStyle(.secondary).frame(width: 10)
+                Text("Removed")
+            }
+            .background {
+                if expanded == Self.removedID { ScrollIntoView() }
+            }
+            if expanded == Self.removedID {
+                ForEach(removed) { category in
+                    HStack {
+                        Image(systemName: category.symbol)
+                            .foregroundStyle(Color(rgb: category.color))
+                            .frame(width: 20)
+                        Text(category.name).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Put Back") { model.settings.restore(category.id) }
+                            .buttonStyle(.borderless)
+                    }
+                    .padding(.leading, Self.indent)
+                }
+            }
+        }
+    }
+
+    /// What `expanded` is while the removed activities show; no group has it as its id.
+    private static let removedID = "removed"
 
     private func row(_ category: BlockCategory, indented: Bool = false) -> some View {
         let isStarred = model.settings.favorites.contains(category.id)
@@ -144,7 +186,12 @@ struct ActivitySettings: View {
                 ActivityEditor(
                     category: binding(for: category), groups: model.settings.groups,
                     isEdited: model.settings.isEdited(category.id),
-                    reset: { model.settings.reset(category.id) }, done: { editing = nil })
+                    reset: { model.settings.reset(category.id) },
+                    remove: {
+                        editing = nil
+                        model.removeActivity(category.id)
+                    },
+                    done: { editing = nil })
             }
         }
         .padding(.leading, indented ? Self.indent : 0)
@@ -262,6 +309,7 @@ private struct ActivityEditor: View {
     let groups: [CategoryGroup]
     let isEdited: Bool
     let reset: () -> Void
+    let remove: () -> Void
     let done: () -> Void
     @State private var picksIcon = false
     @State private var nameBefore: String?
@@ -305,6 +353,8 @@ private struct ActivityEditor: View {
                 ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
             }
             HStack {
+                Button("Remove", role: .destructive, action: remove)
+                    .help("Take it out of the palette, search and this list; blocks logged with it keep it")
                 if isEdited {
                     Button("Reset", action: reset)
                         .help("Put back the built-in name, group and icon")

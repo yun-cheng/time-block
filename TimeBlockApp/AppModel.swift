@@ -121,9 +121,18 @@ final class AppModel {
         return group.id
     }
 
-    /// Removes a group of your own, once nothing is in it.
+    /// Removes an activity (or posture) from the palette, search and Settings' library; blocks logged with it keep
+    /// it. Stops painting with it.
+    func removeActivity(_ id: String) {
+        settings.remove(id)
+        for (track, brush) in brushes where brush.categoryID == id {
+            brushes[track] = nil
+        }
+    }
+
+    /// Removes a group of your own, once nothing is in it (but activities you removed, which fall back to Life).
     func removeGroup(_ id: String) {
-        guard !settings.categories.contains(where: { $0.group?.id == id }) else { return }
+        guard !settings.categories.contains(where: { $0.group?.id == id && !$0.isRetired }) else { return }
         settings.customGroups.removeAll { $0.id == id }
     }
 

@@ -42,7 +42,8 @@ PLAN.md.
 - **Settings:** browse the whole library by group, one open at a time, to star more. Edit any activity (name,
   group, and an icon from a searchable picker: `meal` finds the fork and knife) or group (name, color), built-in
   ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and
-  activities. New ones start unstarred.
+  activities. New ones start unstarred. Remove any activity you don't use: blocks already logged keep it, and
+  Removed, at the end of the library, puts it back (still starred, if it was).
 
 ## Layout
 
