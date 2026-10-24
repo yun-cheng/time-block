@@ -3,16 +3,19 @@ import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
 
-/// The current view's whole library, to star activities for the palette or add your own. Starred ones aren't
-/// listed apart: the palette shows them, and unstars them too. Editors open in the list rather than a popover:
-/// closing a popover hands focus to the first time picker, which scrolls the settings back to the top.
+/// The current view's whole library: star activities for the palette, edit any activity or group (built-in ones
+/// too, with a way back), or add your own. Starred ones aren't listed apart: the palette shows them, and unstars
+/// them too. Editors open in the list rather than a popover: closing a popover hands focus to the first time
+/// picker, which scrolls the settings back to the top.
 struct ActivitySettings: View {
     @Bindable var model: AppModel
     /// The id of the activity whose editor is open.
     @State private var editing: String?
+    /// The id of the group whose editor is open, apart from activities' since Work is both.
+    @State private var editingGroup: String?
     @State private var query = ""
-    /// Library groups showing their activities.
-    @State private var expanded: Set<CategoryGroup> = []
+    /// Ids of the groups showing their activities.
+    @State private var expanded: Set<String> = []
 
     var body: some View {
         let track = model.settings.track
@@ -25,44 +28,40 @@ struct ActivitySettings: View {
                     row(category)
                 }
             } else if track == .activity {
-                ForEach(CategoryGroup.allCases, id: \.self) { group in
-                    let members = all.filter { $0.group == group }
-                    let isExpanded = expanded.contains(group)
-                    // A plain row rather than a DisclosureGroup, which ignored clicks in this form.
-                    Button {
-                        if isExpanded { expanded.remove(group) } else { expanded.insert(group) }
-                    } label: {
-                        HStack {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .semibold))
-                                .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 12)
-                            Circle().fill(Color(rgb: group.color)).frame(width: 10, height: 10)
-                            Text(group.name)
-                            Spacer()
-                            Text("\(members.count)").foregroundStyle(.secondary).monospacedDigit()
-                        }
-                        .contentShape(Rectangle())
+                ForEach(model.settings.groups) { group in
+                    let members = all.filter { $0.group?.id == group.id }
+                    groupRow(group, count: members.count)
+                    if editingGroup == group.id {
+                        GroupEditor(
+                            group: groupBinding(for: group), isEdited: model.settings.isEdited(group.id),
+                            canRemove: !group.isBuiltIn && members.isEmpty,
+                            reset: { model.settings.reset(group.id) },
+                            remove: { model.removeGroup(group.id) },
+                            done: { editingGroup = nil })
                     }
-                    .buttonStyle(.plain)
-                    if isExpanded {
+                    if expanded.contains(group.id) {
                         ForEach(members) { category in
-                            row(category)
+                            row(category, indented: true)
                         }
+                        Button("New Activity", systemImage: "plus") {
+                            editing = model.addActivity(in: track, group: group)
+                        }
+                        .buttonStyle(.borderless)
+                        .padding(.leading, Self.indent)
                     }
+                }
+                Button("New Group", systemImage: "folder.badge.plus") {
+                    let id = model.addGroup()
+                    expanded.insert(id)
+                    editingGroup = id
                 }
             } else {
                 ForEach(all) { category in
                     row(category)
                 }
-            }
-            Button("New Activity", systemImage: "plus") {
-                let id = model.addActivity(in: track)
-                // Show the new activity, with its editor open, wherever it's listed.
-                query = ""
-                if let group = model.settings.categories.first(where: { $0.id == id })?.group { expanded.insert(group) }
-                editing = id
+                Button("New Activity", systemImage: "plus") {
+                    editing = model.addActivity(in: track)
+                }
             }
         } header: {
             Text(track == .activity ? "Activities" : "\(track.name) Activities")
@@ -72,31 +71,57 @@ struct ActivitySettings: View {
         }
     }
 
-    private func row(_ category: BlockCategory) -> some View {
-        let key = category.id
-        let isStarred = model.settings.favorites.contains(category.id)
-        let isOwn = model.settings.customCategories.contains { $0.id == category.id }
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                let label = HStack {
-                    Image(systemName: category.symbol)
-                        .foregroundStyle(Color(rgb: category.color))
-                        .frame(width: 20)
-                    Text(category.name)
+    /// How far a group's activities sit in from it.
+    private static let indent: CGFloat = 22
+
+    private func groupRow(_ group: CategoryGroup, count: Int) -> some View {
+        let isExpanded = expanded.contains(group.id)
+        return HStack {
+            // A plain row rather than a DisclosureGroup, which ignored clicks in this form.
+            Button {
+                if isExpanded { expanded.remove(group.id) } else { expanded.insert(group.id) }
+            } label: {
+                HStack {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                    Circle().fill(Color(rgb: group.color)).frame(width: 10, height: 10)
+                    Text(group.name)
                     Spacer()
+                    Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
                 }
                 .contentShape(Rectangle())
-                // Built-in activities have nothing to edit.
-                if isOwn {
-                    Button {
-                        editing = editing == key ? nil : key
-                    } label: {
-                        label
+            }
+            .buttonStyle(.plain)
+            Button {
+                editingGroup = editingGroup == group.id ? nil : group.id
+            } label: {
+                Image(systemName: "pencil").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Edit Group")
+        }
+    }
+
+    private func row(_ category: BlockCategory, indented: Bool = false) -> some View {
+        let isStarred = model.settings.favorites.contains(category.id)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Button {
+                    editing = editing == category.id ? nil : category.id
+                } label: {
+                    HStack {
+                        Image(systemName: category.symbol)
+                            .foregroundStyle(Color(rgb: category.color))
+                            .frame(width: 20)
+                        Text(category.name)
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
-                } else {
-                    label
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 Button {
                     model.toggleFavorite(category.id)
                 } label: {
@@ -106,25 +131,89 @@ struct ActivitySettings: View {
                 .buttonStyle(.borderless)
                 .help(isStarred ? "Unstar" : "Star")
             }
-            if isOwn, editing == key {
-                ActivityEditor(category: binding(for: category), done: { editing = nil })
+            if editing == category.id {
+                ActivityEditor(
+                    category: binding(for: category), groups: model.settings.groups,
+                    isEdited: model.settings.isEdited(category.id),
+                    reset: { model.settings.reset(category.id) }, done: { editing = nil })
             }
+        }
+        .padding(.leading, indented ? Self.indent : 0)
+    }
+
+    private func groupBinding(for group: CategoryGroup) -> Binding<CategoryGroup> {
+        Binding {
+            model.settings.groups.first { $0.id == group.id } ?? group
+        } set: {
+            model.settings.save($0)
         }
     }
 
     private func binding(for category: BlockCategory) -> Binding<BlockCategory> {
+        // Read through `categories`, which has your edits and the activity's group as it is now.
         Binding {
-            model.settings.customCategories.first { $0.id == category.id } ?? category
-        } set: { edited in
-            guard let index = model.settings.customCategories.firstIndex(where: { $0.id == category.id }) else { return }
-            model.settings.customCategories[index] = edited
+            model.settings.categories.first { $0.id == category.id } ?? category
+        } set: {
+            model.settings.save($0)
         }
     }
 }
 
-/// Edits the name, group and icon of an activity of your own.
+/// Renames and recolors a group. A built-in one can go back to how it came; one of your own can be removed once
+/// it's empty.
+private struct GroupEditor: View {
+    @Binding var group: CategoryGroup
+    let isEdited: Bool
+    let canRemove: Bool
+    let reset: () -> Void
+    let remove: () -> Void
+    let done: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                TextField("Group name", text: $group.name)
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                ColorPicker("Color", selection: color, supportsOpacity: false)
+                    .labelsHidden()
+            }
+            HStack {
+                if canRemove {
+                    Button("Remove Group", role: .destructive, action: remove)
+                }
+                if isEdited {
+                    Button("Reset", action: reset)
+                        .help("Put back the built-in name and color")
+                }
+                Spacer()
+                Button("Done", action: done)
+            }
+        }
+        .padding(.leading, 28)
+        .padding(.bottom, 4)
+        .onDisappear {
+            if group.name.trimmingCharacters(in: .whitespaces).isEmpty { group.name = "Untitled" }
+        }
+    }
+
+    private var color: Binding<Color> {
+        Binding {
+            Color(rgb: group.color)
+        } set: { color in
+            guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+            group.color = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent)
+        }
+    }
+}
+
+/// Edits the name, group and icon of an activity (the color, for a posture). A built-in one can go back to how
+/// it came.
 private struct ActivityEditor: View {
     @Binding var category: BlockCategory
+    let groups: [CategoryGroup]
+    let isEdited: Bool
+    let reset: () -> Void
     let done: () -> Void
     @State private var symbolName = ""
 
@@ -135,8 +224,8 @@ private struct ActivityEditor: View {
                 .labelsHidden()
             if category.group != nil {
                 Picker("Group", selection: groupBinding) {
-                    ForEach(CategoryGroup.allCases, id: \.self) { group in
-                        Text(group.name).tag(group)
+                    ForEach(groups) { group in
+                        Text(group.name).tag(group.id)
                     }
                 }
             } else {
@@ -158,6 +247,10 @@ private struct ActivityEditor: View {
                     }
                 }
             HStack {
+                if isEdited {
+                    Button("Reset", action: reset)
+                        .help("Put back the built-in name, group and icon")
+                }
                 Spacer()
                 Button("Done", action: done)
             }
@@ -169,8 +262,12 @@ private struct ActivityEditor: View {
         }
     }
 
-    private var groupBinding: Binding<CategoryGroup> {
-        Binding { category.group ?? .life } set: { category.group = $0 }
+    private var groupBinding: Binding<String> {
+        Binding {
+            category.group?.id ?? CategoryGroup.life.id
+        } set: { id in
+            category.group = groups.first { $0.id == id }
+        }
     }
 
     private var colorBinding: Binding<Color> {

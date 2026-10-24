@@ -35,8 +35,59 @@ struct AppSettingsTests {
         settings.favorites = ["lunch", reading.id]
         let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
         #expect(decoded == settings)
-        #expect(decoded.categories.last == reading)
+        // Your own activities sit with their group, after its built-in ones.
+        #expect(decoded.categories.last { $0.group == .learn } == reading)
         #expect(reading.color == CategoryGroup.learn.color)
+    }
+
+    @Test func ownGroupsNameAndColorTheirActivities() throws {
+        var settings = AppSettings.standard
+        var music = CategoryGroup.new(name: "Music", color: RGB(hex: 0x38BDF8))
+        settings.customGroups = [music]
+        let piano = BlockCategory.new(in: .activity, group: music, name: "Piano")
+        settings.customCategories = [piano]
+        music.name = "Practice"
+        music.color = RGB(hex: 0xD946EF)
+        settings.save(music)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        #expect(decoded.categories == settings.categories)
+        #expect(decoded.customGroups == [music])
+        let found = try #require(decoded.categories.first { $0.id == piano.id })
+        #expect(found.group?.name == "Practice")
+        #expect(found.color == music.color)
+        // Groups of your own come after the built-in ones.
+        #expect(decoded.categories.last { $0.track == .activity && !$0.isRetired }?.id == piano.id)
+        // An activity whose group is gone falls back to Life.
+        settings.customGroups = []
+        #expect(settings.categories.first { $0.id == piano.id }?.group == .life)
+    }
+
+    @Test func builtInActivitiesAndGroupsCanBeEditedAndReset() throws {
+        var settings = AppSettings.standard
+        var lunch = try #require(settings.categories.first { $0.id == "lunch" })
+        lunch.name = "Midday meal"
+        lunch.group = .people
+        settings.save(lunch)
+        var people = CategoryGroup.people
+        people.name = "Company"
+        settings.save(people)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        let edited = try #require(decoded.categories.first { $0.id == "lunch" })
+        #expect(edited.name == "Midday meal")
+        #expect(edited.group?.name == "Company")
+        #expect(edited.color == CategoryGroup.people.color)
+        #expect(decoded.isEdited("lunch") && decoded.isEdited("people") && !decoded.isEdited("dinner"))
+        settings.reset("lunch")
+        settings.reset("people")
+        #expect(settings.categories == BlockCategory.defaults)
+        // Saving one unchanged, as a text field does when it takes focus, isn't an edit.
+        settings.save(try #require(settings.categories.first { $0.id == "dinner" }))
+        settings.save(CategoryGroup.life)
+        #expect(settings.editedCategories.isEmpty && settings.editedGroups.isEmpty)
+        // Nor is one saved that way before.
+        settings.editedCategories = [try #require(settings.categories.first { $0.id == "dinner" })]
+        let reloaded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        #expect(reloaded.editedCategories.isEmpty)
     }
 
     @Test func categoriesSavedBeforeFavoritesCarryOver() throws {

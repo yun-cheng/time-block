@@ -105,12 +105,26 @@ final class AppModel {
         }
     }
 
-    /// Adds an activity of your own to `track`, starred, and returns its id.
-    func addActivity(in track: Track) -> String {
-        let category = BlockCategory.new(in: track)
+    /// Adds an activity of your own to `track` (in `group`, for Activity) and returns its id. It isn't starred:
+    /// it's a search away until you star it.
+    func addActivity(in track: Track, group: CategoryGroup = .life) -> String {
+        let category = BlockCategory.new(in: track, group: group)
         settings.customCategories.append(category)
-        settings.favorites.append(category.id)
         return category.id
+    }
+
+    /// Adds a group of your own, in the next of its colors, and returns its id.
+    func addGroup() -> String {
+        let colors = CategoryGroup.ownColors
+        let group = CategoryGroup.new(color: colors[settings.customGroups.count % colors.count])
+        settings.customGroups.append(group)
+        return group.id
+    }
+
+    /// Removes a group of your own, once nothing is in it.
+    func removeGroup(_ id: String) {
+        guard !settings.categories.contains(where: { $0.group?.id == id }) else { return }
+        settings.customGroups.removeAll { $0.id == id }
     }
 
     /// Switches to the next day's logs once the day rolls over.

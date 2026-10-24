@@ -14,7 +14,7 @@ public struct DaySnapshot: Sendable {
     public let categories: [String: BlockCategory]
     /// Everything this track's blocks can be logged as now (retired activities aside), for search.
     public let trackCategories: [BlockCategory]
-    /// This track's starred categories, by group: the palette.
+    /// This track's starred categories, in the order of `categories` (by group, from `AppSettings`): the palette.
     public let favorites: [BlockCategory]
 
     /// Only logs whose category belongs to `track` are drawn. `favorites` are category ids; without them
@@ -30,9 +30,7 @@ public struct DaySnapshot: Sendable {
         self.categories = byID
         let trackCategories = categories.filter { $0.track == track && !$0.isRetired }
         self.trackCategories = trackCategories
-        self.favorites = favorites.map { ids in
-            BlockCategory.byGroup(trackCategories.filter { ids.contains($0.id) })
-        } ?? trackCategories
+        self.favorites = favorites.map { ids in trackCategories.filter { ids.contains($0.id) } } ?? trackCategories
     }
 
     public var mood: Mood { status.mood }
@@ -55,7 +53,7 @@ public struct DaySnapshot: Sendable {
         var counts: [String: (name: String, color: RGB, blocks: Int)] = [:]
         for cell in cells where cell.phase == .past && !cell.isOvertime {
             guard let category = cell.categoryID.flatMap({ categories[$0] }) else { continue }
-            let key = category.group?.rawValue ?? category.id
+            let key = category.group?.id ?? category.id
             let name = category.group?.name ?? category.name
             let color = category.group?.color ?? category.color
             counts[key, default: (name, color, 0)].blocks += 1

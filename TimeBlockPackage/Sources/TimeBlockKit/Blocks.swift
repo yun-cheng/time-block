@@ -4,43 +4,46 @@ import Foundation
 /// so a day reads as a story at a glance however finely it was logged: blue work, violet learning,
 /// green health, pink people, orange running your life, teal transit, yellow leisure, and dull plum
 /// for time that drifted away.
-public enum CategoryGroup: String, CaseIterable, Codable, Hashable, Sendable {
-    case work, learn, health, people, life, transit, leisure, drift
+/// Groups you add pick their own name and color.
+public struct CategoryGroup: Identifiable, Codable, Hashable, Sendable {
+    public let id: String
+    public var name: String
+    public var color: RGB
 
-    public var name: String {
-        switch self {
-        case .work: "Work"
-        case .learn: "Learn"
-        case .health: "Health"
-        case .people: "People"
-        case .life: "Life"
-        case .transit: "Transit"
-        case .leisure: "Leisure"
-        case .drift: "Drift"
-        }
+    public init(id: String, name: String, color: RGB) {
+        self.id = id
+        self.name = name
+        self.color = color
     }
 
-    public var color: RGB {
-        switch self {
-        case .work: RGB(hex: 0x2F6BFF)
-        case .learn: RGB(hex: 0xB45CF0)
-        case .health: RGB(hex: 0x22C55E)
-        case .people: RGB(hex: 0xF0508C)
-        case .life: RGB(hex: 0xFF8A3D)
-        case .transit: RGB(hex: 0x14B8A6)
-        case .leisure: RGB(hex: 0xFACC15)
-        case .drift: RGB(hex: 0x8E6A9E)
-        }
+    public static let work = CategoryGroup(id: "work", name: "Work", color: RGB(hex: 0x2F6BFF))
+    public static let learn = CategoryGroup(id: "learn", name: "Learn", color: RGB(hex: 0xB45CF0))
+    public static let health = CategoryGroup(id: "health", name: "Health", color: RGB(hex: 0x22C55E))
+    public static let people = CategoryGroup(id: "people", name: "People", color: RGB(hex: 0xF0508C))
+    public static let life = CategoryGroup(id: "life", name: "Life", color: RGB(hex: 0xFF8A3D))
+    public static let transit = CategoryGroup(id: "transit", name: "Transit", color: RGB(hex: 0x14B8A6))
+    public static let leisure = CategoryGroup(id: "leisure", name: "Leisure", color: RGB(hex: 0xFACC15))
+    public static let drift = CategoryGroup(id: "drift", name: "Drift", color: RGB(hex: 0x8E6A9E))
+
+    /// The groups every library starts with, in order. Your own come after them.
+    public static let builtIn: [CategoryGroup] = [work, learn, health, people, life, transit, leisure, drift]
+
+    public var isBuiltIn: Bool { Self.builtIn.contains { $0.id == id } }
+
+    /// The built-in group with `id`, or with the id it had before groups were renamed.
+    public static func builtIn(id: String) -> CategoryGroup? {
+        let id = legacy[id] ?? id
+        return builtIn.first { $0.id == id }
     }
 
-    /// Groups saved before they were renamed.
-    private static let legacy: [String: CategoryGroup] = [
-        "focus": .work, "fuel": .life, "body": .health, "recharge": .leisure,
-    ]
+    private static let legacy = ["focus": "work", "fuel": "life", "body": "health", "recharge": "leisure"]
 
-    public init(from decoder: Decoder) throws {
-        let raw = try decoder.singleValueContainer().decode(String.self)
-        self = CategoryGroup(rawValue: raw) ?? Self.legacy[raw] ?? .life
+    /// Colors for your own groups, picked in turn, away from the built-in hues and from overtime red.
+    public static let ownColors: [RGB] = [0x8B95A7, 0xA0673A, 0x84CC16, 0x38BDF8, 0xD946EF, 0x6366F1].map(RGB.init(hex:))
+
+    /// A group the user adds, ready to be named.
+    public static func new(name: String = "New group", color: RGB) -> CategoryGroup {
+        CategoryGroup(id: "group-\(UUID().uuidString)", name: name, color: color)
     }
 }
 
@@ -111,18 +114,36 @@ public struct BlockCategory: Identifiable, Codable, Hashable, Sendable {
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         track = try container.decode(Track.self, forKey: .track)
-        group = try container.decodeIfPresent(CategoryGroup.self, forKey: .group)
+        // Only the group's id is saved. One of your own stands in as a placeholder until `AppSettings` finds it.
+        group = try container.decodeIfPresent(String.self, forKey: .group).map {
+            CategoryGroup.builtIn(id: $0) ?? CategoryGroup(id: $0, name: "", color: CategoryGroup.life.color)
+        }
         // Activities used to pick a shade; they now all take their group's color.
         color = try group?.color ?? container.decode(RGB.self, forKey: .color)
         symbol = try container.decode(String.self, forKey: .symbol)
         keywords = try container.decodeIfPresent([String].self, forKey: .keywords) ?? []
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case id, name, track, group, color, symbol, keywords
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(track, forKey: .track)
+        try container.encodeIfPresent(group?.id, forKey: .group)
+        try container.encode(color, forKey: .color)
+        try container.encode(symbol, forKey: .symbol)
+        try container.encode(keywords, forKey: .keywords)
+    }
+
     /// An activity the user adds, ready to be named.
-    public static func new(in track: Track, name: String = "New activity") -> BlockCategory {
+    public static func new(in track: Track, group: CategoryGroup = .life, name: String = "New activity") -> BlockCategory {
         let id = "custom-\(UUID().uuidString)"
         return switch track {
-        case .activity: BlockCategory(id: id, name: name, group: .life, symbol: "star.fill")
+        case .activity: BlockCategory(id: id, name: name, group: group, symbol: "star.fill")
         case .body: BlockCategory(id: id, name: name, track: track, color: RGB(hex: 0x8A8F98), symbol: "star.fill")
         }
     }
