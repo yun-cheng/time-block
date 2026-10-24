@@ -14,8 +14,8 @@ struct ActivitySettings: View {
     /// The id of the group whose editor is open, apart from activities' since Work is both.
     @State private var editingGroup: String?
     @State private var query = ""
-    /// Ids of the groups showing their activities.
-    @State private var expanded: Set<String> = []
+    /// The id of the group showing its activities: one at a time.
+    @State private var expanded: String?
 
     var body: some View {
         let track = model.settings.track
@@ -39,7 +39,7 @@ struct ActivitySettings: View {
                             remove: { model.removeGroup(group.id) },
                             done: { editingGroup = nil })
                     }
-                    if expanded.contains(group.id) {
+                    if expanded == group.id {
                         ForEach(members) { category in
                             row(category, indented: true)
                         }
@@ -52,7 +52,7 @@ struct ActivitySettings: View {
                 }
                 Button("New Group", systemImage: "folder.badge.plus") {
                     let id = model.addGroup()
-                    expanded.insert(id)
+                    expanded = id
                     editingGroup = id
                 }
             } else {
@@ -75,11 +75,11 @@ struct ActivitySettings: View {
     private static let indent: CGFloat = 22
 
     private func groupRow(_ group: CategoryGroup, count: Int) -> some View {
-        let isExpanded = expanded.contains(group.id)
+        let isExpanded = expanded == group.id
         return HStack {
             // A plain row rather than a DisclosureGroup, which ignored clicks in this form.
             Button {
-                if isExpanded { expanded.remove(group.id) } else { expanded.insert(group.id) }
+                expanded = isExpanded ? nil : group.id
             } label: {
                 HStack {
                     Image(systemName: "chevron.right")
@@ -102,6 +102,10 @@ struct ActivitySettings: View {
             }
             .buttonStyle(.borderless)
             .help("Edit Group")
+        }
+        .background {
+            // Opening it closes the one open before, which may pull it up out of sight.
+            if isExpanded { ScrollIntoView() }
         }
     }
 
@@ -155,6 +159,29 @@ struct ActivitySettings: View {
             model.settings.categories.first { $0.id == category.id } ?? category
         } set: {
             model.settings.save($0)
+        }
+    }
+}
+
+/// Scrolls the settings to show what it's behind once it's in a window: a group just opened. (`ScrollViewReader`
+/// doesn't reach into a `Form`'s rows.)
+private struct ScrollIntoView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Probe() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class Probe: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard window != nil else { return }
+            // Once the rows have laid out around it.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                // Clear of the toolbar, which the settings scroll under, with room to spare at either end.
+                let toolbar = self.window?.contentView?.safeAreaInsets.top ?? 0
+                NSAnimationContext.runAnimationGroup { _ in
+                    self.scrollToVisible(self.bounds.insetBy(dx: 0, dy: -(toolbar + 8)))
+                }
+            }
         }
     }
 }
