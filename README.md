@@ -10,8 +10,9 @@ whole UI slowly turns into a horror show.
 
 - **1 block = 5 minutes.** Rows are clock hours of 12 blocks; only your waking hours are shown.
 - **Counter:** blocks left over the day's usable total (`92/192`). It goes negative after bedtime.
-- **Colors tell the story:** Activity groups (focus, fuel, people…) each own a hue; bright means intentional,
-  muted means drift. Grey is unlogged, red is taken from sleep.
+- **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
+  Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, red is taken
+  from sleep.
 - **Views:** switch between Activity and Body (lying, sitting, standing, walking, exercising). Each view is its
   own track of logs, so a block can be *Meeting* and *Standing* at once.
 
@@ -20,7 +21,7 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 ## Status
 
 Built: Mac app window with settings in a side panel (gear button or ⌘,), menu bar extra, and a WidgetKit widget
-in three sizes. Logs are saved one file per day. Custom categories and notes come next; see the milestones in
+in three sizes. Logs are saved one file per day. Next up is a nudge for unlogged time; see the milestones in
 PLAN.md.
 
 ### Logging
@@ -28,11 +29,18 @@ PLAN.md.
 - **Hover** a block to see its time and what it holds. A logged stretch (or an unlogged gap) is outlined as a whole,
   with its range: `18:20–19:25 · Social · 1h 5m`.
 - **Select, then pick:** click a block to select its whole stretch, double‑click to select just that block, or
-  drag to select exactly what you cover. Click a category under the grid to log the selection, or Clear to empty
-  it. The selection stays, and its category stays lit, until you click off the blocks.
-- **Pick, then paint:** with nothing selected, click a category and drag across blocks. The category is put down
-  after one drag, so a stray click never logs anything.
+  drag to select exactly what you cover. Click an activity under the grid to log the selection, or Clear to empty
+  it. The selection stays, and its activity stays lit, until you click off the blocks.
+- **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
+  drag, so a stray click never logs anything.
+- **Find any activity:** the chips are your starred activities. Type in the search field above them to find any of
+  the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Right‑click a chip to
+  star or unstar it.
+- **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
+  hover them, and a noted stretch is selected and outlined on its own.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
+- **Settings:** reorder starred activities, browse the whole library by group to star more, or add your own
+  with a name, group and icon.
 
 ## Layout
 

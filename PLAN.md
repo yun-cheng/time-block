@@ -70,15 +70,16 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 
 ### 3.2 Logging
 - The window's grid starts in a look‑only state: hovering a block shows its time and contents, and outlines the
-  whole run it belongs to (one category, or one unlogged gap) with its range and length.
-- **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking a category
-  chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's category is lit.
+  whole run it belongs to (one activity, or one unlogged gap) with its range and length.
+- **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking an activity
+  chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's activity is lit.
   Clicking off the blocks deselects.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards.
-- Painting splits the runs it covers and joins neighbours of the same category; each view (track) is edited apart.
-- Menu bar: shows the counter; click → "Now: [category chips]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
-- Optional note per block range ("Wrote PLAN.md").
+- Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
+- Menu bar: shows the counter; click → "Now: [starred activities, search]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
+- Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
+  stretch is its own run; giving a whole run another activity keeps its note.
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
 
 ### 3.2a Smart suggestions for unlogged blocks
@@ -94,20 +95,30 @@ Signals, all processed on‑device:
 - Suggestions are never auto‑committed; grey + hint until confirmed.
 - Note: Macs have no GPS, so location‑based hints really arrive with the iPhone/Watch app; the Mac uses activity signals instead.
 
-### 3.3 Categories & colors
-Colors carry meaning, so a day reads as a story at a glance. Every category belongs to a **group**; the group owns the hue, categories are shades within it.
-| Group | Hue | Default categories |
+### 3.3 Activities, groups & colors
+Log as finely as you like; read the day by group. A built-in library of ~170 detailed **activities** (Breakfast,
+Lunch, Email, Gym, Metro…) each belongs to a **group**, and every activity in a group shares the group's color, so
+a day still reads as a story at a glance. Groups follow how time-use research (the American Time Use Survey) and
+time-logging coaches split a day, with plain names:
+| Group | Hue | Examples |
 |---|---|---|
-| Focus | blue | Work, Meeting (lighter), Study |
-| Fuel | orange | Meal, Coffee (brown) |
-| Body | green | Exercise, Outdoor |
-| People | pink | Social, Family |
-| Transit | teal | Commute |
-| Recharge | yellow | Rest, Nap |
-| Drift | muted plum | Screen time, Doomscroll |
-- Bright = intentional, muted = time that just happened. Grey = unlogged, red = taken from sleep.
-- Summaries (legend, story bar) report time per **group** ("Focus 7h 50m"), not per category.
-- User‑defined categories pick a group, then optionally a shade, name and SF Symbol.
+| Work | blue | Work, Deep work, Meeting, Email, Coding, Paperwork |
+| Learn | purple | Study, Reading, Class, Language, Journaling |
+| Health | green | Exercise, Gym, Walk, Outdoors, Yoga, Doctor |
+| People | pink | Friends, Family, Partner, Kids, Call, Party |
+| Life | orange | Breakfast, Lunch, Dinner, Coffee, Cooking, Chores, Shower, Errands |
+| Transit | teal | Commute, Driving, Bus, Metro, Flight |
+| Leisure | yellow | Rest, Nap, TV and shows, Gaming, Hobby, Café |
+| Drift | muted plum | Doomscroll, Social media, Videos, Procrastinating |
+- Grey = unlogged, red = taken from sleep. Leisure is rest you chose; Drift is time that slipped away.
+- **Starred** activities make up the palette, in order; common ones are starred out of the box. A search field
+  above it finds any other by name, by other words ("meal" finds Lunch, "slack" finds Work chat) or by group;
+  Return logs the best match. Right-click a chip, or use Settings, to star or unstar.
+- Summaries (legend, story bar) report time per **group** ("Life 2h 10m"), not per activity.
+- Your own activities pick a name, group and SF Symbol. The Body view keeps its five postures, each its own color.
+- Built-in activities are **retired** rather than removed (so far Meal, replaced by Breakfast/Lunch/Dinner/Snack,
+  and the vague Screen time): blocks already logged keep their name and color, but they leave search, the
+  library and the palette. Ids of built-ins never change, since logs refer to them.
 
 ### 3.4 Pre‑logging
 - **Recurring templates:** "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks, weekdays".
@@ -140,7 +151,7 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 
 | View | Statuses | Colors | Headline |
 |---|---|---|---|
-| Activity | categories in groups (§3.3) | hue per group | time per group |
+| Activity | activities in groups (§3.3) | hue per group | time per group |
 | Body | Lying, Sitting, Standing, Walking, Exercising | cool → warm: the more you move, the warmer | longest unbroken sit |
 
 - Horror mode, the counter and the bedtime line are the same in every view; only block colors and the summary change.
@@ -157,7 +168,8 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 ## 4. Data model (TimeBlockKit)
 
 ```swift
-Category      id, name, track(.activity|.body), group? (activity only), colorHex, symbol, sortOrder, isArchived
+Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
+              (built-ins live in code; AppSettings keeps favorites (palette order) and customCategories)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, logs: one JSON file per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
@@ -178,7 +190,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | 🟡 built; widget uses the default schedule until signed with a team (§2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
-| M2 | **Logging + categories** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging in the window, menu bar "Now" logging and saving done; custom categories, notes and the unlogged nudge left; widget sees logs once signed with a team |
+| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left; widget sees logs once signed with a team |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | |
