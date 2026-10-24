@@ -19,8 +19,20 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 ## Status
 
-The display is built: Mac app window with settings in a side panel (gear button or ⌘,), menu bar extra, and a
-WidgetKit widget in three sizes. Logging isn't yet; until M2 the app shows a sample day (settings ▸ Show a sample day).
+Built: Mac app window with settings in a side panel (gear button or ⌘,), menu bar extra, and a WidgetKit widget
+in three sizes. Logs are saved one file per day. Custom categories and notes come next; see the milestones in
+PLAN.md.
+
+### Logging
+
+- **Hover** a block to see its time and what it holds. A logged stretch (or an unlogged gap) is outlined as a whole,
+  with its range: `18:20–19:25 · Social · 1h 5m`.
+- **Select, then pick:** click a block to select its whole stretch, double‑click to select just that block, or
+  drag to select exactly what you cover. Click a category under the grid to log the selection, or Clear to empty
+  it. The selection stays, and its category stays lit, until you click off the blocks.
+- **Pick, then paint:** with nothing selected, click a category and drag across blocks. The category is put down
+  after one drag, so a stray click never logs anything.
+- **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
 
 ## Layout
 
@@ -68,5 +80,5 @@ swift run --package-path TimeBlockPackage TimeBlockPrototype --render renders
 
 The project signs ad‑hoc ("Sign to Run Locally"), which needs no Apple account. Sharing settings between the
 app and the widget needs an App Group, and App Groups need an Apple Developer team. Until one is set up, the
-widget always shows the default 07:00–23:00 schedule. To enable it, pick your team for both targets under
+widget always shows the default 07:00–23:00 schedule and no logs. To enable it, pick your team for both targets under
 Signing & Capabilities and add the App Group `group.dev.timeblock` to both.

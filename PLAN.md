@@ -27,7 +27,7 @@ If you're still up at 01:30, that is still *today*, 2.5 h past bedtime → `−3
 
 ## 2. Platforms & architecture
 
-**Stack:** Swift 6, SwiftUI, WidgetKit, App Intents, SwiftData, EventKit. (Xcode 26.5 / macOS 26 on this machine.)
+**Stack:** Swift 6, SwiftUI, WidgetKit, App Intents, EventKit; logs saved as one JSON file per day. (Xcode 26.5 / macOS 26 on this machine.)
 
 ```
 TimeBlockPackage/          shared Swift package
@@ -43,9 +43,10 @@ TimeBlock.xcodeproj        depends on TimeBlockPackage; source folders sync auto
 Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complications + Smart Stack widget
 ```
 
-- App + widget share data through an **App Group** container (SwiftData store lives there).
+- App + widget share data through an **App Group** container (settings and day logs live there).
   - App Groups need a provisioning profile, i.e. an Apple Developer team selected in Xcode. Until then the project
-    builds ad‑hoc ("Sign to Run Locally") without the App Group, and the widget falls back to the default 07:00–23:00 schedule.
+    builds ad‑hoc ("Sign to Run Locally") without the App Group: logs stay in the app's own container, and the widget
+    shows the default 07:00–23:00 schedule with no logs.
   - To enable: Xcode → target → Signing & Capabilities → pick the team for both targets, switch to Automatic signing,
     add App Groups capability `group.dev.timeblock` to both.
 - Cross‑device sync (Mac ↔ iPhone ↔ Watch) via **CloudKit** — requires a paid Apple Developer account.
@@ -68,7 +69,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - Medium widget: current hour ± a few hours. Small widget: counter + a ring/mini‑bar.
 
 ### 3.2 Logging
-- Pick a category → tap / drag across blocks to paint them.
+- The window's grid starts in a look‑only state: hovering a block shows its time and contents, and outlines the
+  whole run it belongs to (one category, or one unlogged gap) with its range and length.
+- **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking a category
+  chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's category is lit.
+  Clicking off the blocks deselects.
+- **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
+  the brush is put down afterwards.
+- Painting splits the runs it covers and joins neighbours of the same category; each view (track) is edited apart.
 - Menu bar: shows the counter; click → "Now: [category chips]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
 - Optional note per block range ("Wrote PLAN.md").
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
@@ -146,12 +154,14 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 
 ---
 
-## 4. Data model (TimeBlockKit, SwiftData)
+## 4. Data model (TimeBlockKit)
 
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only), colorHex, symbol, sortOrder, isArchived
-BlockLog      id, dayID (wake‑date), startIndex, length, categoryID, note, source(.manual|.template|.calendar)
-              (track comes from the category; at most one log per block per track)
+DayLog        day ("2026-10-24", the wake date), wakeMinute, logs: one JSON file per day
+BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
+              (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
+              at most one log per block per track; painting joins runs and splits the ones it covers)
 Template      id, categoryID, startMinute, lengthBlocks, recurrence(weekdays mask), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
 ShiftPlan     startDate, stepMinutes, everyNDays, direction, endDate?, targetBedMinute?, shiftWake: Bool
@@ -167,8 +177,8 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 |---|---|---|---|
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | 🟡 built; widget uses the default schedule until signed with a team (§2) |
-| — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ display done; logging comes with M2 |
-| M2 | **Logging + categories** | paint blocks in app, log from menu bar, colors in widget; logs per view | next |
+| — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
+| M2 | **Logging + categories** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging in the window, menu bar "Now" logging and saving done; custom categories, notes and the unlogged nudge left; widget sees logs once signed with a team |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | |
@@ -187,4 +197,5 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
 | Platforms | Mac first; iPhone and Watch in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
+| Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Ad‑hoc ("Sign to Run Locally") until an Apple Developer team is set up; App Group added then |
