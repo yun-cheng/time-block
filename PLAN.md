@@ -1,0 +1,190 @@
+# Time Block — Project Plan
+
+> A clock that shows your waking day as 5‑minute blocks, so you can *see* time passing,
+> log what each block went to, and get gently (then not so gently) pushed to bed on time.
+
+---
+
+## 1. Core concept
+
+- **1 block = 5 minutes.** 1 hour = 12 blocks, a full 24 h day = 288 blocks.
+- The grid only shows your **awake window** (wake time → bedtime). Example: 07:00 → 23:00 = 16 h = **192 blocks**.
+- Each block is in one of these states:
+  | State | Look |
+  |---|---|
+  | Future, empty | faint outline |
+  | Future, pre‑logged (meal, meeting…) | hollow / dimmed category color |
+  | Past, logged | solid category color |
+  | Past, unlogged | grey |
+  | Current | pulsing / highlighted |
+- **Counter:** big number = blocks left until bedtime over the day's usable total (e.g. `47/192`), small line = blocks used / logged today.
+- **After bedtime the counter goes negative** (`−6`, `−14`…) and the UI degrades into "horror mode" (see §3.5).
+
+### The "day" is wake‑to‑sleep, not midnight‑to‑midnight
+If you're still up at 01:30, that is still *today*, 2.5 h past bedtime → `−30`. The day rolls over at a cutoff two hours before wake time (05:00 for a 07:00 wake).
+
+---
+
+## 2. Platforms & architecture
+
+**Stack:** Swift 6, SwiftUI, WidgetKit, App Intents, SwiftData, EventKit. (Xcode 26.5 / macOS 26 on this machine.)
+
+```
+TimeBlockPackage/          shared Swift package
+├── TimeBlockKit           models, block math, schedule logic, settings, sample data (pure Foundation)
+├── TimeBlockUI            SwiftUI views shared by app, widget and (later) watch: grid, ring, counter, themes
+└── TimeBlockPrototype     M0 playground: time slider + widget previews; `--render` writes PNGs
+
+TimeBlock.xcodeproj        depends on TimeBlockPackage; source folders sync automatically
+├── TimeBlockApp/          Mac app: day window, menu bar extra, Settings
+├── TimeBlockWidget/       WidgetKit extension (small / medium / large), view picked per widget
+└── Config/                entitlements, widget Info.plist
+
+Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complications + Smart Stack widget
+```
+
+- App + widget share data through an **App Group** container (SwiftData store lives there).
+  - App Groups need a provisioning profile, i.e. an Apple Developer team selected in Xcode. Until then the project
+    builds ad‑hoc ("Sign to Run Locally") without the App Group, and the widget falls back to the default 07:00–23:00 schedule.
+  - To enable: Xcode → target → Signing & Capabilities → pick the team for both targets, switch to Automatic signing,
+    add App Groups capability `group.dev.timeblock` to both.
+- Cross‑device sync (Mac ↔ iPhone ↔ Watch) via **CloudKit** — requires a paid Apple Developer account.
+- Widget refresh: precompute a **timeline entry every 5 minutes** for the rest of the day (entries don't count against WidgetKit's reload budget). App calls `WidgetCenter.reloadAllTimelines()` whenever a log changes.
+
+### Platform constraints to design around
+1. **Widgets can't take text input.** They support buttons/toggles via App Intents only. So:
+   - Widget = glanceable view + 1‑tap buttons ("log now as last category", "same as before").
+   - Real logging = menu bar popover + main app.
+2. **Apple doesn't allow third‑party watch faces.** "Become an Apple Watch screen" will be: complications on any face, a Smart Stack widget, and a full‑screen watch app. Not a replacement clock face.
+
+---
+
+## 3. Features
+
+### 3.1 Day grid & counter (MVP)
+- Rows = clock hours (12 blocks per row), columns = 5‑min slots. Large widget shows the full awake day (~16 rows).
+- Rows always line up with the clock: waking at 08:30 starts halfway along the "08" row; a 23:30 bedtime ends halfway along "23".
+- Counter shows blocks left over the day's usable total, e.g. `92/192`.
+- Medium widget: current hour ± a few hours. Small widget: counter + a ring/mini‑bar.
+
+### 3.2 Logging
+- Pick a category → tap / drag across blocks to paint them.
+- Menu bar: shows the counter; click → "Now: [category chips]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
+- Optional note per block range ("Wrote PLAN.md").
+- Optional nudge notification: "3 blocks unlogged — what were you doing?"
+
+### 3.2a Smart suggestions for unlogged blocks
+Past blocks you didn't log stay **grey**, but carry a *hint* so back‑filling is one tap ("Confirm: 08:10–08:40 Commute?").
+Signals, all processed on‑device:
+| Signal | Where | Hints |
+|---|---|---|
+| Location visits / movement (Core Location `CLVisit`, significant changes) | iPhone / Watch (M8) | Home, Work, Commute/Traffic, Outdoor, Gym, named places |
+| Mac activity: idle vs active, frontmost app | Mac (from M2) | Away from Mac, Coding, Browsing, Video call, Screen time |
+| Calendar event at that time | all | Meeting / event name |
+| Your own history (same time, same weekday) | all | "Usually Lunch at this time" |
+- User can name places ("Home", "Office", "Gym") and map each place → category.
+- Suggestions are never auto‑committed; grey + hint until confirmed.
+- Note: Macs have no GPS, so location‑based hints really arrive with the iPhone/Watch app; the Mac uses activity signals instead.
+
+### 3.3 Categories & colors
+Colors carry meaning, so a day reads as a story at a glance. Every category belongs to a **group**; the group owns the hue, categories are shades within it.
+| Group | Hue | Default categories |
+|---|---|---|
+| Focus | blue | Work, Meeting (lighter), Study |
+| Fuel | orange | Meal, Coffee (brown) |
+| Body | green | Exercise, Outdoor |
+| People | pink | Social, Family |
+| Transit | teal | Commute |
+| Recharge | yellow | Rest, Nap |
+| Drift | muted plum | Screen time, Doomscroll |
+- Bright = intentional, muted = time that just happened. Grey = unlogged, red = taken from sleep.
+- Summaries (legend, story bar) report time per **group** ("Focus 7h 50m"), not per category.
+- User‑defined categories pick a group, then optionally a shade, name and SF Symbol.
+
+### 3.4 Pre‑logging
+- **Recurring templates:** "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks, weekdays".
+- Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
+- **Calendar import:** events become pre‑logged blocks (rounded to 5‑min boundaries), mapped to a category (default "Meeting"; per‑calendar mapping).
+
+### 3.5 Late‑night "horror mode"
+Escalates the further past bedtime you are:
+| Blocks left | Effect |
+|---|---|
+| 6 to 1 (last 30 min) | "wind‑down": warm amber background + amber counter |
+| −1 to −6 (≤30 min) | counter turns red, grid desaturates, subtle vignette |
+| −7 to −24 (≤2 h) | blood‑red palette, blocks "crack"/drip, flicker animation in app, glitchy font on the counter |
+| −25 and beyond | full dread: dark red/black, distorted blocks, ominous copy ("You are borrowing from tomorrow."), optional notifications |
+- Widget gets the static version (widgets can't run continuous animations); the app/menu bar gets animated effects.
+- Tomorrow's grid can show the debt: "You start 30 blocks in the red."
+
+### 3.6 Sleep‑shift plan ("adjust timezone")
+Gradually move your schedule earlier (or later) instead of all at once.
+- Inputs: **step size** (15 / 30 / 60 min or custom), **every N days** (default 1), **until** a date *or* a target bedtime.
+- Example: bedtime 01:00, step 30 min/day, until 23:00 → 01:00, 00:30, 00:00, 23:30, 23:00 (done in 4 days).
+- Wake time shifts with it (keeps sleep duration) or stays fixed (user choice).
+- Also usable for **jet lag**: pick a destination timezone + travel date, and the plan pre‑shifts you.
+- The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan.
+
+### 3.6a Views (tracks)
+The same day can be looked at through different **views**. Each view is its own **track** of logs, so one block can hold
+one log per track: 10:30 is *Meeting* in Activity and *Standing* in Body. Switch with the toolbar control, View ▸ (⌘1/⌘2),
+or the menu bar panel; each widget picks its own view in its Edit sheet, so an Activity and a Body widget can sit side by side.
+
+| View | Statuses | Colors | Headline |
+|---|---|---|---|
+| Activity | categories in groups (§3.3) | hue per group | time per group |
+| Body | Lying, Sitting, Standing, Walking, Exercising | cool → warm: the more you move, the warmer | longest unbroken sit |
+
+- Horror mode, the counter and the bedtime line are the same in every view; only block colors and the summary change.
+- Body logging sources: manual on Mac (M2); iPhone/Watch fill it automatically from Core Motion activity
+  (stationary / walking / running / cycling / automotive) and HealthKit workouts and stand minutes (M8).
+  Macs have no HealthKit or motion data.
+- Later views to consider: Energy (1–5), Location (from §3.2a), Focus quality.
+
+### 3.7 Stats (later)
+- Blocks per category per day/week, logged %, average blocks past bedtime, streaks of on‑time sleep.
+
+---
+
+## 4. Data model (TimeBlockKit, SwiftData)
+
+```swift
+Category      id, name, track(.activity|.body), group? (activity only), colorHex, symbol, sortOrder, isArchived
+BlockLog      id, dayID (wake‑date), startIndex, length, categoryID, note, source(.manual|.template|.calendar)
+              (track comes from the category; at most one log per block per track)
+Template      id, categoryID, startMinute, lengthBlocks, recurrence(weekdays mask), isEnabled
+Schedule      wakeMinute, bedMinute, dayRolloverMinute
+ShiftPlan     startDate, stepMinutes, everyNDays, direction, endDate?, targetBedMinute?, shiftWake: Bool
+CalendarLink  calendarIdentifier, categoryID, isEnabled
+```
+Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awakeBlocks(on:)`, `remaining(at:)` (can be negative), `plannedSchedule(on:)` (applies ShiftPlan), DST‑safe.
+
+---
+
+## 5. Milestones
+
+| # | Milestone | Done when | Status |
+|---|---|---|---|
+| M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
+| M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | 🟡 built; widget uses the default schedule until signed with a team (§2) |
+| — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ display done; logging comes with M2 |
+| M2 | **Logging + categories** | paint blocks in app, log from menu bar, colors in widget; logs per view | next |
+| M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | |
+| M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
+| M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | |
+| M6 | **Calendar import** | events show as pre‑logged blocks | |
+| M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
+| M8 | **iPhone + Apple Watch** | CloudKit sync, watch app, complications, Smart Stack, location and motion data | |
+
+---
+
+## 6. Decisions
+| Topic | Decision |
+|---|---|
+| Distribution | Personal use first, kept sandbox‑friendly so the App Store is easy later |
+| Sleep shift | Wake time shifts with bedtime (sleep length stays the same) |
+| Unlogged blocks | Stay grey, with location/activity‑based suggestions for one‑tap logging (§3.2a) |
+| Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
+| Platforms | Mac first; iPhone and Watch in M8 |
+| Views | Separate log tracks (Activity, Body), not filters over one track |
+| Signing | Ad‑hoc ("Sign to Run Locally") until an Apple Developer team is set up; App Group added then |
