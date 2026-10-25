@@ -57,6 +57,9 @@ PLAN.md.
   star or unstar it.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
+- **Any day, like a calendar:** every day is kept. In the toolbar, as in Calendar, ‹ › go back and forth a day
+  (⌘[ ⌘]) and Today (⌘T) comes back; click the date beside them to pick one from a calendar. Every day can be edited like today: fill in one you
+  forgot to log, or pre‑log one ahead, with your routine already on it. Past days keep the wake and bedtime they had.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
 - **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
   it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you paint over it.

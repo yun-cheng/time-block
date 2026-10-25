@@ -13,6 +13,7 @@ struct TimeBlockApp: App {
         .defaultSize(width: 480, height: 720)
         .commands {
             TrackCommands(model: model)
+            DayCommands(model: model)
             SettingsCommands(model: model)
         }
 

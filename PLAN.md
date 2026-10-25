@@ -95,8 +95,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   keeps it selected: selecting blocks gives the grid the keyboard.
 - **Undo and redo:** every change to the blocks (logging, clearing, moving, resizing, notes, logging from the menu
   bar) goes on the window's undo stack, named in Edit (Undo Move Blocks …). Undo puts the day back as it was, in
-  the view it changed in and with the selection it had. The stack is cleared when the day rolls over, and when
-  templates or the schedule change (putting old logs back would undo the new plan too).
+  the view and on the day it changed in, with the selection it had. The stack is cleared when templates or the
+  schedule change (putting old logs back would undo the new plan too).
 - **Undo and Redo buttons:** in the toolbar beside Settings, all three over the day even while Settings is open.
   They're greyed out with nothing to undo or redo, and their tooltips name the change.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
@@ -109,6 +109,19 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   the brush does ("Drag across blocks to log Lunch"), and nothing otherwise. Settings sections have no explaining
   footers. How things work is in the README and tooltips.
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
+- **Any day, like a calendar:** every day is kept, one file each. At the toolbar's left, as in Calendar, ‹ Today ›
+  go back and forth a day and back to today (Go ▸ Previous Day ⌘[, Next Day ⌘], Today ⌘T), and the date beside
+  them (always the date, "Sat 24 Oct") picks any day from a calendar. Every day is edited like today: fill in a day
+  you forgot to log, or pre‑log one ahead.
+  - A past day is over: every block has passed, it runs to bedtime or to the last block logged after it, and it has
+    no counter, "now" or horror, just its date and how much of it was logged. It keeps the schedule saved with it,
+    so it keeps its length when the schedule changes later (days saved before that take the settings').
+  - A day ahead has no block started, shows how much of it is planned, and follows the settings' schedule (sleep
+    shift included), its blocks keeping their clock times. Its templates are laid out when it's opened, and saved
+    with it once it's changed; a saved day ahead is planned again when templates or the schedule change, like
+    today's blocks still to come.
+  - The menu bar and widgets stay on today, and the window moves on to the new day when it showed today (or the
+    day ahead it showed has come).
 
 ### 3.2a Smart suggestions for unlogged blocks
 Past blocks you didn't log stay **grey**, but carry a *hint* so back‑filling is one tap ("Confirm: 08:10–08:40 Commute?").
@@ -224,6 +237,11 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 
 ### 3.7 Stats (later)
 - Blocks per category per day/week, logged %, average blocks past bedtime, streaks of on‑time sleep.
+
+### 3.8 Calendar (direction)
+Time Block grows toward a calendar of blocks: any day can already be opened and edited (§3.2). Later, to consider:
+week and month views, days with logs marked in the date picker, copying a day or a stretch to other days, moving
+blocks between days, searching activities and notes across days, and calendar events as pre‑logged blocks (M6).
 
 ---
 

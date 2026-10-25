@@ -17,7 +17,7 @@ struct MainWindow: View {
                 // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
                 TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
                     DayView(
-                        snapshot: model.snapshot(at: context.date),
+                        snapshot: model.shownSnapshot(at: context.date),
                         time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
                         editor: DayEditor(
                             brush: $model.brush, selection: $model.selection,
@@ -32,6 +32,9 @@ struct MainWindow: View {
         }
         .frame(minWidth: 400, minHeight: 600)
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                DayPicker(model: model)
+            }
             ToolbarItem(placement: .principal) {
                 TrackPicker(track: $model.settings.track)
             }
@@ -73,6 +76,7 @@ struct MainWindow: View {
         // Edits, undos and redos post these; the model clearing its edits changes the day it's showing.
         .onReceive(undoNotifications) { _ in updateUndoTitles() }
         .onChange(of: model.dayLog) { updateUndoTitles() }
+        .onChange(of: model.otherLog) { updateUndoTitles() }
         .inspector(isPresented: $model.showsSettings) {
             SettingsView(model: model)
                 .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
@@ -104,6 +108,83 @@ extension MainWindow {
         undoTitles = UndoTitles(
             undo: undoManager.canUndo ? undoManager.undoMenuItemTitle : nil,
             redo: undoManager.canRedo ? undoManager.redoMenuItemTitle : nil)
+    }
+}
+
+/// Goes back and forth between days: the previous and next day, today, and the day shown, which picks one from a
+/// calendar.
+struct DayPicker: View {
+    @Bindable var model: AppModel
+    @State private var showsCalendar = false
+
+    /// Side by side, as in Calendar: ‹ Today › and the date.
+    var body: some View {
+        HStack(spacing: 6) {
+            ControlGroup {
+                Button {
+                    model.showDay(-1)
+                } label: {
+                    Label("Previous Day", systemImage: "chevron.left")
+                }
+                .help("Previous Day")
+                Button("Today") { model.showToday() }
+                    .help("Go to Today")
+                    .disabled(model.isShowingToday)
+                Button {
+                    model.showDay(1)
+                } label: {
+                    Label("Next Day", systemImage: "chevron.right")
+                }
+                .help("Next Day")
+            }
+            .fixedSize()
+            Button {
+                showsCalendar.toggle()
+            } label: {
+                Text(title).monospacedDigit()
+            }
+            .help("Go to a Day")
+            .popover(isPresented: $showsCalendar, arrowEdge: .bottom) {
+                DatePicker("Day", selection: date, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding()
+            }
+        }
+    }
+
+    /// The day shown: "Sat 24 Oct", with the year when it isn't this one.
+    private var title: String {
+        let date = DayID.date(model.shownDay) ?? .now
+        let format = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+        let isThisYear = model.shownDay.prefix(4) == model.dayLog.day.prefix(4)
+        return date.formatted(isThisYear ? format : format.year())
+    }
+
+    private var date: Binding<Date> {
+        Binding {
+            DayID.date(model.shownDay) ?? .now
+        } set: { date in
+            model.show(DayID.string(from: date))
+            showsCalendar = false
+        }
+    }
+}
+
+/// Go ▸ Previous Day (⌘[), Next Day (⌘]), Today (⌘T).
+struct DayCommands: Commands {
+    let model: AppModel
+
+    var body: some Commands {
+        CommandMenu("Go") {
+            Button("Previous Day") { model.showDay(-1) }
+                .keyboardShortcut("[", modifiers: .command)
+            Button("Next Day") { model.showDay(1) }
+                .keyboardShortcut("]", modifiers: .command)
+            Button("Today") { model.showToday() }
+                .keyboardShortcut("t", modifiers: .command)
+                .disabled(model.isShowingToday)
+        }
     }
 }
 
