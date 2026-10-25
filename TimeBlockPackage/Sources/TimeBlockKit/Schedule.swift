@@ -65,8 +65,7 @@ public struct Schedule: Hashable, Codable, Sendable {
         let parts = calendar.dateComponents([.hour, .minute], from: date)
         let clockMinute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
         let day = clockMinute < rolloverMinute ? calendar.date(byAdding: .day, value: -1, to: date) ?? date : date
-        let ymd = calendar.dateComponents([.year, .month, .day], from: day)
-        return String(format: "%04d-%02d-%02d", ymd.year ?? 0, ymd.month ?? 0, ymd.day ?? 0)
+        return DayID.string(from: day, calendar: calendar)
     }
 
     /// Index of the block containing a clock time, counted from wake time.

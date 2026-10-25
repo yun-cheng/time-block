@@ -2,6 +2,7 @@ import Foundation
 
 /// User settings shared between the app and its widget through the App Group.
 public struct AppSettings: Codable, Hashable, Sendable {
+    /// The schedule you keep, or are heading to while `sleepShift` gets you there. A day's own is `schedule(on:)`.
     public var schedule: Schedule
     /// The view shown in the app window and menu bar. Each widget picks its own.
     public var track: Track
@@ -20,12 +21,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var removedCategories: [String]
     /// Time pre-logged on the days it comes back on, such as meals and coffee.
     public var templates: [Template]
+    /// Moves you to `schedule` a step at a time.
+    public var sleepShift: SleepShift?
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
         customCategories: [BlockCategory] = [], customGroups: [CategoryGroup] = [],
         editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = [],
-        templates: [Template] = []
+        templates: [Template] = [], sleepShift: SleepShift? = nil
     ) {
         self.schedule = schedule
         self.track = track
@@ -36,6 +39,30 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.editedGroups = editedGroups
         self.removedCategories = removedCategories
         self.templates = templates
+        self.sleepShift = sleepShift
+    }
+
+    /// The schedule on `day`: `schedule`, or the step a sleep shift has got to.
+    public func schedule(on day: String, calendar: Calendar = .current) -> Schedule {
+        sleepShift?.schedule(on: day, target: schedule, calendar: calendar) ?? schedule
+    }
+
+    /// The day a moment belongs to (see `Schedule.dayID`), going by the rollover of the date it falls on.
+    public func dayID(for date: Date, calendar: Calendar = .current) -> String {
+        schedule(on: DayID.string(from: date, calendar: calendar), calendar: calendar).dayID(for: date, calendar: calendar)
+    }
+
+    /// Ends a sleep shift that has got you to `schedule` by `day`. Returns whether it did.
+    @discardableResult
+    public mutating func endSleepShiftIfDone(on day: String, calendar: Calendar = .current) -> Bool {
+        guard let shift = sleepShift, shift.isDone(on: day, target: schedule, calendar: calendar) else { return false }
+        sleepShift = nil
+        return true
+    }
+
+    /// The schedule of the day `date` belongs to.
+    public func schedule(for date: Date, calendar: Calendar = .current) -> Schedule {
+        schedule(on: dayID(for: date, calendar: calendar), calendar: calendar)
     }
 
     /// Every activity group as it is now, in order: the built-in ones, then your own.
@@ -139,6 +166,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         editedGroups = try container.decodeIfPresent([CategoryGroup].self, forKey: .editedGroups) ?? []
         removedCategories = try container.decodeIfPresent([String].self, forKey: .removedCategories) ?? []
         templates = try container.decodeIfPresent([Template].self, forKey: .templates) ?? []
+        sleepShift = try container.decodeIfPresent(SleepShift.self, forKey: .sleepShift)
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -154,7 +182,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
-             removedCategories, templates
+             removedCategories, templates, sleepShift
         case legacyCategories = "categories"
     }
 
@@ -169,11 +197,13 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(editedGroups, forKey: .editedGroups)
         try container.encode(removedCategories, forKey: .removedCategories)
         try container.encode(templates, forKey: .templates)
+        try container.encodeIfPresent(sleepShift, forKey: .sleepShift)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).
     public func snapshot(at date: Date, log: DayLog, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
-        DaySnapshot(
+        let schedule = schedule(for: date, calendar: calendar)
+        return DaySnapshot(
             status: DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar)),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
             track: track ?? self.track)

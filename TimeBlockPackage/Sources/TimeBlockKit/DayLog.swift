@@ -30,11 +30,7 @@ public struct DayLog: Codable, Hashable, Sendable {
 
     /// The day of the week, as a `Calendar` weekday (1 is Sunday).
     public func weekday(calendar: Calendar = .current) -> Int? {
-        let parts = day.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3,
-              let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
-        else { return nil }
-        return calendar.component(.weekday, from: date)
+        DayID.date(day, calendar: calendar).map { calendar.component(.weekday, from: $0) }
     }
 
     /// The logs with block indexes counted from `schedule`'s wake time.
