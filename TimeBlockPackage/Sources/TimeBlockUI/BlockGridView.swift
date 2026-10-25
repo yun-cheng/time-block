@@ -581,7 +581,8 @@ private struct BlockInfo: View {
         } else if cell.isOvertime {
             Text("Past bedtime").foregroundStyle(theme.accent)
         } else {
-            Text(cell.phase == .future ? "Nothing planned" : "Unlogged").foregroundStyle(theme.secondaryText)
+            Text(cell.phase == .future ? cell.isWindDown ? "Wind down" : "Nothing planned" : "Unlogged")
+                .foregroundStyle(theme.secondaryText)
         }
     }
 

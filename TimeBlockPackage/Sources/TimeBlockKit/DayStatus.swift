@@ -93,6 +93,11 @@ public struct DayStatus: Hashable, Sendable {
         isOver || isAhead ? .calm : Mood(blocksLeft: blocksLeft, windDownBlocks: windDownBlocks)
     }
 
+    /// The blocks set aside to wind down, ending at bedtime. A day shorter than that winds down all day.
+    public var windDownRange: Range<Int> {
+        max(0, schedule.awakeBlocks - windDownBlocks)..<schedule.awakeBlocks
+    }
+
     /// Blocks the grid shows: the waking day plus any overtime already started.
     public var visibleBlocks: Int { schedule.awakeBlocks + overtimeBlocks }
 }

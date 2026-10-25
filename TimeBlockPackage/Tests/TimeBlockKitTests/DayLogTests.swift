@@ -126,9 +126,12 @@ struct DayLogTests {
             categories: BlockCategory.defaults)
         #expect(snapshot.run(around: 2) == 0..<4)
         #expect(snapshot.run(around: 5) == 4..<6)
-        // 09:00 is block 24: the gap so far (with the block in progress) and the empty rest of the day are apart.
+        // 09:00 is block 24: the gap so far (with the block in progress), the empty rest of the day and the time to wind
+        // down before bed are apart.
+        let windDown = snapshot.status.windDownRange
         #expect(snapshot.run(around: 20) == 9..<25)
-        #expect(snapshot.run(around: 30) == 25..<schedule.awakeBlocks)
+        #expect(snapshot.run(around: 30) == 25..<windDown.lowerBound)
+        #expect(snapshot.run(around: windDown.lowerBound) == windDown)
     }
 
     @Test func resizingARunTakesInOrLetsGoOfBlocks() {

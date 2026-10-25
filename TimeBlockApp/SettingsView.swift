@@ -22,7 +22,7 @@ struct SettingsView: View {
                     }
                     Text("None").tag(0)
                 }
-                .help("Time before bedtime to get ready for sleep. The day turns warm when it starts.")
+                .help("Time before bedtime to get ready for sleep. The grid tints it, and the day turns warm when it starts.")
                 LabeledContent("Usable blocks") {
                     Text("\(schedule.awakeBlocks) · \(durationText(blocks: schedule.awakeBlocks))")
                         .monospacedDigit()

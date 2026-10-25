@@ -189,6 +189,8 @@ public struct BlockCell: Hashable, Sendable {
     public let index: Int
     public let phase: Phase
     public let isOvertime: Bool
+    /// Whether it's one of the blocks before bedtime set aside to wind down.
+    public let isWindDown: Bool
     public let categoryID: String?
     public let source: BlockLog.Source?
     public let note: String?
@@ -196,7 +198,7 @@ public struct BlockCell: Hashable, Sendable {
     /// The same block logged by hand as `categoryID`, or emptied with nil: what an edit would make it.
     public func logged(as categoryID: String?) -> BlockCell {
         BlockCell(
-            index: index, phase: phase, isOvertime: isOvertime, categoryID: categoryID,
+            index: index, phase: phase, isOvertime: isOvertime, isWindDown: isWindDown, categoryID: categoryID,
             source: categoryID == nil ? nil : .manual, note: nil)
     }
 }
@@ -209,12 +211,13 @@ public enum DayGrid {
             for index in log.range { logAt[index] = log }
         }
         let current = status.currentIndex ?? (status.isOver ? status.visibleBlocks : -1)
+        let windDown = status.windDownRange
         return (0..<status.visibleBlocks).map { index in
             let phase: BlockCell.Phase = index < current ? .past : index == current ? .current : .future
             let log = logAt[index]
             return BlockCell(
                 index: index, phase: phase, isOvertime: index >= status.schedule.awakeBlocks,
-                categoryID: log?.categoryID, source: log?.source, note: log?.note)
+                isWindDown: windDown.contains(index), categoryID: log?.categoryID, source: log?.source, note: log?.note)
         }
     }
 }

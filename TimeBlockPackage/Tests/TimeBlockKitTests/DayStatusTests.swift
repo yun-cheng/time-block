@@ -72,6 +72,14 @@ struct DayStatusTests {
         #expect(Mood(blocksLeft: 0, windDownBlocks: 0) == .uneasy)
         let hour = DayStatus(schedule: schedule, nowMinute: 22 * 60, windDownBlocks: 12)
         #expect(hour.mood == .windDown)
+        #expect(hour.windDownRange == 180..<192)
+    }
+
+    @Test func windDownBlocksAreMarkedBeforeBedtime() {
+        let status = DayStatus(schedule: schedule, nowMinute: 23 * 60 + 10, windDownBlocks: 3)
+        let cells = DayGrid.cells(status: status, logs: [])
+        #expect(cells.filter(\.isWindDown).map(\.index) == [189, 190, 191])
+        #expect(DayStatus(schedule: schedule, nowMinute: 12 * 60, windDownBlocks: 0).windDownRange.isEmpty)
     }
 
     @Test func windDownIsKeptInSettings() throws {

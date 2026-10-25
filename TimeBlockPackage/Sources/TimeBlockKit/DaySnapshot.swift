@@ -69,14 +69,16 @@ public struct DaySnapshot: Sendable {
     }
 
     /// The unbroken run of blocks around `index` holding the same category and note. Unlogged blocks run together
-    /// too, but a gap that has already happened stays apart from empty time still to come and from overtime.
+    /// too, but a gap that has already happened stays apart from empty time still to come, from winding down and from
+    /// overtime.
     public func run(around index: Int) -> Range<Int> {
         guard cells.indices.contains(index) else { return index..<(index + 1) }
         let cell = cells[index]
         func sameKind(_ other: BlockCell) -> Bool {
             guard other.categoryID == cell.categoryID, other.note == cell.note else { return false }
             return cell.categoryID != nil
-                || ((other.phase == .future) == (cell.phase == .future) && other.isOvertime == cell.isOvertime)
+                || ((other.phase == .future) == (cell.phase == .future) && other.isOvertime == cell.isOvertime
+                    && other.isWindDown == cell.isWindDown)
         }
         var start = index
         var end = index + 1

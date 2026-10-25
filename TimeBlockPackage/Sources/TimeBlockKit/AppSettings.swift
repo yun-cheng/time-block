@@ -25,8 +25,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var sleepShift: SleepShift?
     /// How the grid marks the time.
     public var grid: GridMarks
-    /// Minutes before bedtime set aside to get ready for sleep, in steps of 5, or 0 for none. The day turns warm as
-    /// they start.
+    /// Minutes before bedtime set aside to get ready for sleep, in steps of 5, or 0 for none. The grid tints them,
+    /// and the day turns warm as they start.
     public var windDownMinutes: Int
 
     public init(

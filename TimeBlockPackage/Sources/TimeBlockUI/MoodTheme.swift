@@ -31,6 +31,12 @@ public struct MoodTheme: Sendable {
     public let emptyBlock: Color
     public let unloggedBlock: Color
     public let overtimeBlock: Color
+    /// A block set aside to wind down with nothing planned, and one that went unlogged.
+    public let windDownEmptyBlock: Color
+    public let windDownUnloggedBlock: Color
+
+    /// The hue of winding down: the warm light before bed.
+    static let windDownHue = Color(hex: 0xF59E0B)
 
     public init(mood: Mood, colorScheme: ColorScheme) {
         self.mood = mood
@@ -52,8 +58,10 @@ public struct MoodTheme: Sendable {
                 emptyBlock = .black.opacity(0.07)
                 unloggedBlock = .black.opacity(0.2)
             }
-            accent = warm ? Color(hex: 0xF59E0B) : text
+            accent = warm ? Self.windDownHue : text
             overtimeBlock = Color(hex: 0xC0182A)
+            windDownEmptyBlock = Self.windDownHue.opacity(colorScheme == .dark ? 0.2 : 0.22)
+            windDownUnloggedBlock = Self.windDownHue.opacity(0.5)
         case .uneasy:
             backgroundTop = Color(hex: 0x241518)
             backgroundBottom = Color(hex: 0x0F0A0B)
@@ -63,6 +71,9 @@ public struct MoodTheme: Sendable {
             emptyBlock = .white.opacity(0.07)
             unloggedBlock = Color(hex: 0x5A3A3D)
             overtimeBlock = Color(hex: 0xB0303C)
+            // Past bedtime, the time to wind down has gone by like the rest.
+            windDownEmptyBlock = emptyBlock
+            windDownUnloggedBlock = unloggedBlock
         case .dread:
             backgroundTop = Color(hex: 0x2E0609)
             backgroundBottom = Color(hex: 0x0B0203)
@@ -72,6 +83,8 @@ public struct MoodTheme: Sendable {
             emptyBlock = Color(hex: 0xFF2E2E, opacity: 0.1)
             unloggedBlock = Color(hex: 0x4A1C1F)
             overtimeBlock = Color(hex: 0xC8142A)
+            windDownEmptyBlock = emptyBlock
+            windDownUnloggedBlock = unloggedBlock
         case .nightmare:
             backgroundTop = Color(hex: 0x170000)
             backgroundBottom = .black
@@ -81,6 +94,8 @@ public struct MoodTheme: Sendable {
             emptyBlock = Color(hex: 0xFF1A1A, opacity: 0.08)
             unloggedBlock = Color(hex: 0x3A0A0D)
             overtimeBlock = Color(hex: 0xE0101E)
+            windDownEmptyBlock = emptyBlock
+            windDownUnloggedBlock = unloggedBlock
         }
     }
 
@@ -104,10 +119,11 @@ public struct MoodTheme: Sendable {
         switch cell.phase {
         case .past, .current:
             if let category { return .solid(color(of: category)) }
-            return .solid(cell.phase == .current ? accent.opacity(0.85) : unloggedBlock)
+            if cell.phase == .current { return .solid(accent.opacity(0.85)) }
+            return .solid(cell.isWindDown ? windDownUnloggedBlock : unloggedBlock)
         case .future:
             if let category { return .planned(color(of: category), dashed: cell.source == .calendar) }
-            return .empty(emptyBlock)
+            return .empty(cell.isWindDown ? windDownEmptyBlock : emptyBlock)
         }
     }
 }
