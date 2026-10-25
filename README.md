@@ -49,8 +49,9 @@ PLAN.md.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
   drag, so a stray click never logs anything.
 - **Find any activity:** the chips are your starred activities, by group. Type in the search field above them to
-  find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Right‑click a
-  chip to star or unstar it.
+  find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Click a group
+  tab under it to see all of that group's activities; Starred (or the group again) goes back. Right‑click a chip to
+  star or unstar it.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.

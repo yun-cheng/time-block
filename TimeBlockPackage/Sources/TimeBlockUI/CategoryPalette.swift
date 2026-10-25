@@ -71,6 +71,8 @@ public struct CategoryChip: View {
 
 /// Picks what to log: a search field over every category in the track, the starred ones (then Clear) while it
 /// is empty, and the matches while typing. Return takes the best match. Right-clicking a chip stars or unstars it.
+/// Clicking a group shows every category in it, starred or not, and narrows search to it; clicking it again goes
+/// back.
 public struct CategoryPalette: View {
     let categories: [BlockCategory]
     let favorites: [BlockCategory]
@@ -80,6 +82,7 @@ public struct CategoryPalette: View {
     let choose: (Brush) -> Void
     let toggleFavorite: ((String) -> Void)?
     @State private var query = ""
+    @State private var groupID: String?
 
     /// `categories` are what search looks through; `favorites` are shown until something is typed.
     public init(
@@ -97,9 +100,24 @@ public struct CategoryPalette: View {
 
     private var isSearching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// Matches while searching; otherwise the favorites, plus the picked category when it isn't one.
+    /// The groups of the track's categories, in their order; none in tracks without groups.
+    private var groups: [CategoryGroup] {
+        var seen = Set<String>()
+        return categories.compactMap(\.group).filter { seen.insert($0.id).inserted }
+    }
+
+    /// The group picked, while it still has categories.
+    private var group: CategoryGroup? {
+        groups.first { $0.id == groupID }
+    }
+
+    /// Matches while searching; otherwise the picked group's categories, or the favorites plus the picked category
+    /// when it isn't one.
     private var shown: [BlockCategory] {
-        if isSearching { return Array(ActivitySearch.results(for: query, in: categories).prefix(30)) }
+        let group = group
+        let pool = group.map { group in categories.filter { $0.group?.id == group.id } } ?? categories
+        if isSearching { return Array(ActivitySearch.results(for: query, in: pool).prefix(30)) }
+        if group != nil { return pool }
         guard let id = selected?.categoryID, !favorites.contains(where: { $0.id == id }),
               let picked = categories.first(where: { $0.id == id })
         else { return favorites }
@@ -110,6 +128,10 @@ public struct CategoryPalette: View {
         let shown = shown
         VStack(alignment: .leading, spacing: 8) {
             searchField(firstMatch: shown.first)
+            let groups = groups
+            if groups.count > 1 {
+                groupFilter(groups)
+            }
             FlowLayout(spacing: 8) {
                 ForEach(shown) { category in
                     CategoryChip(category: category, theme: theme, isSelected: selected == .category(category.id)) {
@@ -133,7 +155,7 @@ public struct CategoryPalette: View {
             // Room for the selected chip's ring.
             .padding(3)
             if isSearching, shown.isEmpty {
-                Text("Nothing matches \u{201C}\(query)\u{201D}.")
+                Text("Nothing\(group.map { " in \($0.name)" } ?? "") matches \u{201C}\(query)\u{201D}.")
                     .font(.system(size: 11))
                     .foregroundStyle(theme.secondaryText)
             }
@@ -151,8 +173,13 @@ public struct CategoryPalette: View {
                     if isSearching, let firstMatch { pick(.category(firstMatch.id)) }
                 }
                 .onKeyPress(.escape) {
-                    guard isSearching else { return .ignored }
-                    query = ""
+                    if isSearching {
+                        query = ""
+                    } else if groupID != nil {
+                        groupID = nil
+                    } else {
+                        return .ignored
+                    }
                     return .handled
                 }
             if isSearching {
@@ -170,6 +197,48 @@ public struct CategoryPalette: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(RoundedRectangle(cornerRadius: 7).fill(theme.text.opacity(0.07)))
+    }
+
+    /// Tabs over the chips, Starred then a tab per group: plain words, underlined when picked, so they read as
+    /// views of the list rather than more chips to log with.
+    private func groupFilter(_ groups: [CategoryGroup]) -> some View {
+        FlowLayout(spacing: 12) {
+            groupTab("Starred", color: theme.text, isPicked: groupID == nil, help: "Show starred activities") {
+                groupID = nil
+            }
+            ForEach(groups) { group in
+                let isPicked = group.id == groupID
+                groupTab(
+                    group.name, color: Color(rgb: theme.grade(group.color)), isPicked: isPicked,
+                    help: isPicked ? "Show starred activities" : "Show all of \(group.name)"
+                ) {
+                    groupID = isPicked ? nil : group.id
+                }
+            }
+        }
+    }
+
+    private func groupTab(
+        _ name: String, color: Color, isPicked: Bool, help: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(name.uppercased())
+                .font(.system(size: 9.5, weight: isPicked ? .bold : .semibold))
+                .tracking(0.6)
+                .foregroundStyle(isPicked ? theme.text : theme.secondaryText.opacity(0.8))
+                .lineLimit(1)
+                .padding(.bottom, 4)
+                .overlay(alignment: .bottom) {
+                    Capsule()
+                        .fill(color)
+                        .frame(height: 2)
+                        .opacity(isPicked ? 1 : 0)
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityAddTraits(isPicked ? .isSelected : [])
     }
 
     private func pick(_ choice: Brush) {
