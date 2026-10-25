@@ -162,6 +162,11 @@ Gradually move your schedule earlier (or later) instead of all at once (Settings
 - Starting a shift makes the target the schedule in Settings and keeps where you started; each day's schedule is
   that many steps along. Wake time and bedtime each stop at their target, and the shift ends by itself once it's
   done. Stop keeps today's times as the schedule.
+- Life gets in the way, so a running shift can change from tonight on: **Hold Tonight** (slept in, or not ready)
+  keeps last night's bedtime and puts each step a night later; **Step Tonight** takes the next step tonight instead;
+  **Edit** opens the same inputs as you set them (bedtime or wake time, start or finish day), from where the shift
+  has got to. Each restarts the shift from this morning's times, so today's morning and the days before stay as
+  they were.
 - The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan. Routine templates keep
   their clock times as the day moves.
 - A day's rollover comes from the schedule of the date a moment falls on, so 05:30 is still "tonight" while that
@@ -203,8 +208,8 @@ BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template
               at most one log per block per track; painting joins runs and splits the ones it covers)
 Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
-SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays (the target is
-              AppSettings.schedule)
+SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays, leads (bed | wake),
+              isByFinishDay (the target is AppSettings.schedule)
 CalendarLink  calendarIdentifier, categoryID, isEnabled
 ```
 Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awakeBlocks(on:)`, `remaining(at:)` (can be negative), `AppSettings.schedule(on:)` (applies SleepShift), DST‑safe.

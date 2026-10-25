@@ -9,18 +9,18 @@ struct SleepShiftSettings: View {
 
     var body: some View {
         Section {
-            if let shift = model.settings.sleepShift {
-                running(shift)
-            } else if isEditing {
+            if isEditing {
                 SleepShiftEditor(model: model, done: { isEditing = false })
                     .background { ScrollIntoView() }
+            } else if let shift = model.settings.sleepShift {
+                running(shift)
             } else {
                 Button("Shift Gradually…", systemImage: "moon.zzz") { isEditing = true }
             }
         } header: {
             Text("Sleep Shift")
         } footer: {
-            Text("Moves your bedtime or wake time a step a night: bedtime first, then the next morning's wake time, so you sleep as long. The grid and counter follow each day's step.")
+            Text("Moves your bedtime or wake time a step a night: bedtime first, then the next morning's wake time, so you sleep as long. The grid and counter follow each day's step. Slept in? Hold Tonight puts each step a night later.")
                 .foregroundStyle(.secondary)
         }
     }
@@ -35,7 +35,7 @@ struct SleepShiftSettings: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 20)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("\(times(shift.from)) → \(times(target))")
+                    Text("Heading to \(times(target))")
                         .monospacedDigit()
                     Text(Self.summary(of: shift, target: target, today: model.schedule))
                         .font(.caption)
@@ -53,7 +53,17 @@ struct SleepShiftSettings: View {
                     .padding(.leading, 28)
             }
             HStack {
+                if shift.movesOnNight(of: today, target: target) {
+                    Button("Hold Tonight") {
+                        model.resumeSleepShift(nextStepOn: DayID.adding(1, to: today) ?? today)
+                    }
+                    .help("Keep last night's bedtime tonight and tomorrow's wake time, and take each step a night later")
+                } else {
+                    Button("Step Tonight") { model.resumeSleepShift(nextStepOn: today) }
+                        .help("Take the next step tonight instead of \(Self.dayName(shift.nextStepDay(from: today), today: today, on: true))")
+                }
                 Spacer()
+                Button("Edit…") { isEditing = true }
                 Button("Stop Shift") { model.stopSleepShift() }
                     .help("Keep today's times as your schedule")
             }
@@ -104,8 +114,8 @@ private func times(_ schedule: Schedule) -> String {
     "\(clock(schedule.wakeMinute))–\(clock(schedule.bedMinute))"
 }
 
-/// Sets up a shift: the bedtime or wake time to get to, how big and how often the steps are, and the day they
-/// start or the day to be there by.
+/// Sets up a shift, or changes the one under way from tonight on: the bedtime or wake time to get to, how big and
+/// how often the steps are, and the night they start or the day to be there by.
 private struct SleepShiftEditor: View {
     @Bindable var model: AppModel
     let done: () -> Void
@@ -125,13 +135,34 @@ private struct SleepShiftEditor: View {
     init(model: AppModel, done: @escaping () -> Void) {
         self.model = model
         self.done = done
-        // An hour earlier, from tonight.
-        _minute = State(initialValue: (model.schedule.bedMinute + 23 * 60) % (24 * 60))
-        _date = State(initialValue: DayID.date(model.dayLog.day) ?? .now)
+        let today = model.dayLog.day
+        guard let shift = model.settings.sleepShift else {
+            // An hour earlier, from tonight.
+            _minute = State(initialValue: (model.schedule.bedMinute + 23 * 60) % (24 * 60))
+            _date = State(initialValue: DayID.date(today) ?? .now)
+            return
+        }
+        // The shift as you set it, from where it's got to.
+        let from = model.shiftPosition
+        let target = model.settings.schedule
+        let bed = SleepShift.distance(from: from.bedMinute, to: target.bedMinute)
+        let wake = SleepShift.distance(from: from.wakeMinute, to: target.wakeMinute)
+        _end = State(initialValue: shift.leads)
+        _minute = State(initialValue: shift.leads == .bed ? target.bedMinute : target.wakeMinute)
+        _keepsSleep = State(initialValue: bed == wake)
+        _stepMinutes = State(initialValue: shift.stepMinutes)
+        _everyDays = State(initialValue: shift.everyDays)
+        _timing = State(initialValue: shift.isByFinishDay ? .finish : .start)
+        let day = shift.isByFinishDay ? shift.finishDay(target: target) : shift.nextStepDay(from: today)
+        _date = State(initialValue: DayID.date(day) ?? .now)
+        isChanging = true
     }
 
+    /// Whether this changes the shift under way rather than starting one.
+    private var isChanging = false
+
     var body: some View {
-        let from = model.schedule
+        let from = model.shiftPosition
         let target = from.moving(end, to: minute, keepsSleep: keepsSleep)
         let shift = shift(from: from, target: target, timing: timing)
         let today = model.dayLog.day
@@ -183,7 +214,7 @@ private struct SleepShiftEditor: View {
             HStack {
                 Button("Cancel", action: done)
                 Spacer()
-                Button("Start Shift") {
+                Button(isChanging ? "Save" : "Start Shift") {
                     model.startSleepShift(shift, to: target)
                     done()
                 }
@@ -197,9 +228,12 @@ private struct SleepShiftEditor: View {
     private func shift(from: Schedule, target: Schedule, timing: Timing) -> SleepShift {
         let day = DayID.string(from: date)
         return switch timing {
-        case .start: SleepShift(from: from, startDay: day, stepMinutes: stepMinutes, everyDays: everyDays)
+        case .start:
+            SleepShift(from: from, startDay: day, stepMinutes: stepMinutes, everyDays: everyDays, leads: end)
         case .finish:
-            SleepShift(from: from, finishingOn: day, target: target, stepMinutes: stepMinutes, everyDays: everyDays)
+            SleepShift(
+                from: from, finishingOn: day, target: target, stepMinutes: stepMinutes, everyDays: everyDays,
+                leads: end)
         }
     }
 

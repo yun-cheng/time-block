@@ -158,12 +158,25 @@ final class AppModel {
         return template.id
     }
 
-    /// Starts moving today's schedule to `target` a step at a time.
+    /// Starts moving today's schedule to `target` a step at a time, or changes the shift under way.
     func startSleepShift(_ shift: SleepShift, to target: Schedule) {
         var settings = settings
         settings.schedule = target
         settings.sleepShift = shift
         self.settings = settings
+    }
+
+    /// Where a sleep shift has got to by this morning, or your schedule without one: what a new or edited shift
+    /// moves on from, tonight's bedtime first.
+    var shiftPosition: Schedule {
+        settings.sleepShift?.position(on: dayLog.day, target: settings.schedule) ?? settings.schedule
+    }
+
+    /// Carries a sleep shift on from this morning with its next step on the night of `day`: tonight takes it, or a
+    /// later night holds the steps back.
+    func resumeSleepShift(nextStepOn day: String) {
+        guard let shift = settings.sleepShift else { return }
+        settings.sleepShift = shift.resumed(today: dayLog.day, nextStepOn: day, target: settings.schedule)
     }
 
     /// Stops a sleep shift where it's got to: today's schedule becomes the one you keep.
