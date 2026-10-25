@@ -194,6 +194,8 @@ public struct CategoryPalette: View {
             }
         }
         .font(.system(size: 12))
+        // Room for a long name, not the whole width.
+        .frame(maxWidth: 200)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(RoundedRectangle(cornerRadius: 7).fill(theme.text.opacity(0.07)))
