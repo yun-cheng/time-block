@@ -44,6 +44,7 @@ PLAN.md.
   they'll end up as until you let go.
 - **Right-click to clear:** right-click a logged block and pick Clear Blocks to empty its whole stretch, or the
   selection when the block is in it. Delete empties a selection too.
+- **Undo and redo:** ⌘Z takes back the last change to your blocks, whatever made it, and ⇧⌘Z puts it back.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
   drag, so a stray click never logs anything.
 - **Find any activity:** the chips are your starred activities, by group. Type in the search field above them to

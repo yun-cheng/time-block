@@ -4,6 +4,7 @@ import TimeBlockUI
 
 struct MainWindow: View {
     @Bindable var model: AppModel
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         GeometryReader { window in
@@ -26,6 +27,8 @@ struct MainWindow: View {
             }
         }
         .frame(minWidth: 400, minHeight: 600)
+        .onAppear { model.undoManager = undoManager }
+        .onChange(of: undoManager) { model.undoManager = undoManager }
         .inspector(isPresented: $model.showsSettings) {
             SettingsView(model: model)
                 .inspectorColumnWidth(min: 260, ideal: 300, max: 400)

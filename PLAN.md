@@ -90,6 +90,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Right-click to clear:** a logged block's menu has Clear Blocks, emptying its run, or the selection
   when the block is in it. Unlogged blocks have no menu. Delete (or Edit ▸ Delete) empties the selection and
   keeps it selected: selecting blocks gives the grid the keyboard.
+- **Undo and redo:** every change to the blocks (logging, clearing, moving, resizing, notes, logging from the menu
+  bar) goes on the window's undo stack, named in Edit (Undo Move Blocks …). Undo puts the day back as it was, in
+  the view it changed in and with the selection it had. The stack is cleared when the day rolls over, and when
+  templates or the schedule change (putting old logs back would undo the new plan too).
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
