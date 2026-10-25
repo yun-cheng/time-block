@@ -130,7 +130,7 @@ private struct TemplateEditor: View {
             LabeledContent("Activity") {
                 activityMenu
             }
-            DatePicker("Starts", selection: start, displayedComponents: .hourAndMinute)
+            TimeField("Starts", minute: $template.startMinute)
             LabeledContent("Length") {
                 HStack(spacing: 6) {
                     Text(Self.duration(template.length)).monospacedDigit()
@@ -201,19 +201,6 @@ private struct TemplateEditor: View {
         }
         .buttonStyle(.plain)
         .help(calendar.weekdaySymbols[weekday - 1])
-    }
-
-    /// The start as a time of day, snapped to 5-minute blocks like the schedule.
-    private var start: Binding<Date> {
-        let calendar = Calendar.current
-        let midnight = calendar.startOfDay(for: .now)
-        return Binding {
-            midnight.addingTimeInterval(Double(template.startMinute * 60))
-        } set: { date in
-            let parts = calendar.dateComponents([.hour, .minute], from: date)
-            let minute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
-            template.startMinute = Schedule.snappedMinute(editing: template.startMinute, to: minute)
-        }
     }
 
     /// "45m", "1h", "1h 30m".

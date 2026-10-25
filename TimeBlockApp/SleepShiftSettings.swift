@@ -177,7 +177,7 @@ private struct SleepShiftEditor: View {
                 // An hour earlier than now.
                 minute = ((end == .bed ? from.bedMinute : from.wakeMinute) + 23 * 60) % (24 * 60)
             }
-            DatePicker("To", selection: time, displayedComponents: .hourAndMinute)
+            TimeField("To", minute: $minute)
             Toggle(isOn: $keepsSleep) {
                 Text(end == .bed ? "Wake time moves too" : "Bedtime moves too")
                 let other = end == .bed ? (from.wakeMinute, target.wakeMinute) : (from.bedMinute, target.bedMinute)
@@ -265,18 +265,6 @@ private struct SleepShiftEditor: View {
             default: "\(start) night"
             }
             return "\(steps), from \(night)."
-        }
-    }
-
-    /// The time to get to, snapped to 5-minute blocks like the schedule.
-    private var time: Binding<Date> {
-        let calendar = Calendar.current
-        let midnight = calendar.startOfDay(for: .now)
-        return Binding {
-            midnight.addingTimeInterval(Double(minute * 60))
-        } set: { date in
-            let parts = calendar.dateComponents([.hour, .minute], from: date)
-            minute = Schedule.snappedMinute(editing: minute, to: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
         }
     }
 }

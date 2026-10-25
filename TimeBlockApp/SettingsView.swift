@@ -11,10 +11,10 @@ struct SettingsView: View {
         let schedule = model.schedule
         Form {
             Section {
-                DatePicker("Wake up", selection: minuteBinding(\.wakeMinute), displayedComponents: .hourAndMinute)
+                TimeField("Wake up", minute: minuteBinding(\.wakeMinute))
                     // On a row, since the form's scroll view is around its rows rather than the form.
                     .appScrollBar()
-                DatePicker("Bedtime", selection: minuteBinding(\.bedMinute), displayedComponents: .hourAndMinute)
+                TimeField("Bedtime", minute: minuteBinding(\.bedMinute))
                 LabeledContent("Usable blocks") {
                     Text("\(schedule.awakeBlocks)")
                         .monospacedDigit()
@@ -47,17 +47,13 @@ struct SettingsView: View {
         return " A sleep shift heading to \(heading) moves on from these times \(night)."
     }
 
-    /// Edits one of today's minute-of-day fields with a time picker, snapped to 5 minutes.
-    private func minuteBinding(_ field: WritableKeyPath<Schedule, Int>) -> Binding<Date> {
-        let calendar = Calendar.current
-        let midnight = calendar.startOfDay(for: .now)
-        return Binding {
-            midnight.addingTimeInterval(Double(model.schedule[keyPath: field] * 60))
-        } set: { date in
-            let parts = calendar.dateComponents([.hour, .minute], from: date)
-            let minute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+    /// One of today's minute-of-day fields.
+    private func minuteBinding(_ field: WritableKeyPath<Schedule, Int>) -> Binding<Int> {
+        Binding {
+            model.schedule[keyPath: field]
+        } set: { minute in
             var schedule = model.schedule
-            schedule[keyPath: field] = Schedule.snappedMinute(editing: schedule[keyPath: field], to: minute)
+            schedule[keyPath: field] = minute
             // Rebuild so the day's rollover point follows the new wake time.
             model.setSchedule(Schedule(wakeMinute: schedule.wakeMinute, bedMinute: schedule.bedMinute))
         }

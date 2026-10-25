@@ -245,6 +245,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Unlogged blocks | Stay grey, with location/activity‑based suggestions for one‑tap logging (§3.2a) |
 | Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
 | Platforms | Mac first; iPhone and Watch in M8 |
+| Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Ad‑hoc ("Sign to Run Locally") until an Apple Developer team is set up; App Group added then |
