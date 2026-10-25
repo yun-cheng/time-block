@@ -93,6 +93,78 @@ struct SleepShiftTests {
         #expect(oneStep.startDay == "2026-10-30")
     }
 
+    @Test func holdingTonightPutsEachStepANightLater() {
+        let shift = SleepShift(from: late, startDay: "2026-10-26")
+        #expect(shift.position(on: "2026-10-27", target: target, calendar: calendar) == Schedule(wakeMinute: 510, bedMinute: 30))
+        #expect(shift.movesOnNight(of: "2026-10-27", target: target, calendar: calendar))
+        let held = shift.resumed(today: "2026-10-27", nextStepOn: "2026-10-28", target: target, calendar: calendar)
+        // Tuesday keeps its morning, and its night stays at Monday's bedtime.
+        #expect(schedule(held, 1) == Schedule(wakeMinute: 510, bedMinute: 30))
+        #expect(schedule(held, 2) == Schedule(wakeMinute: 510, bedMinute: 0))
+        #expect(!held.movesOnNight(of: "2026-10-27", target: target, calendar: calendar))
+        #expect(held.finishDay(target: target, calendar: calendar) == "2026-10-31")
+        for offset in 1...6 {
+            let night = (schedule(held, offset).wakeMinute - schedule(held, offset - 1).bedMinute + 24 * 60) % (24 * 60)
+            #expect(offset == 1 || night == 8 * 60)
+        }
+    }
+
+    @Test func resumingOnTheNextStepKeepsTheShiftAsItWas() {
+        let shift = SleepShift(from: late, startDay: "2026-10-26", everyDays: 2)
+        #expect(shift.nextStepDay(from: "2026-10-20", calendar: calendar) == "2026-10-26")
+        #expect(shift.nextStepDay(from: "2026-10-27", calendar: calendar) == "2026-10-28")
+        #expect(shift.nextStepDay(from: "2026-10-28", calendar: calendar) == "2026-10-28")
+        let today = "2026-10-27"
+        let resumed = shift.resumed(
+            today: today, nextStepOn: shift.nextStepDay(from: today, calendar: calendar), target: target,
+            calendar: calendar)
+        #expect((1...10).map { schedule(resumed, $0) } == (1...10).map { schedule(shift, $0) })
+        #expect(resumed.finishDay(target: target, calendar: calendar) == shift.finishDay(target: target, calendar: calendar))
+    }
+
+    @Test func aShiftKeepsHowItWasSetThroughAHoldAndSaving() throws {
+        let shift = SleepShift(
+            from: late, finishingOn: "2026-10-31", target: target, everyDays: 2, leads: .wake, calendar: calendar)
+        let held = shift.resumed(today: "2026-10-27", nextStepOn: "2026-10-29", target: target, calendar: calendar)
+        #expect(held.leads == .wake && held.isByFinishDay)
+        #expect(try JSONDecoder().decode(SleepShift.self, from: JSONEncoder().encode(held)) == held)
+        // Shifts saved before these were kept.
+        let old = #"{"from":{"wakeMinute":540,"bedMinute":60,"rolloverMinute":420},"startDay":"2026-10-26","stepMinutes":30,"everyDays":1}"#
+        let decoded = try JSONDecoder().decode(SleepShift.self, from: Data(old.utf8))
+        #expect(decoded.leads == .bed && !decoded.isByFinishDay)
+    }
+
+    @Test func changingTodayBeforeAShiftStartsMovesWhereItStartsFrom() {
+        let shift = SleepShift(from: late, startDay: "2026-11-26")
+        let now = Schedule(wakeMinute: 10 * 60, bedMinute: 2 * 60)
+        let rebased = shift.rebased(onto: now, on: "2026-10-26", target: target, calendar: calendar)
+        #expect(rebased.startDay == "2026-11-26")
+        #expect(schedule(rebased, 0) == now)
+        #expect(rebased.stepCount(to: target) == 6)
+    }
+
+    @Test func changingTodayMidShiftCarriesOnFromTheNewTimesTomorrowNight() {
+        let shift = SleepShift(from: late, startDay: "2026-10-26")
+        // Tuesday was to be 08:30–00:00; you slept in to 09:30 and keep tonight at 00:30.
+        let now = Schedule(wakeMinute: 9 * 60 + 30, bedMinute: 30)
+        let rebased = shift.rebased(onto: now, on: "2026-10-27", target: target, calendar: calendar)
+        #expect(schedule(rebased, 1) == now)
+        #expect(schedule(rebased, 2) == Schedule(wakeMinute: 9 * 60 + 30, bedMinute: 0))
+        #expect(schedule(rebased, 3) == Schedule(wakeMinute: 9 * 60, bedMinute: 23 * 60 + 30))
+    }
+
+    @Test func changingTodayKeepsTheFinishDayYouSet() {
+        let shift = SleepShift(from: late, finishingOn: "2026-11-30", target: target, calendar: calendar)
+        let now = Schedule(wakeMinute: 10 * 60, bedMinute: 2 * 60)
+        let rebased = shift.rebased(onto: now, on: "2026-10-26", target: target, calendar: calendar)
+        #expect(rebased.finishDay(target: target, calendar: calendar) == "2026-11-30")
+        #expect(schedule(rebased, 0) == now)
+        // Too close to make it by then: it starts tomorrow night instead.
+        let soon = SleepShift(from: late, finishingOn: "2026-10-28", target: target, calendar: calendar)
+            .rebased(onto: now, on: "2026-10-26", target: target, calendar: calendar)
+        #expect(soon.startDay == "2026-10-27")
+    }
+
     @Test func eitherEndCanLeadAndTheOtherFollowOrStay() {
         #expect(late.moving(.bed, to: 23 * 60, keepsSleep: true) == target)
         #expect(late.moving(.wake, to: 7 * 60, keepsSleep: true) == target)
