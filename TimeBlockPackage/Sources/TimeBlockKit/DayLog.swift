@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 /// One day's logs in every track, as saved on disk.
 public struct DayLog: Codable, Hashable, Sendable {
@@ -220,33 +219,33 @@ public struct LogStore: Sendable {
     /// app's own Application Support, where only the app sees it.
     public static let shared: LogStore = {
         let fileManager = FileManager.default
+        let own = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            .map { days(in: $0) }
         let candidates = [
-            hasAppGroup
-                ? fileManager.containerURL(forSecurityApplicationGroupIdentifier: SettingsStore.appGroup)?
-                    .appending(path: "Library/Application Support")
-                : nil,
-            fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first,
+            AppGroup.identifier.flatMap { fileManager.containerURL(forSecurityApplicationGroupIdentifier: $0) }
+                .map { days(in: $0.appending(path: "Library/Application Support")) },
+            own,
         ]
-        for base in candidates.compactMap({ $0 }) {
-            let directory = base.appending(path: "TimeBlock/Days", directoryHint: .isDirectory)
+        for directory in candidates.compactMap({ $0 }) {
             if (try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)) != nil {
+                if let own, directory != own { copyMissingDays(from: own, to: directory) }
                 return LogStore(directory: directory)
             }
         }
         return LogStore(directory: fileManager.temporaryDirectory)
     }()
 
-    /// Whether this build is signed with the App Group. Without it, touching the group container makes
-    /// macOS ask the user for access to "other apps' data".
-    private static var hasAppGroup: Bool {
-        #if os(macOS)
-        guard let task = SecTaskCreateFromSelf(nil),
-              let groups = SecTaskCopyValueForEntitlement(task, "com.apple.security.application-groups" as CFString, nil)
-        else { return false }
-        return (groups as? [String])?.contains(SettingsStore.appGroup) ?? false
-        #else
-        return true
-        #endif
+    private static func days(in base: URL) -> URL {
+        base.appending(path: "TimeBlock/Days", directoryHint: .isDirectory)
+    }
+
+    /// Brings over the days an unsigned build saved in the app's own container, leaving those files as they were.
+    private static func copyMissingDays(from source: URL, to directory: URL) {
+        let fileManager = FileManager.default
+        guard let files = try? fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.pathExtension == "json" {
+            try? fileManager.copyItem(at: file, to: directory.appending(path: file.lastPathComponent))
+        }
     }
 
     /// The saved logs for `day`, or an empty day.

@@ -211,18 +211,23 @@ public struct AppSettings: Codable, Hashable, Sendable {
 }
 
 public enum SettingsStore {
-    public static let appGroup = "group.dev.timeblock"
     private static let key = "settings"
 
-    /// Falls back to the process's own defaults when the App Group container isn't available
-    /// (e.g. an unsigned build), so the app still works; the widget then shows the standard schedule.
+    /// In the App Group when the build has one; otherwise in the process's own container, so an unsigned app still
+    /// works and its widget shows the standard schedule.
     private static var defaults: UserDefaults {
-        UserDefaults(suiteName: appGroup) ?? .standard
+        UserDefaults(suiteName: AppGroup.identifier ?? AppGroup.unsignedSuite) ?? .standard
     }
 
     public static func load() -> AppSettings {
-        guard let data = defaults.data(forKey: key),
-              let settings = try? JSONDecoder().decode(AppSettings.self, from: data)
+        var data = defaults.data(forKey: key)
+        // The first signed run takes over what the app saved unsigned.
+        if data == nil, AppGroup.identifier != nil,
+           let unsigned = UserDefaults(suiteName: AppGroup.unsignedSuite)?.data(forKey: key) {
+            defaults.set(unsigned, forKey: key)
+            data = unsigned
+        }
+        guard let data, let settings = try? JSONDecoder().decode(AppSettings.self, from: data)
         else { return .standard }
         return settings
     }
