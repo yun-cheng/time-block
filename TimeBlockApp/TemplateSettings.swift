@@ -20,9 +20,6 @@ struct TemplateSettings: View {
             }
         } header: {
             Text("Routine")
-        } footer: {
-            Text("Pre-logged on the days it comes back on: hollow until the time comes, then logged. Paint over a block to change it. Changes here move only what's still to come.")
-                .foregroundStyle(.secondary)
         }
     }
 

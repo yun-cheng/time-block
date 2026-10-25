@@ -102,6 +102,9 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - Menu bar: shows the counter; click → "Now: [starred activities, search]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
+- **Little text on screen:** the line under the activities names the selected times ("08:00–08:30 selected") or what
+  the brush does ("Drag across blocks to log Lunch"), and nothing otherwise. Settings sections have no explaining
+  footers. How things work is in the README and tooltips.
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
 
 ### 3.2a Smart suggestions for unlogged blocks

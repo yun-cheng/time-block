@@ -19,9 +19,6 @@ struct SleepShiftSettings: View {
             }
         } header: {
             Text("Sleep Shift")
-        } footer: {
-            Text("Moves your bedtime or wake time a step a night: bedtime first, then the next morning's wake time, so you sleep as long. The grid and counter follow each day's step. Slept in? Hold Tonight puts each step a night later.")
-                .foregroundStyle(.secondary)
         }
     }
 

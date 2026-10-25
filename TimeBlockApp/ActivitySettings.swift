@@ -67,9 +67,6 @@ struct ActivitySettings: View {
             }
         } header: {
             Text(track == .activity ? "Activities" : "\(track.name) Activities")
-        } footer: {
-            Text("Starred activities make up the palette, by group; search there finds the rest. Activities in a group share its color, and are summed up together.")
-                .foregroundStyle(.secondary)
         }
         // An activity moved to another group takes its open editor along: show that group (the editor scrolls
         // itself into view there).

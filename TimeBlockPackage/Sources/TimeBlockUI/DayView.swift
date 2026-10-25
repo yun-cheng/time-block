@@ -167,9 +167,11 @@ public struct DayView: View {
                 if let range = editor.selection.wrappedValue, let annotate = editor.annotate {
                     noteField(for: range, annotate: annotate, theme: theme)
                 }
-                Text(hint(for: editor))
-                    .font(.system(size: 11))
-                    .foregroundStyle(theme.secondaryText)
+                if let hint = hint(for: editor) {
+                    Text(hint)
+                        .font(.system(size: 11))
+                        .foregroundStyle(theme.secondaryText)
+                }
             }
         }
         .padding(22)
@@ -205,24 +207,18 @@ public struct DayView: View {
         }
     }
 
-    private func hint(for editor: DayEditor) -> String {
+    /// What's selected, or what dragging will do with a brush picked up; nil when neither.
+    private func hint(for editor: DayEditor) -> String? {
         if let range = editor.selection.wrappedValue {
             let schedule = snapshot.status.schedule
             let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
-            return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected. "
-                + "Pick an activity to log it, Clear or Delete to empty it, "
-                + (editor.move != nil && snapshot.isLogged(anyOf: range) ? "drag it to move it, " : "")
-                + (paletteChoice(editor) != nil ? "drag a handle at either end to make it longer or shorter, " : "")
-                + "or click off the blocks to deselect."
+            return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected"
         }
-        guard let brush = editor.brush.wrappedValue else {
-            return "Select blocks, then pick an activity, or pick one first and drag across blocks. "
-                + "Right-click logged blocks to clear them, or an activity to star or unstar it."
-        }
+        guard let brush = editor.brush.wrappedValue else { return nil }
         guard let name = brush.categoryID.flatMap({ snapshot.categories[$0] })?.name else {
-            return "Drag across blocks to clear them."
+            return "Drag across blocks to clear them"
         }
-        return "Drag across blocks to log them as \(name). Click \(name) again to stop."
+        return "Drag across blocks to log \(name)"
     }
 
     private func stat(_ value: String, _ label: String, _ theme: MoodTheme, color: Color? = nil) -> some View {

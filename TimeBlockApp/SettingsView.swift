@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import TimeBlockKit
+import TimeBlockUI
 
 /// Settings live in the main window's inspector, not a separate window.
 struct SettingsView: View {
@@ -16,14 +17,16 @@ struct SettingsView: View {
                     .appScrollBar()
                 TimeField("Bedtime", minute: minuteBinding(\.bedMinute))
                 LabeledContent("Usable blocks") {
-                    Text("\(schedule.awakeBlocks)")
+                    Text("\(schedule.awakeBlocks) · \(durationText(blocks: schedule.awakeBlocks))")
                         .monospacedDigit()
                 }
             } header: {
                 Text("Schedule")
             } footer: {
-                Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.\(shiftNote)")
-                    .foregroundStyle(.secondary)
+                if isShifting {
+                    Text("Today's times, on a sleep shift.")
+                        .foregroundStyle(.secondary)
+                }
             }
             SleepShiftSettings(model: model)
             TemplateSettings(model: model)
@@ -32,19 +35,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
-    /// With a sleep shift, these are today's times and it carries on from them.
-    private var shiftNote: String {
-        guard let shift = model.settings.sleepShift else { return "" }
-        let target = model.settings.schedule
-        let heading = String(format: "%02d:%02d–%02d:%02d", target.wakeMinute / 60, target.wakeMinute % 60,
-                             target.bedMinute / 60, target.bedMinute % 60)
-        let today = model.dayLog.day
-        guard (DayID.days(from: today, to: shift.startDay) ?? 0) > 0 else {
-            return " These are today's times on a sleep shift heading to \(heading). Change them, say after sleeping in, and it carries on from them tomorrow night."
-        }
-        let start = SleepShiftSettings.dayName(shift.startDay, today: today)
-        let night = start == "Tomorrow" ? "tomorrow night" : "the night of \(start)"
-        return " A sleep shift heading to \(heading) moves on from these times \(night)."
+    /// Whether a sleep shift has started moving today's times, which it carries on from.
+    private var isShifting: Bool {
+        guard let shift = model.settings.sleepShift else { return false }
+        return (DayID.days(from: model.dayLog.day, to: shift.startDay) ?? 0) <= 0
     }
 
     /// One of today's minute-of-day fields.
