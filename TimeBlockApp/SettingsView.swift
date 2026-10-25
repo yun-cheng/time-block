@@ -28,6 +28,14 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Section("Grid") {
+                Picker("Minute gaps", selection: $model.settings.grid.gapMinutes) {
+                    ForEach([10, 15, 20, 30], id: \.self) { minutes in
+                        Text("Every \(minutes) minutes").tag(minutes)
+                    }
+                    Text("None").tag(0)
+                }
+            }
             SleepShiftSettings(model: model)
             TemplateSettings(model: model)
             ActivitySettings(model: model)

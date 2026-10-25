@@ -4,7 +4,7 @@ import AppKit
 import SwiftUI
 import TimeBlockKit
 
-/// The day as rows of clock hours, 12 five-minute blocks per row.
+/// The day as rows of clock hours, 12 five-minute blocks per row, split as `DaySnapshot.grid` says.
 /// A wake time of 08:30 starts halfway along the "08" row.
 public struct BlockGridView: View {
     let snapshot: DaySnapshot
@@ -92,7 +92,10 @@ public struct BlockGridView: View {
     public var body: some View {
         Canvas { context, size in draw(in: &context, size: size) }
             .frame(
-                width: blockSize.map { GridLayout.width(side: $0, labelWidth: labelWidth) + 2 * margin },
+                width: blockSize.map {
+                    GridLayout.width(side: $0, labelWidth: labelWidth, blocksPerGroup: snapshot.grid.blocksPerGroup)
+                        + 2 * margin
+                },
                 height: blockSize.map { GridLayout.height(side: $0, rows: resolvedRows.count) + 2 * margin })
             .overlay {
                 if onDrag != nil {
@@ -255,7 +258,7 @@ public struct BlockGridView: View {
     private func layout(size: CGSize) -> GridLayout {
         GridLayout(
             size: size, rows: resolvedRows, offset: snapshot.status.schedule.gridOffset, labelWidth: labelWidth,
-            margin: margin)
+            blocksPerGroup: snapshot.grid.blocksPerGroup, margin: margin)
     }
 
     private func paintGesture(size: CGSize) -> some Gesture {
@@ -464,7 +467,7 @@ public struct BlockGridView: View {
             let column = boundary % perRow
             let top = originY + CGFloat(boundaryRow - rows.lowerBound) * (side + gap) - gap / 2
             let bottom = top + side + gap
-            let x = originX + CGFloat(column) * (side + gap) - gap / 2
+            let x = grid.x(ofColumn: column) - grid.gap(beforeColumn: column) / 2
             let left = originX - 2
             let right = originX + gridWidth + 2
             let spillsToNextRow = boundary + snapshot.status.overtimeBlocks > (boundaryRow + 1) * perRow
@@ -580,31 +583,44 @@ struct GridLayout {
     let originX: CGFloat
     let originY: CGFloat
 
+    /// Blocks between the wider gaps, or nil for none.
+    let blocksPerGroup: Int?
+
     static let gapRatio: CGFloat = 0.24
+    /// How much wider the gaps between groups of blocks are.
+    static let groupGapRatio: CGFloat = 0.3
 
     /// Grid width for blocks of `side` points.
-    static func width(side: CGFloat, labelWidth: CGFloat) -> CGFloat {
+    static func width(side: CGFloat, labelWidth: CGFloat, blocksPerGroup: Int?) -> CGFloat {
+        labelWidth + side * blocksWide(blocksPerGroup)
+    }
+
+    /// How many blocks wide a row is, its gaps included.
+    private static func blocksWide(_ blocksPerGroup: Int?) -> CGFloat {
         let columns = CGFloat(Schedule.blocksPerHour)
-        return labelWidth + columns * side + (columns - 1) * side * gapRatio
+        let groupGaps = blocksPerGroup.map { CGFloat((Schedule.blocksPerHour - 1) / $0) } ?? 0
+        return columns + (columns - 1) * gapRatio + groupGaps * groupGapRatio
     }
 
     static func height(side: CGFloat, rows: Int) -> CGFloat {
         CGFloat(rows) * side + CGFloat(max(0, rows - 1)) * side * gapRatio
     }
 
-    init(size: CGSize, rows: Range<Int>, offset: Int, labelWidth: CGFloat, margin: CGFloat = 0) {
+    init(
+        size: CGSize, rows: Range<Int>, offset: Int, labelWidth: CGFloat, blocksPerGroup: Int?, margin: CGFloat = 0
+    ) {
         let gapRatio = Self.gapRatio
-        let columns = CGFloat(Schedule.blocksPerHour)
         let rowCount = CGFloat(max(1, rows.count))
+        let blocksWide = Self.blocksWide(blocksPerGroup)
         self.rows = rows
         self.offset = offset
+        self.blocksPerGroup = blocksPerGroup
         let available = CGSize(width: size.width - 2 * margin, height: size.height - 2 * margin)
         side = min(
-            (available.width - labelWidth) / (columns + (columns - 1) * gapRatio),
-            available.height / (rowCount + (rowCount - 1) * gapRatio))
+            (available.width - labelWidth) / blocksWide, available.height / (rowCount + (rowCount - 1) * gapRatio))
         gap = side * gapRatio
         radius = side * 0.28
-        gridWidth = columns * side + (columns - 1) * gap
+        gridWidth = side * blocksWide
         originX = margin + labelWidth + (available.width - labelWidth - gridWidth) / 2
         originY = margin
     }
@@ -612,19 +628,31 @@ struct GridLayout {
     func frame(_ index: Int) -> CGRect {
         let slot = index + offset
         let row = slot / Schedule.blocksPerHour - rows.lowerBound
-        let column = slot % Schedule.blocksPerHour
         return CGRect(
-            x: originX + CGFloat(column) * (side + gap), y: originY + CGFloat(row) * (side + gap),
+            x: x(ofColumn: slot % Schedule.blocksPerHour), y: originY + CGFloat(row) * (side + gap),
             width: side, height: side)
+    }
+
+    /// The left edge of the blocks in `column`.
+    func x(ofColumn column: Int) -> CGFloat {
+        let groupGaps = blocksPerGroup.map { column / $0 } ?? 0
+        return originX + CGFloat(column) * (side + gap) + CGFloat(groupGaps) * side * Self.groupGapRatio
+    }
+
+    /// The gap to the left of `column`: wider when it starts a group.
+    func gap(beforeColumn column: Int) -> CGFloat {
+        guard let blocksPerGroup, column > 0, column % blocksPerGroup == 0 else { return gap }
+        return gap + side * Self.groupGapRatio
     }
 
     /// The block under `point`, out of `count`. Unclamped, points off the blocks give nil;
     /// clamped, they give the nearest block, so a drag can run past the grid's edge.
     func index(at point: CGPoint, count: Int, clamped: Bool) -> Int? {
-        let step = side + gap
-        let column = Int(((point.x - originX + gap / 2) / step).rounded(.down))
-        let row = Int(((point.y - originY + gap / 2) / step).rounded(.down))
         let columns = Schedule.blocksPerHour
+        // Each block reaches halfway across the gaps on either side of it.
+        let column = point.x < originX - gap / 2
+            ? -1 : (0..<columns).first { point.x < x(ofColumn: $0) + side + gap(beforeColumn: $0 + 1) / 2 } ?? columns
+        let row = Int(((point.y - originY + gap / 2) / (side + gap)).rounded(.down))
         if !clamped, !(0..<columns).contains(column) || !(0..<rows.count).contains(row) { return nil }
         let slot = (min(max(row, 0), rows.count - 1) + rows.lowerBound) * columns + min(max(column, 0), columns - 1)
         let index = slot - offset

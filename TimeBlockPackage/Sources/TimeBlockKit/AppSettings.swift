@@ -23,12 +23,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var templates: [Template]
     /// Moves you to `schedule` a step at a time.
     public var sleepShift: SleepShift?
+    /// How the grid marks the time.
+    public var grid: GridMarks
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
         customCategories: [BlockCategory] = [], customGroups: [CategoryGroup] = [],
         editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = [],
-        templates: [Template] = [], sleepShift: SleepShift? = nil
+        templates: [Template] = [], sleepShift: SleepShift? = nil, grid: GridMarks = .standard
     ) {
         self.schedule = schedule
         self.track = track
@@ -40,6 +42,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.removedCategories = removedCategories
         self.templates = templates
         self.sleepShift = sleepShift
+        self.grid = grid
     }
 
     /// The schedule on `day`: `schedule`, or the step a sleep shift has got to.
@@ -167,6 +170,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         removedCategories = try container.decodeIfPresent([String].self, forKey: .removedCategories) ?? []
         templates = try container.decodeIfPresent([Template].self, forKey: .templates) ?? []
         sleepShift = try container.decodeIfPresent(SleepShift.self, forKey: .sleepShift)
+        grid = try container.decodeIfPresent(GridMarks.self, forKey: .grid) ?? .standard
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -182,7 +186,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
-             removedCategories, templates, sleepShift
+             removedCategories, templates, sleepShift, grid
         case legacyCategories = "categories"
     }
 
@@ -198,6 +202,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(removedCategories, forKey: .removedCategories)
         try container.encode(templates, forKey: .templates)
         try container.encodeIfPresent(sleepShift, forKey: .sleepShift)
+        try container.encode(grid, forKey: .grid)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).
@@ -206,7 +211,30 @@ public struct AppSettings: Codable, Hashable, Sendable {
         return DaySnapshot(
             status: DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar)),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
-            track: track ?? self.track)
+            track: track ?? self.track, grid: grid)
+    }
+}
+
+/// How the grid marks the time, so a block's time can be read off its place: with wider gaps along each hour row.
+public struct GridMarks: Codable, Hashable, Sendable {
+    /// Minutes between the wider gaps that split each row, 10, 15, 20 or 30, or 0 for none.
+    public var gapMinutes: Int
+
+    public init(gapMinutes: Int = 30) {
+        self.gapMinutes = gapMinutes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let standard = Self.standard
+        gapMinutes = try container.decodeIfPresent(Int.self, forKey: .gapMinutes) ?? standard.gapMinutes
+    }
+
+    public static let standard = GridMarks()
+
+    /// Blocks between the wider gaps, or nil when there are none.
+    public var blocksPerGroup: Int? {
+        gapMinutes > 0 ? gapMinutes / Schedule.blockMinutes : nil
     }
 }
 

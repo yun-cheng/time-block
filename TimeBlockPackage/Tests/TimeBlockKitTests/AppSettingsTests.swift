@@ -25,6 +25,13 @@ struct AppSettingsTests {
         #expect(decoded.track == .activity)
         #expect(decoded.schedule == .standard)
         #expect(decoded.categories == BlockCategory.defaults)
+        #expect(decoded.grid == .standard)
+    }
+
+    @Test func gridMarksSplitTheMinutes() {
+        #expect(GridMarks.standard.blocksPerGroup == 6)
+        #expect(GridMarks(gapMinutes: 10).blocksPerGroup == 2)
+        #expect(GridMarks(gapMinutes: 0).blocksPerGroup == nil)
     }
 
     @Test func favoritesAndOwnActivitiesAreSaved() throws {
