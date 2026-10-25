@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
@@ -5,6 +6,9 @@ import TimeBlockUI
 struct MainWindow: View {
     @Bindable var model: AppModel
     @Environment(\.undoManager) private var undoManager
+    /// What Undo and Redo would do now ("Undo Move Blocks"), nil when there's nothing to. Undo managers can't be
+    /// observed, so this follows their notifications.
+    @State private var undoTitles = UndoTitles()
 
     var body: some View {
         GeometryReader { window in
@@ -27,17 +31,29 @@ struct MainWindow: View {
             }
         }
         .frame(minWidth: 400, minHeight: 600)
-        .onAppear { model.undoManager = undoManager }
-        .onChange(of: undoManager) { model.undoManager = undoManager }
-        .inspector(isPresented: $model.showsSettings) {
-            SettingsView(model: model)
-                .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
-        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TrackPicker(track: $model.settings.track)
             }
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup {
+                Button {
+                    if undoManager?.canUndo == true { undoManager?.undo() }
+                    updateUndoTitles()
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                }
+                .help(undoTitles.undo ?? "Undo")
+                .disabled(undoTitles.undo == nil)
+                Button {
+                    if undoManager?.canRedo == true { undoManager?.redo() }
+                    updateUndoTitles()
+                } label: {
+                    Label("Redo", systemImage: "arrow.uturn.forward")
+                }
+                .help(undoTitles.redo ?? "Redo")
+                .disabled(undoTitles.redo == nil)
+            }
+            ToolbarItem {
                 Button {
                     model.showsSettings.toggle()
                 } label: {
@@ -46,6 +62,48 @@ struct MainWindow: View {
                 .help(model.showsSettings ? "Hide Settings" : "Show Settings")
             }
         }
+        .onAppear {
+            model.undoManager = undoManager
+            updateUndoTitles()
+        }
+        .onChange(of: undoManager) {
+            model.undoManager = undoManager
+            updateUndoTitles()
+        }
+        // Edits, undos and redos post these; the model clearing its edits changes the day it's showing.
+        .onReceive(undoNotifications) { _ in updateUndoTitles() }
+        .onChange(of: model.dayLog) { updateUndoTitles() }
+        .inspector(isPresented: $model.showsSettings) {
+            SettingsView(model: model)
+                .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+                // With nothing of its own in the toolbar, the panel would take the day's buttons over it.
+                .toolbar { Spacer() }
+        }
+    }
+}
+
+extension MainWindow {
+    private struct UndoTitles: Equatable {
+        var undo: String?
+        var redo: String?
+    }
+
+    private var undoNotifications: some Publisher<Notification, Never> {
+        let center = NotificationCenter.default
+        return Publishers.Merge3(
+            center.publisher(for: .NSUndoManagerDidCloseUndoGroup, object: undoManager),
+            center.publisher(for: .NSUndoManagerDidUndoChange, object: undoManager),
+            center.publisher(for: .NSUndoManagerDidRedoChange, object: undoManager))
+    }
+
+    private func updateUndoTitles() {
+        guard let undoManager else {
+            undoTitles = UndoTitles()
+            return
+        }
+        undoTitles = UndoTitles(
+            undo: undoManager.canUndo ? undoManager.undoMenuItemTitle : nil,
+            redo: undoManager.canRedo ? undoManager.redoMenuItemTitle : nil)
     }
 }
 

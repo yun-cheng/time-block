@@ -94,6 +94,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   bar) goes on the window's undo stack, named in Edit (Undo Move Blocks …). Undo puts the day back as it was, in
   the view it changed in and with the selection it had. The stack is cleared when the day rolls over, and when
   templates or the schedule change (putting old logs back would undo the new plan too).
+- **Undo and Redo buttons:** in the toolbar beside Settings, all three over the day even while Settings is open.
+  They're greyed out with nothing to undo or redo, and their tooltips name the change.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
