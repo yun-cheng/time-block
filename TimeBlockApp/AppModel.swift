@@ -166,6 +166,24 @@ final class AppModel {
         self.settings = settings
     }
 
+    /// Sets today's times. A sleep shift carries on from them toward its target, from tomorrow night, or ends if
+    /// they're there already.
+    func setSchedule(_ today: Schedule) {
+        guard let shift = settings.sleepShift else {
+            settings.schedule = today
+            return
+        }
+        var settings = settings
+        let rebased = shift.rebased(onto: today, on: dayLog.day, target: settings.schedule)
+        if rebased.stepCount(to: settings.schedule) == 0 {
+            settings.schedule = today
+            settings.sleepShift = nil
+        } else {
+            settings.sleepShift = rebased
+        }
+        self.settings = settings
+    }
+
     /// Where a sleep shift has got to by this morning, or your schedule without one: what a new or edited shift
     /// moves on from, tonight's bedtime first.
     var shiftPosition: Schedule {

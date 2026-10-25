@@ -12,8 +12,9 @@ whole UI slowly turns into a horror show.
 - **Counter:** blocks left over the day's usable total (`92/192`). It goes negative after bedtime.
 - **Sleep shift:** in Settings, move bedtime or wake time to a new time a step a night (bedtime 01:00 to 23:00, 30
   minutes a night). Bedtime moves first and the next morning's wake time follows, so you sleep as long. Set the day
-  it starts or the day to be there by; each day's grid and counter use that day's times. Slept in? Hold Tonight puts
-  each step a night later, and Edit changes the rest of the shift.
+  it starts or the day to be there by; each day's grid and counter use that day's times. Slept in? Change today's
+  times under Schedule and the shift carries on from them, Hold Tonight puts each step a night later, and Edit
+  changes the rest of the shift.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, red is taken
   from sleep.

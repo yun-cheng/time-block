@@ -7,7 +7,8 @@ struct SettingsView: View {
     @Bindable var model: AppModel
 
     var body: some View {
-        let schedule = model.settings.schedule
+        // Today's times, which a sleep shift moves day by day.
+        let schedule = model.schedule
         Form {
             Section {
                 DatePicker("Wake up", selection: minuteBinding(\.wakeMinute), displayedComponents: .hourAndMinute)
@@ -31,27 +32,34 @@ struct SettingsView: View {
         .formStyle(.grouped)
     }
 
-    /// While a sleep shift runs, the schedule is where it's heading rather than today's.
+    /// With a sleep shift, these are today's times and it carries on from them.
     private var shiftNote: String {
-        guard model.settings.sleepShift != nil else { return "" }
-        let today = model.schedule
-        return String(format: " A sleep shift is getting you here: today is %02d:%02d–%02d:%02d.",
-                      today.wakeMinute / 60, today.wakeMinute % 60, today.bedMinute / 60, today.bedMinute % 60)
+        guard let shift = model.settings.sleepShift else { return "" }
+        let target = model.settings.schedule
+        let heading = String(format: "%02d:%02d–%02d:%02d", target.wakeMinute / 60, target.wakeMinute % 60,
+                             target.bedMinute / 60, target.bedMinute % 60)
+        let today = model.dayLog.day
+        guard (DayID.days(from: today, to: shift.startDay) ?? 0) > 0 else {
+            return " These are today's times on a sleep shift heading to \(heading). Change them, say after sleeping in, and it carries on from them tomorrow night."
+        }
+        let start = SleepShiftSettings.dayName(shift.startDay, today: today)
+        let night = start == "Tomorrow" ? "tomorrow night" : "the night of \(start)"
+        return " A sleep shift heading to \(heading) moves on from these times \(night)."
     }
 
-    /// Edits one of the schedule's minute-of-day fields with a time picker, snapped to 5 minutes.
+    /// Edits one of today's minute-of-day fields with a time picker, snapped to 5 minutes.
     private func minuteBinding(_ field: WritableKeyPath<Schedule, Int>) -> Binding<Date> {
         let calendar = Calendar.current
         let midnight = calendar.startOfDay(for: .now)
         return Binding {
-            midnight.addingTimeInterval(Double(model.settings.schedule[keyPath: field] * 60))
+            midnight.addingTimeInterval(Double(model.schedule[keyPath: field] * 60))
         } set: { date in
             let parts = calendar.dateComponents([.hour, .minute], from: date)
             let minute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
-            var schedule = model.settings.schedule
+            var schedule = model.schedule
             schedule[keyPath: field] = Schedule.snappedMinute(editing: schedule[keyPath: field], to: minute)
             // Rebuild so the day's rollover point follows the new wake time.
-            model.settings.schedule = Schedule(wakeMinute: schedule.wakeMinute, bedMinute: schedule.bedMinute)
+            model.setSchedule(Schedule(wakeMinute: schedule.wakeMinute, bedMinute: schedule.bedMinute))
         }
     }
 }

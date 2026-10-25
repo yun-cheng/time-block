@@ -162,6 +162,10 @@ Gradually move your schedule earlier (or later) instead of all at once (Settings
 - Starting a shift makes the target the schedule in Settings and keeps where you started; each day's schedule is
   that many steps along. Wake time and bedtime each stop at their target, and the shift ends by itself once it's
   done. Stop keeps today's times as the schedule.
+- Settings ▸ Schedule always shows and edits **today's** times; Sleep Shift shows where it's heading. With a shift
+  set, changing today (slept in, or before a shift that starts next month) carries the shift on from the new times:
+  same target, step and pace, next step from tomorrow night, and the same finish day if that's what you set. Today's
+  times reaching the target end the shift.
 - Life gets in the way, so a running shift can change from tonight on: **Hold Tonight** (slept in, or not ready)
   keeps last night's bedtime and puts each step a night later; **Step Tonight** takes the next step tonight instead;
   **Edit** opens the same inputs as you set them (bedtime or wake time, start or finish day), from where the shift
