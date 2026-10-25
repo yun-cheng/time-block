@@ -48,6 +48,11 @@ public struct DayEditor {
         selection.wrappedValue = nil
     }
 
+    /// Clear was picked from the grid's right-click menu: empty `range`, keeping a selection as it was.
+    func clear(_ range: Range<Int>) {
+        paint(range, .clear)
+    }
+
     private func log(_ range: Range<Int>, _ choice: Brush) {
         paint(range, choice)
         brush.wrappedValue = nil
@@ -109,7 +114,7 @@ public struct DayView: View {
             BlockGridView(
                 snapshot: snapshot, theme: theme, time: time, blockSize: 20, brush: editor?.brush.wrappedValue,
                 selection: editor?.selection.wrappedValue, onDrag: editor.map { editor in { editor.dragged($0) } },
-                onDeselect: editor?.deselect)
+                onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0) } })
                 .frame(maxWidth: .infinity)
             NowChip(snapshot: snapshot, theme: theme)
             StoryBar(snapshot: snapshot, theme: theme)
@@ -173,7 +178,7 @@ public struct DayView: View {
         }
         guard let brush = editor.brush.wrappedValue else {
             return "Select blocks, then pick an activity, or pick one first and drag across blocks. "
-                + "Right-click an activity to star or unstar it."
+                + "Right-click logged blocks to clear them, or an activity to star or unstar it."
         }
         guard let name = brush.categoryID.flatMap({ snapshot.categories[$0] })?.name else {
             return "Drag across blocks to clear them."

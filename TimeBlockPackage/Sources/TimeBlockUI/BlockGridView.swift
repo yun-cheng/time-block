@@ -26,10 +26,14 @@ public struct BlockGridView: View {
     /// Called when a click should drop the selection: one off the blocks, inside the selection, or a
     /// drag over exactly the selection again.
     var onDeselect: (() -> Void)?
+    /// Called with the blocks to empty when Clear is picked from a logged block's right-click menu.
+    var onClear: ((Range<Int>) -> Void)?
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
     @State private var hovered: Int?
+    /// The block the pointer was last over, kept once it leaves so a right-click menu stays on the block it opened on.
+    @State private var pointed: Int?
     /// The last single click, to spot a double click.
     @State private var lastClick: (index: Int, time: Date)?
 
@@ -37,7 +41,7 @@ public struct BlockGridView: View {
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
         showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
         brush: Brush? = nil, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
-        onDeselect: (() -> Void)? = nil
+        onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
@@ -49,6 +53,7 @@ public struct BlockGridView: View {
         self.selection = selection
         self.onDrag = onDrag
         self.onDeselect = onDeselect
+        self.onClear = onClear
     }
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
@@ -77,9 +82,15 @@ public struct BlockGridView: View {
                         Color.clear
                             .contentShape(Rectangle())
                             .gesture(paintGesture(size: proxy.size))
+                            .contextMenu {
+                                if let onClear, let pointed, let range = snapshot.clearable(at: pointed, selection: selection) {
+                                    Button("Clear Blocks", systemImage: "eraser") { onClear(range) }
+                                }
+                            }
                             .onContinuousHover { phase in
                                 if case .active(let point) = phase {
                                     hovered = layout.index(at: point, count: snapshot.cells.count, clamped: false)
+                                    pointed = hovered
                                 } else {
                                     hovered = nil
                                 }

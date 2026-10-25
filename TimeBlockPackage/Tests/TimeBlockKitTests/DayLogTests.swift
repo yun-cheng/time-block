@@ -81,6 +81,20 @@ struct DayLogTests {
         #expect(snapshot.run(around: 30) == 25..<schedule.awakeBlocks)
     }
 
+    @Test func rightClickingClearsTheRunOrTheSelectionItIsIn() {
+        let log = painted([(0..<4, "work", .activity), (4..<6, "coffee", .activity)])
+        let snapshot = DaySnapshot(
+            status: DayStatus(schedule: schedule, nowMinute: 9 * 60), logs: log.logs(for: schedule),
+            categories: BlockCategory.defaults)
+        #expect(snapshot.clearable(at: 2) == 0..<4)
+        #expect(snapshot.clearable(at: 2, selection: 3..<8) == 0..<4)
+        #expect(snapshot.clearable(at: 5, selection: 3..<8) == 3..<8)
+        // Nothing logged to clear.
+        #expect(snapshot.clearable(at: 10) == nil)
+        #expect(snapshot.clearable(at: 10, selection: 8..<12) == nil)
+        #expect(snapshot.clearable(at: -1) == nil)
+    }
+
     @Test func aNoteCoversExactlyTheBlocksItIsWrittenOn() {
         var log = painted([(0..<10, "work", .activity), (0..<10, "sitting", .body)])
         log.setNote("Wrote PLAN.md", for: 2..<5, in: .activity, schedule: schedule)

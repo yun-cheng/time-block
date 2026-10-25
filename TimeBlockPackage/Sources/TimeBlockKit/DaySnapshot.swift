@@ -80,6 +80,14 @@ public struct DaySnapshot: Sendable {
         return start..<end
     }
 
+    /// What right-clicking block `index` would clear: the whole `selection` when the block is in it, or else the run
+    /// around it. Nil when none of those blocks is logged, so there's nothing to clear.
+    public func clearable(at index: Int, selection: Range<Int>? = nil) -> Range<Int>? {
+        guard cells.indices.contains(index) else { return nil }
+        let range = selection.flatMap { $0.contains(index) ? $0 : nil } ?? run(around: index)
+        return cells[range.clamped(to: cells.indices)].contains { $0.categoryID != nil } ? range : nil
+    }
+
     /// The unlogged blocks right before `index`, back to the last logged block or wake time.
     public func unloggedRun(before index: Int) -> Range<Int> {
         var start = min(index, cells.count)
