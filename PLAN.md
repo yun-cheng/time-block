@@ -44,11 +44,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 ```
 
 - App + widget share data through an **App Group** container (settings and day logs live there).
-  - App Groups need a provisioning profile, i.e. an Apple Developer team selected in Xcode. Until then the project
-    builds ad‑hoc ("Sign to Run Locally") without the App Group: logs stay in the app's own container, and the widget
-    shows the default 07:00–23:00 schedule with no logs.
-  - To enable: Xcode → target → Signing & Capabilities → pick the team for both targets, switch to Automatic signing,
-    add App Groups capability `group.dev.timeblock` to both.
+  - The group is `<team ID>.dev.timeblock`, signed with the team in Xcode (a free Apple ID works; no provisioning
+    profile needed on macOS). The code reads the group's name from the build's entitlements. A build with no team runs
+    without it: logs stay in the app's own container, and the widget shows the default 07:00–23:00 schedule with no logs.
+  - The first signed launch copies settings and logs an unsigned build saved into the group.
 - Cross‑device sync (Mac ↔ iPhone ↔ Watch) via **CloudKit** — requires a paid Apple Developer account.
 - Widget refresh: precompute a **timeline entry every 5 minutes** for the rest of the day (entries don't count against WidgetKit's reload budget). App calls `WidgetCenter.reloadAllTimelines()` whenever a log changes.
 
@@ -251,9 +250,9 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | # | Milestone | Done when | Status |
 |---|---|---|---|
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
-| M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | 🟡 built; widget uses the default schedule until signed with a team (§2) |
+| M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | ✅ done (signed with a team, §2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
-| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left; widget sees logs once signed with a team |
+| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
@@ -274,4 +273,4 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
-| Signing | Ad‑hoc ("Sign to Run Locally") until an Apple Developer team is set up; App Group added then |
+| Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

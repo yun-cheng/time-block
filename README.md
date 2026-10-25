@@ -93,7 +93,7 @@ swift test --package-path TimeBlockPackage
 Build and launch the Mac app (or open `TimeBlock.xcodeproj` and press Run):
 
 ```bash
-xcodebuild -project TimeBlock.xcodeproj -scheme TimeBlock -derivedDataPath .build/xcode build && open .build/xcode/Build/Products/Debug/TimeBlock.app
+xcodebuild -project TimeBlock.xcodeproj -scheme TimeBlock -derivedDataPath .build/xcode -allowProvisioningUpdates build && open .build/xcode/Build/Products/Debug/TimeBlock.app
 ```
 
 Then add the widget: right‑click the desktop ▸ Edit Widgets ▸ search "Time Block". Edit a placed widget to
@@ -111,7 +111,11 @@ swift run --package-path TimeBlockPackage TimeBlockPrototype --render renders
 
 ## Signing
 
-The project signs ad‑hoc ("Sign to Run Locally"), which needs no Apple account. Sharing settings between the
-app and the widget needs an App Group, and App Groups need an Apple Developer team. Until one is set up, the
-widget always shows the default 07:00–23:00 schedule and no logs. To enable it, pick your team for both targets under
-Signing & Capabilities and add the App Group `group.dev.timeblock` to both.
+The app and its widget share settings and logs through the App Group `<team ID>.dev.timeblock`, which needs an Apple
+Developer team; a free Apple ID works. Both targets sign automatically with team `PS6X9X4H2H`: to build with yours,
+add your Apple ID in Xcode ▸ Settings ▸ Accounts and pick its team for both targets under Signing & Capabilities. The
+group's name follows the team, so nothing else changes. A build with no team still runs, but its widget shows the
+default 07:00–23:00 schedule and no logs.
+
+macOS runs the widget from one copy of the app, not always the newest: if it shows stale data, delete old builds
+(such as Xcode's DerivedData) and reopen the app.
