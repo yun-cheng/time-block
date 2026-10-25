@@ -64,6 +64,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 ### 3.1 Day grid & counter (MVP)
 - Rows = clock hours (12 blocks per row), columns = 5‑min slots. Large widget shows the full awake day (~16 rows).
 - Rows always line up with the clock: waking at 08:30 starts halfway along the "08" row; a 23:30 bedtime ends halfway along "23".
+- Wider gaps mark the time (Settings ▸ Grid, used by the widget too): along each row every 10, 15, 20 or 30
+  minutes (30 by default, or none), and between rows every 3, 6 or 12 hours on the clock, or at the hours nearest
+  to 2–6 equal parts of the waking day (none by default). Minute numbers above the columns, every 10–30 minutes,
+  are off by default; the hour numbers stand for :00. Clicks over a wider gap go to the nearer block.
 - Counter shows blocks left over the day's usable total, e.g. `92/192`.
 - Medium widget: current hour ± a few hours. Small widget: counter + a ring/mini‑bar.
 

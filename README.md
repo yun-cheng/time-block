@@ -9,6 +9,9 @@ whole UI slowly turns into a horror show.
 ![The Body view: sitting, standing, walking, exercising](docs/images/body-view.jpg)
 
 - **1 block = 5 minutes.** Rows are clock hours of 12 blocks; only your waking hours are shown.
+- **Read the time off the grid:** in Settings ▸ Grid, wider gaps split each hour row every 10, 15, 20 or 30 minutes
+  (30 to start), and can split the rows too: every 3, 6 or 12 hours on the clock, or your waking day in 2 to 6 equal
+  parts. Minute numbers can go above the grid as well, every 10 to 30 minutes. The widget follows the same settings.
 - **Counter:** blocks left over the day's usable total (`92/192`). It goes negative after bedtime.
 - **Sleep shift:** in Settings, move bedtime or wake time to a new time a step a night (bedtime 01:00 to 23:00, 30
   minutes a night). Bedtime moves first and the next morning's wake time follows, so you sleep as long. Set the day
