@@ -184,10 +184,12 @@ time-logging coaches split a day, with plain names:
 Escalates the further past bedtime you are:
 | Blocks left | Effect |
 |---|---|
-| 6 to 1 (last 30 min) | "wind‑down": warm amber background + amber counter |
+| wind‑down to 1 (30 min to start) | "wind‑down": warm amber background + amber counter |
 | −1 to −6 (≤30 min) | counter turns red, grid desaturates, subtle vignette |
 | −7 to −24 (≤2 h) | blood‑red palette, blocks "crack"/drip, flicker animation in app, glitchy font on the counter |
 | −25 and beyond | full dread: dark red/black, distorted blocks, ominous copy ("You are borrowing from tomorrow."), optional notifications |
+- **Wind‑down:** Settings ▸ Schedule sets how long before bedtime to get ready for sleep: 15 min to 2 h, or none (30 min
+  to start).
 - Widget gets the static version (widgets can't run continuous animations); the app/menu bar gets animated effects.
 - Tomorrow's grid can show the debt: "You start 30 blocks in the red."
 

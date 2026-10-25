@@ -1,7 +1,7 @@
 /// How the UI should feel, driven by how many blocks are left before bedtime.
 public enum Mood: Int, Comparable, CaseIterable, Sendable {
     case calm
-    /// The last 30 minutes before bed.
+    /// The last stretch before bed, set aside to get ready for sleep (30 minutes to start).
     case windDown
     /// Up to 30 minutes past bedtime.
     case uneasy
@@ -10,10 +10,11 @@ public enum Mood: Int, Comparable, CaseIterable, Sendable {
     /// More than 2 hours past bedtime.
     case nightmare
 
-    public init(blocksLeft: Int) {
+    /// `windDownBlocks` is how many blocks before bed winding down takes; with none, calm lasts until bedtime.
+    public init(blocksLeft: Int, windDownBlocks: Int = DayStatus.standardWindDownBlocks) {
         switch blocksLeft {
-        case 7...: self = .calm
-        case 1...6: self = .windDown
+        case max(1, windDownBlocks + 1)...: self = .calm
+        case 1...: self = .windDown
         case -6...0: self = .uneasy
         case -24 ... -7: self = .dread
         default: self = .nightmare
@@ -32,28 +33,36 @@ public struct DayStatus: Hashable, Sendable {
     public let isOver: Bool
     /// Whether the day is still to come: no block has started.
     public let isAhead: Bool
+    /// The blocks just before bedtime set aside to get ready for sleep.
+    public let windDownBlocks: Int
 
-    public init(schedule: Schedule, nowMinute: Int) {
+    /// 30 minutes.
+    public static let standardWindDownBlocks = 6
+
+    public init(schedule: Schedule, nowMinute: Int, windDownBlocks: Int = standardWindDownBlocks) {
         self.schedule = schedule
         self.nowMinute = nowMinute
         isOver = false
         isAhead = false
+        self.windDownBlocks = windDownBlocks
     }
 
     /// A day still to come.
-    public init(aheadWith schedule: Schedule) {
+    public init(aheadWith schedule: Schedule, windDownBlocks: Int = standardWindDownBlocks) {
         self.schedule = schedule
         nowMinute = schedule.wakeMinute - Schedule.blockMinutes
         isOver = false
         isAhead = true
+        self.windDownBlocks = windDownBlocks
     }
 
     /// A past day, which ran to bedtime or, when blocks after it are logged, to the end of the last of them.
-    public init(schedule: Schedule, endedAfter blocks: Int) {
+    public init(schedule: Schedule, endedAfter blocks: Int, windDownBlocks: Int = standardWindDownBlocks) {
         self.schedule = schedule
         nowMinute = schedule.wakeMinute + max(blocks, schedule.awakeBlocks) * Schedule.blockMinutes
         isOver = true
         isAhead = false
+        self.windDownBlocks = windDownBlocks
     }
 
     /// The block `nowMinute` falls in, counted from wake time; nil before waking.
@@ -80,7 +89,9 @@ public struct DayStatus: Hashable, Sendable {
     }
 
     /// Calm on a day that's over or still to come: it's too late, or too soon, for it to matter.
-    public var mood: Mood { isOver || isAhead ? .calm : Mood(blocksLeft: blocksLeft) }
+    public var mood: Mood {
+        isOver || isAhead ? .calm : Mood(blocksLeft: blocksLeft, windDownBlocks: windDownBlocks)
+    }
 
     /// Blocks the grid shows: the waking day plus any overtime already started.
     public var visibleBlocks: Int { schedule.awakeBlocks + overtimeBlocks }

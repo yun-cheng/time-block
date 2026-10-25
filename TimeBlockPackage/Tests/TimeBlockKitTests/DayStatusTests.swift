@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import TimeBlockKit
 
@@ -62,6 +63,27 @@ struct DayStatusTests {
         #expect(Mood(blocksLeft: -7) == .dread)
         #expect(Mood(blocksLeft: -24) == .dread)
         #expect(Mood(blocksLeft: -25) == .nightmare)
+    }
+
+    @Test func windDownLastsAsLongAsSet() {
+        #expect(Mood(blocksLeft: 13, windDownBlocks: 12) == .calm)
+        #expect(Mood(blocksLeft: 12, windDownBlocks: 12) == .windDown)
+        #expect(Mood(blocksLeft: 1, windDownBlocks: 0) == .calm)
+        #expect(Mood(blocksLeft: 0, windDownBlocks: 0) == .uneasy)
+        let hour = DayStatus(schedule: schedule, nowMinute: 22 * 60, windDownBlocks: 12)
+        #expect(hour.mood == .windDown)
+    }
+
+    @Test func windDownIsKeptInSettings() throws {
+        var settings = AppSettings(schedule: schedule)
+        #expect(settings.windDownMinutes == 30)
+        settings.windDownMinutes = 45
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
+        #expect(decoded.windDownBlocks == 9)
+        var log = DayLog(day: "2026-10-26", wakeMinute: schedule.wakeMinute)
+        log.rebase(to: schedule)
+        let snapshot = decoded.snapshot(at: .now, log: log)
+        #expect(snapshot.status.windDownBlocks == 9)
     }
 
     @Test func bedtimeAfterMidnight() {

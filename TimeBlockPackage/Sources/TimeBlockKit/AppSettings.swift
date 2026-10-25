@@ -25,12 +25,16 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var sleepShift: SleepShift?
     /// How the grid marks the time.
     public var grid: GridMarks
+    /// Minutes before bedtime set aside to get ready for sleep, in steps of 5, or 0 for none. The day turns warm as
+    /// they start.
+    public var windDownMinutes: Int
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
         customCategories: [BlockCategory] = [], customGroups: [CategoryGroup] = [],
         editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = [],
-        templates: [Template] = [], sleepShift: SleepShift? = nil, grid: GridMarks = .standard
+        templates: [Template] = [], sleepShift: SleepShift? = nil, grid: GridMarks = .standard,
+        windDownMinutes: Int = DayStatus.standardWindDownBlocks * Schedule.blockMinutes
     ) {
         self.schedule = schedule
         self.track = track
@@ -43,7 +47,11 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.templates = templates
         self.sleepShift = sleepShift
         self.grid = grid
+        self.windDownMinutes = windDownMinutes
     }
+
+    /// See `windDownMinutes`.
+    public var windDownBlocks: Int { max(0, windDownMinutes / Schedule.blockMinutes) }
 
     /// The schedule on `day`: `schedule`, or the step a sleep shift has got to.
     public func schedule(on day: String, calendar: Calendar = .current) -> Schedule {
@@ -171,6 +179,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         templates = try container.decodeIfPresent([Template].self, forKey: .templates) ?? []
         sleepShift = try container.decodeIfPresent(SleepShift.self, forKey: .sleepShift)
         grid = try container.decodeIfPresent(GridMarks.self, forKey: .grid) ?? .standard
+        windDownMinutes = try container.decodeIfPresent(Int.self, forKey: .windDownMinutes)
+            ?? DayStatus.standardWindDownBlocks * Schedule.blockMinutes
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -186,7 +196,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
-             removedCategories, templates, sleepShift, grid
+             removedCategories, templates, sleepShift, grid, windDownMinutes
         case legacyCategories = "categories"
     }
 
@@ -203,13 +213,16 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(templates, forKey: .templates)
         try container.encodeIfPresent(sleepShift, forKey: .sleepShift)
         try container.encode(grid, forKey: .grid)
+        try container.encode(windDownMinutes, forKey: .windDownMinutes)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).
     public func snapshot(at date: Date, log: DayLog, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
         let schedule = schedule(for: date, calendar: calendar)
         return DaySnapshot(
-            status: DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar)),
+            status: DayStatus(
+                schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar),
+                windDownBlocks: windDownBlocks),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
             track: track ?? self.track, grid: grid, day: log.day)
     }
@@ -226,8 +239,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
         let schedule = schedule(of: log, today: today, calendar: calendar)
         return DaySnapshot(
             status: log.day < today
-                ? DayStatus(schedule: schedule, endedAfter: log.loggedEnd(for: schedule))
-                : DayStatus(aheadWith: schedule),
+                ? DayStatus(schedule: schedule, endedAfter: log.loggedEnd(for: schedule), windDownBlocks: windDownBlocks)
+                : DayStatus(aheadWith: schedule, windDownBlocks: windDownBlocks),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
             track: track ?? self.track, grid: grid, day: log.day)
     }

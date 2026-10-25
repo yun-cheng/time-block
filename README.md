@@ -18,6 +18,8 @@ whole UI slowly turns into a horror show.
   it starts or the day to be there by; each day's grid and counter use that day's times. Slept in? Change today's
   times under Schedule and the shift carries on from them, Hold Tonight puts each step a night later, and Edit
   changes the rest of the shift.
+- **Wind down:** in Settings, set how long before bedtime you need to get ready for sleep (15 minutes to 2 hours, 30 to
+  start). When it starts, the whole day turns warm.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, red is taken
   from sleep.
