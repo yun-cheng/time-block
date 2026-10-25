@@ -54,6 +54,8 @@ final class AppModel {
         self.settings = settings
         dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
         planDayIfNeeded()
+        // The widget may have drawn the day before it could see what's saved, as on the first signed launch.
+        WidgetCenter.shared.reloadAllTimelines()
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.now = Date()
