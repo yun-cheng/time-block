@@ -60,6 +60,14 @@ struct DayLogTests {
         #expect(store.load(day: "2026-10-25", wakeMinute: 420).logs.isEmpty)
     }
 
+    @Test func aDayKeepsItsScheduleWithItsLogs() throws {
+        let log = painted([(0..<3, "work", .activity)])
+        #expect(log.schedule == schedule)
+        // Days saved before schedules were kept with them have none.
+        let old = Data(#"{"day":"2026-10-20","wakeMinute":420,"logs":[]}"#.utf8)
+        #expect(try JSONDecoder().decode(DayLog.self, from: old).schedule == nil)
+    }
+
     @Test func unloggedRunReachesBackToTheLastLog() {
         let log = painted([(0..<4, "work", .activity)])
         let snapshot = DaySnapshot(

@@ -7,13 +7,17 @@ public struct DayLog: Codable, Hashable, Sendable {
     /// The wake time block indexes count from. Logs are moved when the schedule's wake time changes,
     /// so a block keeps its clock time.
     public private(set) var wakeMinute: Int
+    /// The day's own schedule, as it was when its logs last changed, so a past day keeps its length when the
+    /// schedule changes later. Nil for days saved before schedules were kept with them.
+    public private(set) var schedule: Schedule?
     public private(set) var logs: [BlockLog]
     /// Whether the day's templates have been laid out on it (see `plan`).
     public private(set) var isPlanned: Bool
 
-    public init(day: String, wakeMinute: Int, logs: [BlockLog] = [], isPlanned: Bool = false) {
+    public init(day: String, wakeMinute: Int, schedule: Schedule? = nil, logs: [BlockLog] = [], isPlanned: Bool = false) {
         self.day = day
         self.wakeMinute = wakeMinute
+        self.schedule = schedule
         self.logs = logs
         self.isPlanned = isPlanned
     }
@@ -22,6 +26,7 @@ public struct DayLog: Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         day = try container.decode(String.self, forKey: .day)
         wakeMinute = try container.decode(Int.self, forKey: .wakeMinute)
+        schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule)
         logs = try container.decode([BlockLog].self, forKey: .logs)
         // Days saved before templates were never planned.
         isPlanned = try container.decodeIfPresent(Bool.self, forKey: .isPlanned) ?? false
@@ -159,10 +164,11 @@ public struct DayLog: Codable, Hashable, Sendable {
         isPlanned = true
     }
 
-    /// Counts block indexes from `schedule`'s wake time from now on.
-    private mutating func rebase(to schedule: Schedule) {
+    /// Counts block indexes from `schedule`'s wake time from now on, and keeps it as the day's schedule.
+    public mutating func rebase(to schedule: Schedule) {
         logs = logs(for: schedule)
         wakeMinute = schedule.wakeMinute
+        self.schedule = schedule
     }
 
     /// The logs with `track`'s blocks in `range` taken out, and the logs in `track` that overlapped it.

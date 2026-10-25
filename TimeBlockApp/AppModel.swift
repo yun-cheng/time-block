@@ -54,6 +54,7 @@ final class AppModel {
         self.settings = settings
         dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
         planDayIfNeeded()
+        keepTodaysSchedule()
         // The widget may have drawn the day before it could see what's saved, as on the first signed launch.
         WidgetCenter.shared.reloadAllTimelines()
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
@@ -272,7 +273,15 @@ final class AppModel {
         // Yesterday's edits can't be undone over today.
         undoManager?.removeAllActions(withTarget: self)
         planDayIfNeeded()
+        keepTodaysSchedule()
         settings.endSleepShiftIfDone(on: day)
+    }
+
+    /// Keeps today's schedule with its logs, so the day keeps its length once it's over.
+    private func keepTodaysSchedule() {
+        guard dayLog.schedule != schedule else { return }
+        dayLog.rebase(to: schedule)
+        save()
     }
 
     /// Lays the day's templates out the first time it's seen, the whole day, so a lunch you didn't change
