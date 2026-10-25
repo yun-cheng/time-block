@@ -40,6 +40,22 @@ struct AppSettingsTests {
         #expect(GridMarks(gapMinutes: 30, labelMinutes: 15).labeledMinutes == [15, 30, 45])
     }
 
+    @Test func hourGapsFallOnTheClockOrDivideTheDay() throws {
+        // 07:00–23:00: rows 0 to 15 are 07 to 22.
+        let clock = GridMarks(hourGaps: .clock, gapHours: 3)
+        #expect(clock.rowsAfterGaps(schedule: .standard, rowCount: 16) == [2, 5, 8, 11, 14])
+        let divided = GridMarks(hourGaps: .divided, dayParts: 4)
+        #expect(divided.rowsAfterGaps(schedule: .standard, rowCount: 16) == [4, 8, 12])
+        // Halfway through 08:30–23:00 is 15:45, so the gap goes above 16:00.
+        let late = Schedule(wakeMinute: 8 * 60 + 30, bedMinute: 23 * 60)
+        #expect(GridMarks(hourGaps: .divided, dayParts: 2).rowsAfterGaps(schedule: late, rowCount: 15) == [8])
+        #expect(GridMarks().rowsAfterGaps(schedule: .standard, rowCount: 16).isEmpty)
+        // Grid settings saved before hour gaps still load.
+        let old = #"{"gapMinutes":15}"#
+        let decoded = try JSONDecoder().decode(GridMarks.self, from: Data(old.utf8))
+        #expect(decoded == GridMarks(gapMinutes: 15))
+    }
+
     @Test func favoritesAndOwnActivitiesAreSaved() throws {
         var settings = AppSettings.standard
         var reading = BlockCategory.new(in: .activity, name: "Reading club")

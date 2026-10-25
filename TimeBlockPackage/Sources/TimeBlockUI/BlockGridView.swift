@@ -97,7 +97,9 @@ public struct BlockGridView: View {
                         + 2 * margin
                 },
                 height: blockSize.map {
-                    GridLayout.height(side: $0, rows: resolvedRows.count, hasHeader: hasMinuteLabels) + 2 * margin
+                    GridLayout.height(
+                        side: $0, rows: resolvedRows, rowsAfterGaps: rowsAfterGaps, hasHeader: hasMinuteLabels)
+                        + 2 * margin
                 })
             .overlay {
                 if onDrag != nil {
@@ -255,13 +257,17 @@ public struct BlockGridView: View {
     private var resolvedRows: Range<Int> { rows ?? 0..<Self.rowCount(for: snapshot) }
     private var labelWidth: CGFloat { showsHourLabels ? 24 : 0 }
     private var hasMinuteLabels: Bool { showsHourLabels && !snapshot.grid.labeledMinutes.isEmpty }
+    private var rowsAfterGaps: Set<Int> {
+        snapshot.grid.rowsAfterGaps(schedule: snapshot.status.schedule, rowCount: Self.rowCount(for: snapshot))
+    }
     /// Room around a fixed-size grid for what reaches past the blocks, like the current block's ring.
     private var margin: CGFloat { blockSize.map { $0 * 0.4 } ?? 0 }
 
     private func layout(size: CGSize) -> GridLayout {
         GridLayout(
             size: size, rows: resolvedRows, offset: snapshot.status.schedule.gridOffset, labelWidth: labelWidth,
-            blocksPerGroup: snapshot.grid.blocksPerGroup, hasHeader: hasMinuteLabels, margin: margin)
+            blocksPerGroup: snapshot.grid.blocksPerGroup, rowsAfterGaps: rowsAfterGaps, hasHeader: hasMinuteLabels,
+            margin: margin)
     }
 
     private func paintGesture(size: CGSize) -> some Gesture {
@@ -380,7 +386,7 @@ public struct BlockGridView: View {
                 let text = Text(String(format: "%02d", schedule.hour(ofRow: row)))
                     .font(.system(size: fontSize, weight: .medium, design: mood >= .uneasy ? .monospaced : .rounded))
                     .foregroundColor(first >= awake ? theme.accent : theme.secondaryText)
-                let y = originY + CGFloat(row - rows.lowerBound) * (side + gap) + side / 2
+                let y = grid.y(ofRow: row) + side / 2
                 context.draw(text, at: CGPoint(x: originX - 6, y: y), anchor: .trailing)
             }
             // Over the column each starts.
@@ -477,8 +483,8 @@ public struct BlockGridView: View {
         let boundaryRow = boundary / perRow
         if snapshot.status.overtimeBlocks > 0, rows.contains(boundaryRow) {
             let column = boundary % perRow
-            let top = originY + CGFloat(boundaryRow - rows.lowerBound) * (side + gap) - gap / 2
-            let bottom = top + side + gap
+            let top = grid.y(ofRow: boundaryRow) - grid.gap(beforeRow: boundaryRow) / 2
+            let bottom = grid.y(ofRow: boundaryRow) + side + grid.gap(beforeRow: boundaryRow + 1) / 2
             let x = grid.x(ofColumn: column) - grid.gap(beforeColumn: column) / 2
             let left = originX - 2
             let right = originX + gridWidth + 2
@@ -599,6 +605,8 @@ struct GridLayout {
 
     /// Blocks between the wider gaps, or nil for none.
     let blocksPerGroup: Int?
+    /// Rows with a wider gap above them, counted from the first row of the day.
+    let rowsAfterGaps: Set<Int>
 
     static let gapRatio: CGFloat = 0.24
     /// How much wider the gaps between groups of blocks are.
@@ -618,23 +626,30 @@ struct GridLayout {
         return columns + (columns - 1) * gapRatio + groupGaps * groupGapRatio
     }
 
-    static func height(side: CGFloat, rows: Int, hasHeader: Bool) -> CGFloat {
-        (hasHeader ? min(side, maxHeaderHeight) : 0) + CGFloat(rows) * side + CGFloat(max(0, rows - 1)) * side * gapRatio
+    static func height(side: CGFloat, rows: Range<Int>, rowsAfterGaps: Set<Int>, hasHeader: Bool) -> CGFloat {
+        (hasHeader ? min(side, maxHeaderHeight) : 0) + side * blocksHigh(rows: rows, rowsAfterGaps: rowsAfterGaps)
+    }
+
+    /// How many blocks high `rows` are, their gaps included.
+    private static func blocksHigh(rows: Range<Int>, rowsAfterGaps: Set<Int>) -> CGFloat {
+        let count = CGFloat(max(1, rows.count))
+        let groupGaps = CGFloat(rowsAfterGaps.filter { $0 > rows.lowerBound && rows.contains($0) }.count)
+        return count + (count - 1) * gapRatio + groupGaps * groupGapRatio
     }
 
     init(
-        size: CGSize, rows: Range<Int>, offset: Int, labelWidth: CGFloat, blocksPerGroup: Int?, hasHeader: Bool,
-        margin: CGFloat = 0
+        size: CGSize, rows: Range<Int>, offset: Int, labelWidth: CGFloat, blocksPerGroup: Int?,
+        rowsAfterGaps: Set<Int>, hasHeader: Bool, margin: CGFloat = 0
     ) {
         let gapRatio = Self.gapRatio
-        let rowCount = CGFloat(max(1, rows.count))
         let blocksWide = Self.blocksWide(blocksPerGroup)
         self.rows = rows
         self.offset = offset
         self.blocksPerGroup = blocksPerGroup
+        self.rowsAfterGaps = rowsAfterGaps
         let available = CGSize(width: size.width - 2 * margin, height: size.height - 2 * margin)
         // A block high header counts as one more row, until it stops growing.
-        let rowsHigh = rowCount + (rowCount - 1) * gapRatio
+        let rowsHigh = Self.blocksHigh(rows: rows, rowsAfterGaps: rowsAfterGaps)
         var tallest = available.height / (rowsHigh + (hasHeader ? 1 : 0))
         if hasHeader, tallest > Self.maxHeaderHeight {
             tallest = (available.height - Self.maxHeaderHeight) / rowsHigh
@@ -650,10 +665,20 @@ struct GridLayout {
 
     func frame(_ index: Int) -> CGRect {
         let slot = index + offset
-        let row = slot / Schedule.blocksPerHour - rows.lowerBound
         return CGRect(
-            x: x(ofColumn: slot % Schedule.blocksPerHour), y: originY + CGFloat(row) * (side + gap),
+            x: x(ofColumn: slot % Schedule.blocksPerHour), y: y(ofRow: slot / Schedule.blocksPerHour),
             width: side, height: side)
+    }
+
+    /// The top edge of the blocks in `row`, counted from the first row of the day.
+    func y(ofRow row: Int) -> CGFloat {
+        let groupGaps = rowsAfterGaps.filter { $0 > rows.lowerBound && $0 <= row }.count
+        return originY + CGFloat(row - rows.lowerBound) * (side + gap) + CGFloat(groupGaps) * side * Self.groupGapRatio
+    }
+
+    /// The gap above `row`: wider when the settings put one there.
+    func gap(beforeRow row: Int) -> CGFloat {
+        row > rows.lowerBound && rowsAfterGaps.contains(row) ? gap + side * Self.groupGapRatio : gap
     }
 
     /// The left edge of the blocks in `column`.
@@ -675,7 +700,10 @@ struct GridLayout {
         // Each block reaches halfway across the gaps on either side of it.
         let column = point.x < originX - gap / 2
             ? -1 : (0..<columns).first { point.x < x(ofColumn: $0) + side + gap(beforeColumn: $0 + 1) / 2 } ?? columns
-        let row = Int(((point.y - originY + gap / 2) / (side + gap)).rounded(.down))
+        let row = point.y < originY - gap / 2
+            ? -1
+            : rows.first { point.y < y(ofRow: $0) + side + gap(beforeRow: $0 + 1) / 2 }.map { $0 - rows.lowerBound }
+                ?? rows.count
         if !clamped, !(0..<columns).contains(column) || !(0..<rows.count).contains(row) { return nil }
         let slot = (min(max(row, 0), rows.count - 1) + rows.lowerBound) * columns + min(max(column, 0), columns - 1)
         let index = slot - offset

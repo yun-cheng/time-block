@@ -41,6 +41,27 @@ struct SettingsView: View {
                     }
                     Text("None").tag(0)
                 }
+                Picker("Hour gaps", selection: $model.settings.grid.hourGaps) {
+                    Text("On the clock").tag(GridMarks.HourGaps.clock)
+                    Text("Dividing the day").tag(GridMarks.HourGaps.divided)
+                    Text("None").tag(GridMarks.HourGaps.none)
+                }
+                switch model.settings.grid.hourGaps {
+                case .clock:
+                    Picker("Every", selection: $model.settings.grid.gapHours) {
+                        ForEach([3, 6, 12], id: \.self) { hours in
+                            Text("\(hours) hours").tag(hours)
+                        }
+                    }
+                case .divided:
+                    Picker("Into", selection: $model.settings.grid.dayParts) {
+                        ForEach(2...6, id: \.self) { parts in
+                            Text("\(parts) parts").tag(parts)
+                        }
+                    }
+                case .none:
+                    EmptyView()
+                }
             }
             SleepShiftSettings(model: model)
             TemplateSettings(model: model)

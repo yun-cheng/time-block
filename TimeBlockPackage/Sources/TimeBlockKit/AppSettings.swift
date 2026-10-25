@@ -215,17 +215,39 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 }
 
-/// How the grid marks the time, so a block's time can be read off its place: with wider gaps along each hour row,
-/// and minute numbers above it.
+/// How the grid marks the time, so a block's time can be read off its place: with wider gaps along each hour row and
+/// between the rows, and minute numbers above it.
 public struct GridMarks: Codable, Hashable, Sendable {
     /// Minutes between the wider gaps that split each row, 10, 15, 20 or 30, or 0 for none.
     public var gapMinutes: Int
     /// Minutes between the numbers written above the grid, 10, 15, 20 or 30, or 0 for none.
     public var labelMinutes: Int
+    /// Where wider gaps fall between the hour rows.
+    public var hourGaps: HourGaps
+    /// Hours between the gaps on the clock, counted from midnight.
+    public var gapHours: Int
+    /// Parts the waking day is split into.
+    public var dayParts: Int
 
-    public init(gapMinutes: Int = 30, labelMinutes: Int = 0) {
+    /// Where wider gaps fall between the hour rows.
+    public enum HourGaps: String, Codable, Hashable, Sendable {
+        /// None.
+        case none
+        /// Every `gapHours` hours on the clock, such as 09:00, 12:00 and 15:00.
+        case clock
+        /// Between `dayParts` equal parts of the waking day, at the nearest hour.
+        case divided
+    }
+
+    public init(
+        gapMinutes: Int = 30, labelMinutes: Int = 0, hourGaps: HourGaps = .none, gapHours: Int = 3,
+        dayParts: Int = 4
+    ) {
         self.gapMinutes = gapMinutes
         self.labelMinutes = labelMinutes
+        self.hourGaps = hourGaps
+        self.gapHours = gapHours
+        self.dayParts = dayParts
     }
 
     public init(from decoder: Decoder) throws {
@@ -233,9 +255,28 @@ public struct GridMarks: Codable, Hashable, Sendable {
         let standard = Self.standard
         gapMinutes = try container.decodeIfPresent(Int.self, forKey: .gapMinutes) ?? standard.gapMinutes
         labelMinutes = try container.decodeIfPresent(Int.self, forKey: .labelMinutes) ?? standard.labelMinutes
+        hourGaps = try container.decodeIfPresent(HourGaps.self, forKey: .hourGaps) ?? standard.hourGaps
+        gapHours = try container.decodeIfPresent(Int.self, forKey: .gapHours) ?? standard.gapHours
+        dayParts = try container.decodeIfPresent(Int.self, forKey: .dayParts) ?? standard.dayParts
     }
 
     public static let standard = GridMarks()
+
+    /// The rows out of `rowCount` with a wider gap above them, for a grid laid out by `schedule`.
+    public func rowsAfterGaps(schedule: Schedule, rowCount: Int) -> Set<Int> {
+        let rows: [Int] = switch hourGaps {
+        case .none:
+            []
+        case .clock:
+            (0..<rowCount).filter { schedule.hour(ofRow: $0) % max(1, gapHours) == 0 }
+        case .divided:
+            (1..<max(1, dayParts)).map { part in
+                let slot = schedule.gridOffset + schedule.awakeBlocks * part / dayParts
+                return Int((Double(slot) / Double(Schedule.blocksPerHour)).rounded())
+            }
+        }
+        return Set(rows.filter { $0 > 0 && $0 < rowCount })
+    }
 
     /// Blocks between the wider gaps, or nil when there are none.
     public var blocksPerGroup: Int? {
