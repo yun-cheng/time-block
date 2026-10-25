@@ -81,6 +81,20 @@ struct DayLogTests {
         #expect(snapshot.run(around: 30) == 25..<schedule.awakeBlocks)
     }
 
+    @Test func resizingARunTakesInOrLetsGoOfBlocks() {
+        var log = painted([(0..<4, "work", .activity), (6..<8, "coffee", .activity), (0..<10, "sit", .body)])
+        log.setNote("deep", for: 0..<4, in: .activity, schedule: schedule)
+        // Longer, over what was there.
+        log.resize(0..<4, to: 0..<7, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<10", "work 0..<7 \"deep\"", "coffee 7..<8"])
+        // Shorter from the start, which clears what it lets go.
+        log.resize(0..<7, to: 3..<7, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<10", "work 3..<7 \"deep\"", "coffee 7..<8"])
+        // Not one category: nothing changes.
+        log.resize(3..<8, to: 3..<9, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<10", "work 3..<7 \"deep\"", "coffee 7..<8"])
+    }
+
     @Test func rightClickingClearsTheRunOrTheSelectionItIsIn() {
         let log = painted([(0..<4, "work", .activity), (4..<6, "coffee", .activity)])
         let snapshot = DaySnapshot(

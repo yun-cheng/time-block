@@ -82,6 +82,27 @@ public struct DayLog: Codable, Hashable, Sendable {
         logs = Self.joined(kept + noted)
     }
 
+    /// Moves the ends of the run of one category at `range` in `track` to `newRange`: blocks it takes in are logged
+    /// as it, overwriting what they held there, and blocks it lets go are cleared. The run keeps its note when it
+    /// has one. Nothing changes unless `range` is all logged as one category.
+    public mutating func resize(
+        _ range: Range<Int>, to newRange: Range<Int>, in track: Track, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults
+    ) {
+        guard !range.isEmpty, !newRange.isEmpty, newRange != range else { return }
+        rebase(to: schedule)
+        let (kept, cut) = split(range, in: track, categories: categories)
+        let notes = Set(cut.map(\.note))
+        guard let categoryID = cut.first?.categoryID, cut.allSatisfy({ $0.categoryID == categoryID }),
+              cut.reduce(0, { $0 + $1.range.clamped(to: range).count }) == range.count
+        else { return }
+        logs = kept
+        let (rest, _) = split(newRange, in: track, categories: categories)
+        let note = notes.count == 1 ? notes.first ?? nil : nil
+        logs = Self.joined(rest + [BlockLog(
+            startIndex: newRange.lowerBound, length: newRange.count, categoryID: categoryID, note: note)])
+    }
+
     /// Pre-logs the templates that come back on this day, from block `index` on, in the blocks still free in their
     /// category's track. What templates logged from `index` on before is taken back first, so a changed template
     /// moves; blocks before `index` keep what they had. Paused templates, and ones for retired activities, log
