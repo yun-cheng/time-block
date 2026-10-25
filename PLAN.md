@@ -111,8 +111,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
 - **Any day, like a calendar:** every day is kept, one file each. At the toolbar's left, as in Calendar, ‹ Today ›
   go back and forth a day and back to today (Go ▸ Previous Day ⌘[, Next Day ⌘], Today ⌘T), and the date beside
-  them (always the date, "Sat 24 Oct") picks any day from a calendar. Every day is edited like today: fill in a day
-  you forgot to log, or pre‑log one ahead.
+  them (always the date, "Sat 24 Oct") picks any day from a calendar. The window leaves its title out of the
+  toolbar to make room. Every day is edited like today: fill in a day you forgot to log, or pre‑log one ahead.
   - A past day is over: every block has passed, it runs to bedtime or to the last block logged after it, and it has
     no counter, "now" or horror, just its date and how much of it was logged. It keeps the schedule saved with it,
     so it keeps its length when the schedule changes later (days saved before that take the settings').

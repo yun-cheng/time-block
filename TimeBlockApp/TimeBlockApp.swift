@@ -11,6 +11,8 @@ struct TimeBlockApp: App {
             MainWindow(model: model)
         }
         .defaultSize(width: 480, height: 720)
+        // The toolbar is busy with the day's buttons; the window keeps its name for the Window menu and Mission Control.
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             TrackCommands(model: model)
             DayCommands(model: model)
