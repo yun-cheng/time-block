@@ -60,6 +60,18 @@ struct DayLogTests {
         #expect(store.load(day: "2026-10-25", wakeMinute: 420).logs.isEmpty)
     }
 
+    @Test func savedDaysAreListedOldestFirst() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LogStore(directory: directory)
+        for day in ["2026-10-25", "2026-09-30", "2026-10-24"] {
+            try store.save(DayLog(day: day, wakeMinute: 420))
+        }
+        try Data().write(to: directory.appending(path: "notes.json"))
+        #expect(store.savedDays() == ["2026-09-30", "2026-10-24", "2026-10-25"])
+    }
+
     @Test func aDayKeepsItsScheduleWithItsLogs() throws {
         let log = painted([(0..<3, "work", .activity)])
         #expect(log.schedule == schedule)

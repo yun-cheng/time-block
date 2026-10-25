@@ -13,7 +13,7 @@ final class AppModel {
             guard settings != oldValue else { return }
             let scheduleChanged = settings.schedule(on: dayLog.day) != oldValue.schedule(on: dayLog.day)
             // Block indexes count from wake time, so a selection would point at other times.
-            if scheduleChanged { selection = nil }
+            if scheduleChanged && shownDay >= dayLog.day { selection = nil }
             loadDayIfNeeded()
             // A shift that's there already is over, so changing the schedule later doesn't start it again.
             settings.endSleepShiftIfDone(on: dayLog.day)
@@ -28,6 +28,9 @@ final class AppModel {
 
     /// Today's logs, in every track.
     private(set) var dayLog: DayLog
+
+    /// The day the window shows when it isn't today: a past day, or one still to come.
+    private(set) var otherLog: DayLog?
 
     /// Whether the main window shows the settings inspector.
     var showsSettings = false
@@ -74,6 +77,48 @@ final class AppModel {
         settings.snapshot(at: date, log: dayLog)
     }
 
+    // MARK: Other days
+
+    /// The day the window shows.
+    var shownDay: String { otherLog?.day ?? dayLog.day }
+
+    var isShowingToday: Bool { otherLog == nil }
+
+    /// What the window shows at `date`: today then, or the other day you went to.
+    func shownSnapshot(at date: Date) -> DaySnapshot {
+        otherLog.map { settings.snapshot(of: $0, today: dayLog.day) } ?? snapshot(at: date)
+    }
+
+    /// Shows `day` in the window, any day at all.
+    func show(_ day: String) {
+        loadDayIfNeeded()
+        guard day != shownDay else { return }
+        otherLog = day == dayLog.day ? nil : load(day)
+        selection = nil
+    }
+
+    /// The saved logs of a day other than today. A day still to come has its templates laid out, the way it will
+    /// when it comes, but that's only saved once it's changed.
+    private func load(_ day: String) -> DayLog {
+        var log = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+        if day > dayLog.day, !log.isPlanned {
+            log.plan(settings.templates, schedule: schedule(of: log), categories: settings.categories)
+        }
+        return log
+    }
+
+    /// The schedule of a day: today's and those to come follow the settings, and past days keep their own.
+    private func schedule(of log: DayLog) -> Schedule {
+        settings.schedule(of: log, today: dayLog.day)
+    }
+
+    /// Shows the day `offset` days from the one shown.
+    func showDay(_ offset: Int) {
+        if let day = DayID.adding(offset, to: shownDay) { show(day) }
+    }
+
+    func showToday() { show(dayLog.day) }
+
     var brush: Brush? {
         get { brushes[settings.track] }
         set { brushes[settings.track] = newValue }
@@ -82,52 +127,66 @@ final class AppModel {
     /// The main window's undo manager. Block edits are registered with it, so Edit ▸ Undo takes them back.
     @ObservationIgnored weak var undoManager: UndoManager?
 
-    /// Logs `range` in the current view as a category, or clears it with nil.
+    /// Logs `range` in the current view of the day shown as a category, or clears it with nil.
     func set(_ range: Range<Int>, to categoryID: String?) {
-        edit(categoryID == nil ? "Clear Blocks" : "Log Blocks") {
-            $0.set(range, to: categoryID, in: settings.track, schedule: schedule, categories: settings.categories)
+        set(range, to: categoryID, on: shownDay)
+    }
+
+    private func set(_ range: Range<Int>, to categoryID: String?, on day: String) {
+        edit(categoryID == nil ? "Clear Blocks" : "Log Blocks", on: day) {
+            $0.set(range, to: categoryID, in: settings.track, schedule: $1, categories: settings.categories)
         }
     }
 
     /// Moves the ends of the run of one activity at `range` in the current view to `newRange`.
     func resize(_ range: Range<Int>, to newRange: Range<Int>) {
-        edit("Resize Blocks") {
-            $0.resize(range, to: newRange, in: settings.track, schedule: schedule, categories: settings.categories)
+        edit("Resize Blocks", on: shownDay) {
+            $0.resize(range, to: newRange, in: settings.track, schedule: $1, categories: settings.categories)
         }
     }
 
     /// Moves what `range` holds in the current view `offset` blocks along.
     func move(_ range: Range<Int>, by offset: Int) {
-        edit("Move Blocks") {
-            $0.move(range, by: offset, in: settings.track, schedule: schedule, categories: settings.categories)
+        edit("Move Blocks", on: shownDay) {
+            $0.move(range, by: offset, in: settings.track, schedule: $1, categories: settings.categories)
         }
     }
 
     /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
     func setNote(_ note: String?, for range: Range<Int>) {
-        edit(note == nil ? "Remove Note" : "Edit Note") {
-            $0.setNote(note, for: range, in: settings.track, schedule: schedule, categories: settings.categories)
+        edit(note == nil ? "Remove Note" : "Edit Note", on: shownDay) {
+            $0.setNote(note, for: range, in: settings.track, schedule: $1, categories: settings.categories)
         }
     }
 
-    /// What an undo puts back: the day's logs, and the view and selection they were edited in.
+    /// What an undo puts back: a day's logs, and the view and selection they were edited in.
     private struct UndoPoint: Sendable {
         let log: DayLog
         let track: Track
         let selection: Range<Int>?
     }
 
-    /// Makes a change to today's logs, which can be undone as `name`.
-    private func edit(_ name: String, _ change: (inout DayLog) -> Void) {
+    /// Makes a change to the logs of `day`, today or the past day shown, which can be undone as `name`. The change
+    /// is given the day's schedule.
+    private func edit(_ name: String, on day: String, _ change: (inout DayLog, Schedule) -> Void) {
         loadDayIfNeeded()
-        let before = UndoPoint(log: dayLog, track: settings.track, selection: selection)
-        // On a copy: changes read the schedule, which reads `dayLog`.
-        var log = dayLog
-        change(&log)
-        guard log != before.log else { return }
-        dayLog = log
-        registerUndo(name, restoring: before)
-        save()
+        guard let before = log(of: day) else { return }
+        var log = before
+        change(&log, schedule(of: log))
+        guard log != before else { return }
+        put(log)
+        registerUndo(name, restoring: UndoPoint(log: before, track: settings.track, selection: selection))
+        save(log)
+    }
+
+    /// The logs of `day`, when it's today or the other day shown.
+    private func log(of day: String) -> DayLog? {
+        day == dayLog.day ? dayLog : otherLog?.day == day ? otherLog : nil
+    }
+
+    /// Takes `log` as its day's logs: today's, or the other day's shown.
+    private func put(_ log: DayLog) {
+        if log.day == dayLog.day { dayLog = log } else { otherLog = log }
     }
 
     private func registerUndo(_ name: String, restoring point: UndoPoint) {
@@ -136,26 +195,28 @@ final class AppModel {
         undoManager.setActionName(name)
     }
 
-    /// Puts the logs back as they were, showing the view they changed in, and registers the way back (a redo, after
-    /// an undo).
+    /// Puts a day's logs back as they were, showing the day and view they changed in, and registers the way back (a
+    /// redo, after an undo).
     private func restore(_ point: UndoPoint, name: String) {
-        // Undo is cleared when the day rolls over, but not one already under way.
-        guard point.log.day == dayLog.day else { return }
-        let current = UndoPoint(log: dayLog, track: point.track, selection: settings.track == point.track ? selection : nil)
-        dayLog = point.log
+        loadDayIfNeeded()
+        show(point.log.day)
+        guard let log = log(of: point.log.day) else { return }
+        let current = UndoPoint(log: log, track: point.track, selection: settings.track == point.track ? selection : nil)
+        put(point.log)
         settings.track = point.track
         selection = point.selection
         registerUndo(name, restoring: current)
-        save()
+        save(point.log)
     }
 
-    private func save() {
+    private func save(_ log: DayLog? = nil) {
+        let log = log ?? dayLog
         do {
-            try store.save(dayLog)
+            try store.save(log)
         } catch {
-            logger.error("Couldn't save \(self.dayLog.day): \(error)")
+            logger.error("Couldn't save \(log.day): \(error)")
         }
-        WidgetCenter.shared.reloadAllTimelines()
+        if log.day == dayLog.day { WidgetCenter.shared.reloadAllTimelines() }
     }
 
     /// Logs the block in progress, and the unlogged blocks before it when `fillsGap` is on.
@@ -165,7 +226,7 @@ final class AppModel {
         let snapshot = snapshot
         guard let current = snapshot.status.currentIndex else { return }
         let start = fillsGap ? snapshot.unloggedRun(before: current).lowerBound : current
-        set(start..<(current + 1), to: categoryID)
+        set(start..<(current + 1), to: categoryID, on: dayLog.day)
     }
 
     /// Stars a category, adding it to the palette, or unstars it.
@@ -264,14 +325,14 @@ final class AppModel {
         self.settings = settings
     }
 
-    /// Switches to the next day's logs once the day rolls over.
+    /// Switches to the next day's logs once the day rolls over. The window moves on with it when it shows today.
     private func loadDayIfNeeded() {
         let day = settings.dayID(for: now)
         guard day != dayLog.day else { return }
         dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
-        selection = nil
-        // Yesterday's edits can't be undone over today.
-        undoManager?.removeAllActions(withTarget: self)
+        if otherLog == nil { selection = nil }
+        // The day you went ahead to has come.
+        if otherLog?.day == day { otherLog = nil }
         planDayIfNeeded()
         keepTodaysSchedule()
         settings.endSleepShiftIfDone(on: day)
@@ -292,8 +353,9 @@ final class AppModel {
         save()
     }
 
-    /// Lays changed templates out again over the blocks still to come; what's already happened stays. Edits from
-    /// before can't be undone after it: putting their logs back would take the new plan away too.
+    /// Lays changed templates out again over the blocks still to come, today's and those of the days ahead already
+    /// planned; what's already happened stays. Edits from before can't be undone after it: putting their logs back
+    /// would take the new plan away too.
     private func replan() {
         undoManager?.removeAllActions(withTarget: self)
         let schedule = schedule
@@ -302,5 +364,12 @@ final class AppModel {
             settings.templates, from: status.currentIndex.map { $0 + 1 } ?? 0, schedule: schedule,
             categories: settings.categories)
         save()
+        for day in store.savedDays() where day > dayLog.day {
+            var log = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+            guard log.isPlanned else { continue }
+            log.plan(settings.templates, schedule: self.schedule(of: log), categories: settings.categories)
+            save(log)
+        }
+        if let day = otherLog?.day, day > dayLog.day { otherLog = load(day) }
     }
 }

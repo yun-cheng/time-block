@@ -267,6 +267,13 @@ public struct LogStore: Sendable {
         return log
     }
 
+    /// The days with logs saved, oldest first.
+    public func savedDays() -> [String] {
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        return files.filter { $0.pathExtension == "json" }.map { $0.deletingPathExtension().lastPathComponent }
+            .filter { DayID.date($0) != nil }.sorted()
+    }
+
     public func save(_ log: DayLog) throws {
         try JSONEncoder().encode(log).write(to: url(for: log.day), options: .atomic)
     }
