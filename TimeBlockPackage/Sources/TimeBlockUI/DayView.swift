@@ -5,7 +5,7 @@ import TimeBlockKit
 /// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
 /// its category can be changed again; a brush is put down after one drag, so the next click can't
 /// log by accident. Selected blocks that are logged can be given a note or dragged somewhere else, and a selection
-/// of one activity can be dragged longer or shorter by its ends.
+/// of one activity can be dragged longer or shorter by its ends. Delete clears a selection.
 public struct DayEditor {
     public var brush: Binding<Brush?>
     public var selection: Binding<Range<Int>?>
@@ -61,6 +61,11 @@ public struct DayEditor {
         paint(range, .clear)
     }
 
+    /// Delete was pressed: empty the selection, keeping it selected.
+    func clearSelection() {
+        if let range = selection.wrappedValue { clear(range) }
+    }
+
     /// An end of the selection was dragged: move the run's end there, and select it as it is now.
     func resized(_ range: Range<Int>, to newRange: Range<Int>) {
         resize?(range, newRange)
@@ -87,6 +92,8 @@ public struct DayView: View {
     /// Without one the day is read-only.
     var editor: DayEditor?
     @Environment(\.colorScheme) private var colorScheme
+    /// The grid takes the keyboard when blocks are selected, for Delete.
+    @FocusState private var isGridFocused: Bool
 
     public init(snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil) {
         self.snapshot = snapshot
@@ -138,6 +145,13 @@ public struct DayView: View {
                 onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } },
                 onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } })
                 .frame(maxWidth: .infinity)
+                .focusable(editor != nil, interactions: .edit)
+                .focusEffectDisabled()
+                .focused($isGridFocused)
+                .onDeleteCommand { editor?.clearSelection() }
+                .onChange(of: editor?.selection.wrappedValue) { _, range in
+                    if range != nil { isGridFocused = true }
+                }
             NowChip(snapshot: snapshot, theme: theme)
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
@@ -196,7 +210,7 @@ public struct DayView: View {
             let schedule = snapshot.status.schedule
             let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
             return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected. "
-                + "Pick an activity to log it, Clear to empty it, "
+                + "Pick an activity to log it, Clear or Delete to empty it, "
                 + (editor.move != nil && snapshot.isLogged(anyOf: range) ? "drag it to move it, " : "")
                 + (paletteChoice(editor) != nil ? "drag a handle at either end to make it longer or shorter, " : "")
                 + "or click off the blocks to deselect."

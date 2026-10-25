@@ -88,7 +88,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   empty, and what it would land on gone. A white outline marks the blocks it's put on. (Dashed outlines are only
   ever planned blocks from a calendar.)
 - **Right-click to clear:** a logged block's menu has Clear Blocks, emptying its run, or the selection
-  when the block is in it. Unlogged blocks have no menu.
+  when the block is in it. Unlogged blocks have no menu. Delete (or Edit ▸ Delete) empties the selection and
+  keeps it selected: selecting blocks gives the grid the keyboard.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
