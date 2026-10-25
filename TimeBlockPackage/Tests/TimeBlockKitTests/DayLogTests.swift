@@ -95,6 +95,22 @@ struct DayLogTests {
         #expect(summary(log) == ["sit 0..<10", "work 3..<7 \"deep\"", "coffee 7..<8"])
     }
 
+    @Test func movingBlocksTakesTheirGapsAndNotesAlong() {
+        var log = painted([
+            (0..<3, "work", .activity), (4..<6, "coffee", .activity), (6..<12, "meal", .activity), (0..<12, "sit", .body),
+        ])
+        log.setNote("deep", for: 0..<3, in: .activity, schedule: schedule)
+        // Work, a gap and coffee, 6 blocks later: over the meal, leaving the first blocks empty.
+        log.move(0..<6, by: 6, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<12", "work 6..<9 \"deep\"", "coffee 10..<12"])
+        // Back over part of itself.
+        log.move(6..<12, by: -2, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<12", "work 4..<7 \"deep\"", "coffee 8..<10"])
+        // Nothing logged: nothing moves, and nothing is cleared where it would land.
+        log.move(0..<4, by: 4, in: .activity, schedule: schedule)
+        #expect(summary(log) == ["sit 0..<12", "work 4..<7 \"deep\"", "coffee 8..<10"])
+    }
+
     @Test func rightClickingClearsTheRunOrTheSelectionItIsIn() {
         let log = painted([(0..<4, "work", .activity), (4..<6, "coffee", .activity)])
         let snapshot = DaySnapshot(

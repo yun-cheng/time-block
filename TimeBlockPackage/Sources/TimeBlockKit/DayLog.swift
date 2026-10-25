@@ -103,6 +103,26 @@ public struct DayLog: Codable, Hashable, Sendable {
             startIndex: newRange.lowerBound, length: newRange.count, categoryID: categoryID, note: note)])
     }
 
+    /// Moves what `range` holds in `track` `offset` blocks along, gaps and notes included, so the blocks it lands on
+    /// end up just like `range` was and the blocks it leaves are cleared. Nothing changes when `range` holds nothing.
+    public mutating func move(
+        _ range: Range<Int>, by offset: Int, in track: Track, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults
+    ) {
+        guard !range.isEmpty, offset != 0 else { return }
+        rebase(to: schedule)
+        let (kept, cut) = split(range, in: track, categories: categories)
+        guard !cut.isEmpty else { return }
+        logs = kept
+        let (rest, _) = split(range.lowerBound + offset..<range.upperBound + offset, in: track, categories: categories)
+        let moved = cut.map { log in
+            let inside = log.range.clamped(to: range)
+            return BlockLog(
+                startIndex: inside.lowerBound + offset, length: inside.count, categoryID: log.categoryID, note: log.note)
+        }
+        logs = Self.joined(rest + moved)
+    }
+
     /// Pre-logs the templates that come back on this day, from block `index` on, in the blocks still free in their
     /// category's track. What templates logged from `index` on before is taken back first, so a changed template
     /// moves; blocks before `index` keep what they had. Paused templates, and ones for retired activities, log
