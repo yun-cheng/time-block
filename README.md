@@ -39,6 +39,9 @@ PLAN.md.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
 - **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
+- **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
+  it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you paint over it.
+  Change or pause one, and only the blocks still to come move.
 - **Settings:** browse the whole library by group, one open at a time, to star more. Edit any activity (name,
   group, and an icon from a searchable picker: `meal` finds the fork and knife) or group (name, color), built-in
   ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and

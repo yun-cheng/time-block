@@ -221,7 +221,7 @@ struct ActivitySettings: View {
 /// Scrolls the settings to show what it's behind once it's in a window: a group just opened, or a row whose editor
 /// opened near the bottom or moved along with its activity to another group. (`ScrollViewReader` doesn't reach
 /// into a `Form`'s rows.)
-private struct ScrollIntoView: NSViewRepresentable {
+struct ScrollIntoView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { Probe() }
     func updateNSView(_ nsView: NSView, context: Context) {}
 

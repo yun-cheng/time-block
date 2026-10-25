@@ -15,6 +15,10 @@ final class AppModel {
             if settings.schedule != oldValue.schedule { selection = nil }
             SettingsStore.save(settings)
             loadDayIfNeeded()
+            // Templates are clock times: moving the wake time moves their blocks too.
+            if settings.templates != oldValue.templates || settings.schedule != oldValue.schedule {
+                replan()
+            }
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
@@ -44,6 +48,7 @@ final class AppModel {
         let settings = SettingsStore.load()
         self.settings = settings
         dayLog = store.load(day: settings.schedule.dayID(for: .now), wakeMinute: settings.schedule.wakeMinute)
+        planDayIfNeeded()
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.now = Date()
@@ -136,11 +141,38 @@ final class AppModel {
         settings.customGroups.removeAll { $0.id == id }
     }
 
+    /// Adds a template, Lunch at 12:00 for 30 minutes every day to start with, and returns its id.
+    func addTemplate() -> String {
+        let activities = settings.categories.filter { $0.track == .activity && !$0.isRetired }
+        let category = activities.first { $0.id == "lunch" } ?? activities.first
+        let template = Template(categoryID: category?.id ?? "lunch", startMinute: 12 * 60, length: 6)
+        settings.templates.append(template)
+        return template.id
+    }
+
     /// Switches to the next day's logs once the day rolls over.
     private func loadDayIfNeeded() {
         let day = settings.schedule.dayID(for: now)
         guard day != dayLog.day else { return }
         dayLog = store.load(day: day, wakeMinute: settings.schedule.wakeMinute)
         selection = nil
+        planDayIfNeeded()
+    }
+
+    /// Lays the day's templates out the first time it's seen, the whole day, so a lunch you didn't change
+    /// counts as lunch even when the app opens after it.
+    private func planDayIfNeeded() {
+        guard !dayLog.isPlanned else { return }
+        dayLog.plan(settings.templates, schedule: settings.schedule, categories: settings.categories)
+        save()
+    }
+
+    /// Lays changed templates out again over the blocks still to come; what's already happened stays.
+    private func replan() {
+        let status = DayStatus(schedule: settings.schedule, nowMinute: settings.schedule.timelineMinute(for: now))
+        dayLog.plan(
+            settings.templates, from: status.currentIndex.map { $0 + 1 } ?? 0, schedule: settings.schedule,
+            categories: settings.categories)
+        save()
     }
 }

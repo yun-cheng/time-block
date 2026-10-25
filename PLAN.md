@@ -129,8 +129,13 @@ time-logging coaches split a day, with plain names:
   Settings lists the removed ones under Removed to put back; they keep their star meanwhile.
 
 ### 3.4 Pre‑logging
-- **Recurring templates:** "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks, weekdays".
+- **Recurring templates** (Settings ▸ Routine): "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks,
+  weekdays". Each picks an activity, a start, a length and its days, and can be paused.
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
+- A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
+  change counts even when the app opens after it), as `.template` logs in blocks still free in their track. Logging
+  over them replaces them. Changing, pausing or removing a template lays them out again over the blocks still to
+  come only; what has happened stays.
 - **Calendar import:** events become pre‑logged blocks (rounded to 5‑min boundaries), mapped to a category (default "Meeting"; per‑calendar mapping).
 
 ### 3.5 Late‑night "horror mode"
@@ -178,13 +183,14 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
               (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups,
-              editedCategories/editedGroups over the built-ins, and removedCategories ids; a category saves its
-              group by id)
-DayLog        day ("2026-10-24", the wake date), wakeMinute, logs: one JSON file per day
+              editedCategories/editedGroups over the built-ins, removedCategories ids, and templates; a category
+              saves its group by id)
+DayLog        day ("2026-10-24", the wake date), wakeMinute, logs, isPlanned (templates laid out): one JSON file
+              per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
               at most one log per block per track; painting joins runs and splits the ones it covers)
-Template      id, categoryID, startMinute, lengthBlocks, recurrence(weekdays mask), isEnabled
+Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
 ShiftPlan     startDate, stepMinutes, everyNDays, direction, endDate?, targetBedMinute?, shiftWake: Bool
 CalendarLink  calendarIdentifier, categoryID, isEnabled
@@ -201,7 +207,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | 🟡 built; widget uses the default schedule until signed with a team (§2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
 | M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left; widget sees logs once signed with a team |
-| M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | |
+| M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
