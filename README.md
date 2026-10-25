@@ -124,4 +124,9 @@ group's name follows the team, so nothing else changes. A build with no team sti
 default 07:00–23:00 schedule and no logs.
 
 macOS runs the widget from one copy of the app, not always the newest: if it shows stale data, delete old builds
-(such as Xcode's DerivedData) and reopen the app.
+(such as Xcode's DerivedData) and reopen the app. It also keeps the widget running after a rebuild, so a new setting
+the widget should follow can be missing from it: stop the old one, and macOS starts the new build's in its place.
+
+```bash
+pkill -f TimeBlockWidgetExtension
+```
