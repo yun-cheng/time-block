@@ -208,7 +208,7 @@ public enum DayGrid {
         for log in logs {
             for index in log.range { logAt[index] = log }
         }
-        let current = status.currentIndex ?? -1
+        let current = status.currentIndex ?? (status.isOver ? status.visibleBlocks : -1)
         return (0..<status.visibleBlocks).map { index in
             let phase: BlockCell.Phase = index < current ? .past : index == current ? .current : .future
             let log = logAt[index]

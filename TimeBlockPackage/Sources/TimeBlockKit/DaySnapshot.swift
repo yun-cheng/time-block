@@ -17,17 +17,20 @@ public struct DaySnapshot: Sendable {
     /// This track's starred categories, in the order of `categories` (by group, from `AppSettings`): the palette.
     public let favorites: [BlockCategory]
     public let grid: GridMarks
+    /// The day it shows (see `Schedule.dayID`), when known.
+    public let day: String?
 
     /// Only logs whose category belongs to `track` are drawn. `favorites` are category ids; without them
     /// every category is a favorite.
     public init(
         status: DayStatus, logs: [BlockLog], categories: [BlockCategory], favorites: [String]? = nil,
-        track: Track = .activity, grid: GridMarks = .standard
+        track: Track = .activity, grid: GridMarks = .standard, day: String? = nil
     ) {
         let byID = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         self.status = status
         self.track = track
         self.grid = grid
+        self.day = day
         cells = DayGrid.cells(status: status, logs: logs.filter { byID[$0.categoryID]?.track == track })
         self.categories = byID
         let trackCategories = categories.filter { $0.track == track && !$0.isRetired }

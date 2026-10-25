@@ -68,6 +68,36 @@ struct DayLogTests {
         #expect(try JSONDecoder().decode(DayLog.self, from: old).schedule == nil)
     }
 
+    @Test func aPastDayHasEveryBlockPastAndRunsToItsLastLog() {
+        var log = painted([(0..<3, "work", .activity)])
+        var settings = AppSettings(schedule: schedule)
+        settings.schedule = Schedule(wakeMinute: 8 * 60, bedMinute: 22 * 60)
+        // The day keeps the schedule it had, 07:00–23:00, whatever the settings say now.
+        var past = settings.snapshot(of: log, today: "2026-10-26")
+        #expect(past.status.schedule == schedule)
+        #expect(past.cells.count == schedule.awakeBlocks)
+        #expect(past.cells.allSatisfy { $0.phase == .past })
+        #expect(past.status.currentIndex == nil && past.status.mood == .calm && past.status.overtimeBlocks == 0)
+        // Blocks logged past bedtime show as the day's overtime.
+        log.set(schedule.awakeBlocks..<(schedule.awakeBlocks + 4), to: "work", in: .activity, schedule: schedule)
+        past = settings.snapshot(of: log, today: "2026-10-26")
+        #expect(past.cells.count == schedule.awakeBlocks + 4)
+        #expect(past.status.overtimeBlocks == 4 && past.pastOvertimeCount == 4)
+        #expect(past.status.mood == .calm)
+    }
+
+    @Test func aDayAheadHasNoBlockStartedAndFollowsTheSettings() {
+        let log = painted([(24..<27, "work", .activity)])  // 2026-10-24 09:00–09:15, logged with a 07:00 wake
+        let later = Schedule(wakeMinute: 8 * 60, bedMinute: 22 * 60)
+        let ahead = AppSettings(schedule: later).snapshot(of: log, today: "2026-10-23")
+        #expect(ahead.status.isAhead && ahead.status.currentIndex == nil && ahead.status.mood == .calm)
+        // Still to come, it takes the schedule the settings give it now, and its blocks keep their clock times.
+        #expect(ahead.status.schedule == later)
+        #expect(ahead.cells.count == later.awakeBlocks)
+        #expect(ahead.cells.allSatisfy { $0.phase == .future })
+        #expect(ahead.cells.filter { $0.categoryID == "work" }.map(\.index) == [12, 13, 14])
+    }
+
     @Test func unloggedRunReachesBackToTheLastLog() {
         let log = painted([(0..<4, "work", .activity)])
         let snapshot = DaySnapshot(

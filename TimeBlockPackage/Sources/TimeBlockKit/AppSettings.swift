@@ -211,7 +211,25 @@ public struct AppSettings: Codable, Hashable, Sendable {
         return DaySnapshot(
             status: DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar)),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
-            track: track ?? self.track, grid: grid)
+            track: track ?? self.track, grid: grid, day: log.day)
+    }
+
+    /// The schedule of a day other than today. A past day keeps the one kept with its logs, or else takes what the
+    /// settings make it now; a day still to come always takes what the settings make it, sleep shift and all.
+    public func schedule(of log: DayLog, today: String, calendar: Calendar = .current) -> Schedule {
+        log.day < today ? log.schedule ?? schedule(on: log.day, calendar: calendar) : schedule(on: log.day, calendar: calendar)
+    }
+
+    /// A day other than `today`, drawn from its `log`: a past day, where every block has passed, or one still to
+    /// come, where none has started.
+    public func snapshot(of log: DayLog, today: String, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
+        let schedule = schedule(of: log, today: today, calendar: calendar)
+        return DaySnapshot(
+            status: log.day < today
+                ? DayStatus(schedule: schedule, endedAfter: log.loggedEnd(for: schedule))
+                : DayStatus(aheadWith: schedule),
+            logs: log.logs(for: schedule), categories: categories, favorites: favorites,
+            track: track ?? self.track, grid: grid, day: log.day)
     }
 }
 

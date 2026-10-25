@@ -171,6 +171,11 @@ public struct DayLog: Codable, Hashable, Sendable {
         self.schedule = schedule
     }
 
+    /// The block after the last one logged in any track, or 0 when nothing is.
+    public func loggedEnd(for schedule: Schedule) -> Int {
+        logs(for: schedule).map(\.range.upperBound).max() ?? 0
+    }
+
     /// The logs with `track`'s blocks in `range` taken out, and the logs in `track` that overlapped it.
     private func split(_ range: Range<Int>, in track: Track, categories: [BlockCategory]) -> (kept: [BlockLog], cut: [BlockLog]) {
         let trackOf = Dictionary(categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })

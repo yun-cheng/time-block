@@ -26,35 +26,61 @@ public enum Mood: Int, Comparable, CaseIterable, Sendable {
 /// Where "now" sits in a day's blocks.
 public struct DayStatus: Hashable, Sendable {
     public let schedule: Schedule
-    /// Minute on the day's timeline (see `Schedule.timelineMinute`).
+    /// Minute on the day's timeline (see `Schedule.timelineMinute`). For a day that's over, where it ended.
     public let nowMinute: Int
+    /// Whether the day is over, a past day: every block has passed, and none is in progress.
+    public let isOver: Bool
+    /// Whether the day is still to come: no block has started.
+    public let isAhead: Bool
 
     public init(schedule: Schedule, nowMinute: Int) {
         self.schedule = schedule
         self.nowMinute = nowMinute
+        isOver = false
+        isAhead = false
     }
 
-    /// The block in progress, counted from wake time; nil before waking.
-    public var currentIndex: Int? {
+    /// A day still to come.
+    public init(aheadWith schedule: Schedule) {
+        self.schedule = schedule
+        nowMinute = schedule.wakeMinute - Schedule.blockMinutes
+        isOver = false
+        isAhead = true
+    }
+
+    /// A past day, which ran to bedtime or, when blocks after it are logged, to the end of the last of them.
+    public init(schedule: Schedule, endedAfter blocks: Int) {
+        self.schedule = schedule
+        nowMinute = schedule.wakeMinute + max(blocks, schedule.awakeBlocks) * Schedule.blockMinutes
+        isOver = true
+        isAhead = false
+    }
+
+    /// The block `nowMinute` falls in, counted from wake time; nil before waking.
+    private var reachedIndex: Int? {
         nowMinute >= schedule.wakeMinute ? (nowMinute - schedule.wakeMinute) / Schedule.blockMinutes : nil
     }
 
+    /// The block in progress, counted from wake time; nil before waking and on a day that's over.
+    public var currentIndex: Int? { isOver ? nil : reachedIndex }
+
     /// Blocks that have fully passed since waking, including any past bedtime.
-    public var blocksUsed: Int { currentIndex ?? 0 }
+    public var blocksUsed: Int { reachedIndex ?? 0 }
 
     /// Blocks started after bedtime, including the one in progress.
     public var overtimeBlocks: Int {
-        max(0, (currentIndex ?? 0) - schedule.awakeBlocks + 1)
+        max(0, (reachedIndex ?? 0) - schedule.awakeBlocks + (isOver ? 0 : 1))
     }
 
     /// Blocks left before bedtime, counting the one in progress. Goes from 1 straight to -1 at bedtime,
     /// so a negative number is always the count of blocks taken from sleep.
     public var blocksLeft: Int {
-        guard let index = currentIndex else { return schedule.awakeBlocks }
+        guard let index = reachedIndex else { return schedule.awakeBlocks }
         return index < schedule.awakeBlocks ? schedule.awakeBlocks - index : -overtimeBlocks
     }
 
-    public var mood: Mood { Mood(blocksLeft: blocksLeft) }
+    /// Calm on a day that's over or still to come: it's too late, or too soon, for it to matter.
+    public var mood: Mood { isOver || isAhead ? .calm : Mood(blocksLeft: blocksLeft) }
 
     /// Blocks the grid shows: the waking day plus any overtime already started.
     public var visibleBlocks: Int { schedule.awakeBlocks + overtimeBlocks }

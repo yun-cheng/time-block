@@ -106,25 +106,56 @@ public struct DayView: View {
         return String(format: "%02d:%02d", minute / 60, minute % 60)
     }
 
+    /// The day shown, when it isn't today.
+    private var otherDate: Date? {
+        snapshot.status.isOver || snapshot.status.isAhead ? snapshot.day.flatMap { DayID.date($0) } : nil
+    }
+
+    /// Another day's date where today's counter would be, and how much of it was logged, or is planned.
+    private func otherDayHeader(_ date: Date, theme: MoodTheme) -> some View {
+        let awake = snapshot.status.schedule.awakeBlocks
+        let logged = snapshot.cells.prefix(awake).filter { $0.categoryID != nil }.count
+        return VStack(alignment: .leading, spacing: 0) {
+            Label(
+                "\(snapshot.track.name) · \(date.formatted(.dateTime.weekday(.wide)))", systemImage: snapshot.track.symbol)
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundStyle(theme.secondaryText)
+            Text(date.formatted(.dateTime.day().month(.abbreviated)))
+                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .foregroundStyle(theme.text)
+            Text("\(awake > 0 ? logged * 100 / awake : 0)% \(snapshot.status.isAhead ? "planned" : "logged")")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(theme.secondaryText)
+        }
+    }
+
     public var body: some View {
         let theme = MoodTheme(mood: snapshot.mood, colorScheme: colorScheme)
         let status = snapshot.status
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Label("\(snapshot.track.name) · \(clockLabel)", systemImage: snapshot.track.symbol)
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(theme.secondaryText)
-                    CounterView(value: status.blocksLeft, theme: theme, size: 64, total: status.schedule.awakeBlocks, time: time)
-                    Text(MoodCopy.caption(snapshot.mood))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(theme.secondaryText)
+                if let date = otherDate {
+                    otherDayHeader(date, theme: theme)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Label("\(snapshot.track.name) · \(clockLabel)", systemImage: snapshot.track.symbol)
+                            .font(.system(size: 13, weight: .medium, design: .monospaced))
+                            .foregroundStyle(theme.secondaryText)
+                        CounterView(value: status.blocksLeft, theme: theme, size: 64, total: status.schedule.awakeBlocks, time: time)
+                        Text(MoodCopy.caption(snapshot.mood))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(theme.secondaryText)
+                    }
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     stat("\(status.schedule.awakeBlocks)", "usable", theme)
-                    stat("\(status.blocksUsed)", "used", theme)
-                    stat("\(snapshot.loggedCount)", "logged", theme)
+                    if !status.isOver && !status.isAhead {
+                        stat("\(status.blocksUsed)", "used", theme)
+                    }
+                    if !status.isAhead {
+                        stat("\(snapshot.loggedCount)", "logged", theme)
+                    }
                     if let longestSit = snapshot.longestSit {
                         stat(durationText(blocks: longestSit), "longest sit", theme)
                     }
@@ -152,7 +183,9 @@ public struct DayView: View {
                 .onChange(of: editor?.selection.wrappedValue) { _, range in
                     if range != nil { isGridFocused = true }
                 }
-            NowChip(snapshot: snapshot, theme: theme)
+            if !status.isOver && !status.isAhead {
+                NowChip(snapshot: snapshot, theme: theme)
+            }
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
             if let editor {
