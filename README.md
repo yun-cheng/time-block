@@ -36,6 +36,8 @@ PLAN.md.
 - **Select, then pick:** click a block to select its whole stretch, double‑click to select just that block, or
   drag to select exactly what you cover. Click an activity under the grid to log the selection, or Clear to empty
   it. The selection stays, and its activity stays lit, until you click off the blocks.
+- **Drag the ends:** select a run of one activity and a round handle shows at each end. Drag one to make it
+  longer or shorter: the blocks it takes in are logged as it, and the ones it lets go are cleared.
 - **Right-click to clear:** right-click a logged block and pick Clear Blocks to empty its whole stretch, or the
   selection when the block is in it.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one

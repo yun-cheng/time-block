@@ -74,6 +74,11 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking an activity
   chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's activity is lit.
   Clicking off the blocks deselects.
+- **Drag the ends:** a selection that is all one activity gets a round handle at each end, on the first block's
+  top-left corner and the last block's bottom-right, like the ends of selected text (open-hand cursor on hover).
+  Dragging one moves that end, previewed like the brush (the activity's color on blocks taken in, a dashed outline
+  on blocks let go); letting go logs it, keeping the note, and the selection follows. A still click on a handle is
+  an ordinary click.
 - **Right-click to clear:** a logged block's menu has Clear Blocks, emptying its run, or the selection
   when the block is in it. Unlogged blocks have no menu.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and

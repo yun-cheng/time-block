@@ -83,6 +83,13 @@ final class AppModel {
         save()
     }
 
+    /// Moves the ends of the run of one activity at `range` in the current view to `newRange`.
+    func resize(_ range: Range<Int>, to newRange: Range<Int>) {
+        loadDayIfNeeded()
+        dayLog.resize(range, to: newRange, in: settings.track, schedule: schedule, categories: settings.categories)
+        save()
+    }
+
     /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
     func setNote(_ note: String?, for range: Range<Int>) {
         loadDayIfNeeded()

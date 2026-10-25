@@ -17,7 +17,8 @@ struct MainWindow: View {
                         editor: DayEditor(
                             brush: $model.brush, selection: $model.selection,
                             paint: { model.set($0, to: $1.categoryID) },
-                            annotate: { model.setNote($1, for: $0) }, toggleFavorite: model.toggleFavorite))
+                            annotate: { model.setNote($1, for: $0) }, toggleFavorite: model.toggleFavorite,
+                            resize: { model.resize($0, to: $1) }))
                 }
                 // Fill the window, but scroll when it is too short for the whole day.
                 .frame(minHeight: window.size.height - 20)

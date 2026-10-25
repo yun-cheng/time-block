@@ -28,6 +28,9 @@ public struct BlockGridView: View {
     var onDeselect: (() -> Void)?
     /// Called with the blocks to empty when Clear is picked from a logged block's right-click menu.
     var onClear: ((Range<Int>) -> Void)?
+    /// Called with the selection and its new extent when a handle at either end of a selection of one activity
+    /// is dragged. Without it there are no handles.
+    var onResize: ((Range<Int>, Range<Int>) -> Void)?
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
@@ -36,12 +39,21 @@ public struct BlockGridView: View {
     @State private var pointed: Int?
     /// The last single click, to spot a double click.
     @State private var lastClick: (index: Int, time: Date)?
+    /// The selection's end being dragged, and the blocks it would cover now.
+    @State private var resizing: (end: SelectionEnd, range: Range<Int>)?
+    /// Whether the pointer is over a selection handle.
+    @State private var isOverHandle = false
+
+    private enum SelectionEnd {
+        case start, end
+    }
 
     public init(
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
         showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
         brush: Brush? = nil, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
-        onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil
+        onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil,
+        onResize: ((Range<Int>, Range<Int>) -> Void)? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
@@ -54,6 +66,7 @@ public struct BlockGridView: View {
         self.onDrag = onDrag
         self.onDeselect = onDeselect
         self.onClear = onClear
+        self.onResize = onResize
     }
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
@@ -91,12 +104,16 @@ public struct BlockGridView: View {
                                 if case .active(let point) = phase {
                                     hovered = layout.index(at: point, count: snapshot.cells.count, clamped: false)
                                     pointed = hovered
+                                    isOverHandle = handle(at: point, layout: layout) != nil
                                 } else {
                                     hovered = nil
+                                    isOverHandle = false
                                 }
                             }
                         if let range = labeled {
-                            BlockInfo(snapshot: snapshot, theme: theme, range: range, brush: brush)
+                            BlockInfo(
+                                snapshot: snapshot, theme: theme, range: range,
+                                brush: resizing != nil ? resizableCategory.map(Brush.category) : brush)
                                 .fixedSize()
                                 .position(infoPosition(for: range, layout: layout, size: proxy.size))
                                 .allowsHitTesting(false)
@@ -104,6 +121,13 @@ public struct BlockGridView: View {
                     }
                 }
             }
+            #if canImport(AppKit)
+            // An open hand over a knob, closed while dragging one.
+            .onChange(of: resizing != nil ? 2 : isOverHandle ? 1 : 0) { old, new in
+                if old > 0 { NSCursor.pop() }
+                if new > 0 { (new == 2 ? NSCursor.closedHand : NSCursor.openHand).push() }
+            }
+            #endif
     }
 
     private var dragged: Range<Int>? {
@@ -113,7 +137,7 @@ public struct BlockGridView: View {
     /// What the pointer is over: with a brush, the one block it would paint; otherwise the whole selection
     /// when over it, or the run of one category around a logged block.
     private var hoveredRange: Range<Int>? {
-        guard let hovered else { return nil }
+        guard let hovered, !isOverHandle else { return nil }
         if brush != nil { return hovered..<(hovered + 1) }
         if let selection, selection.contains(hovered) { return selection }
         return snapshot.run(around: hovered)
@@ -121,7 +145,47 @@ public struct BlockGridView: View {
 
     /// Blocks the label describes: the drag in progress, else what the pointer is over, else the selection.
     private var labeled: Range<Int>? {
-        dragged ?? hoveredRange ?? selection
+        resizing?.range ?? dragged ?? hoveredRange ?? selection
+    }
+
+    /// The activity the selection holds throughout, when it's logged as one, so its ends can be dragged.
+    private var resizableCategory: String? {
+        guard onResize != nil, brush == nil, let selection, snapshot.cells.indices.contains(selection.lowerBound),
+              snapshot.cells.indices.contains(selection.upperBound - 1),
+              let category = snapshot.cells[selection.lowerBound].categoryID,
+              snapshot.cells[selection].allSatisfy({ $0.categoryID == category })
+        else { return nil }
+        return category
+    }
+
+    /// The blocks with handles: the selection, or what it's being dragged to.
+    private var handled: Range<Int>? {
+        resizing?.range ?? (resizableCategory != nil ? selection : nil)
+    }
+
+    /// The middle of the knob on each end of `range`: on the top-left corner of its first block and the bottom-right
+    /// corner of its last, like the ends of selected text that runs over several lines.
+    private func handlePoints(of range: Range<Int>, layout: GridLayout) -> (start: CGPoint, end: CGPoint) {
+        let first = layout.frame(range.lowerBound)
+        let last = layout.frame(range.upperBound - 1)
+        let inset = layout.radius * 0.3
+        return (
+            CGPoint(x: first.minX + inset, y: first.minY + inset),
+            CGPoint(x: last.maxX - inset, y: last.maxY - inset))
+    }
+
+    /// The knobs' size, and how far from one a press still grabs it.
+    private static func knobDiameter(side: CGFloat) -> CGFloat { max(9, side * 0.55) }
+
+    /// The selection end whose handle is under `point`, given a little room around it to grab.
+    private func handle(at point: CGPoint, layout: GridLayout) -> SelectionEnd? {
+        guard let range = handled else { return nil }
+        let points = handlePoints(of: range, layout: layout)
+        let reach = Self.knobDiameter(side: layout.side) / 2 + 5
+        let isNear = { (handle: CGPoint) in hypot(point.x - handle.x, point.y - handle.y) <= reach }
+        if isNear(points.end) { return .end }
+        if isNear(points.start) { return .start }
+        return nil
     }
 
     /// Just above the first highlighted block, or below it on the top row.
@@ -147,6 +211,23 @@ public struct BlockGridView: View {
             .onChanged { value in
                 let layout = layout(size: size)
                 let count = snapshot.cells.count
+                // A press on a handle that moves drags that end; one that doesn't is an ordinary click.
+                if resizing == nil, drag.map({ $0.start == $0.end }) ?? true,
+                   hypot(value.translation.width, value.translation.height) >= 3, let selection,
+                   let end = handle(at: value.startLocation, layout: layout) {
+                    resizing = (end, selection)
+                    drag = nil
+                }
+                if let resizing, let selection {
+                    // Drag an end past the other and it stops there: a run is at least one block.
+                    guard let index = layout.index(at: value.location, count: count, clamped: true) else { return }
+                    let range = switch resizing.end {
+                    case .start: min(index, selection.upperBound - 1)..<selection.upperBound
+                    case .end: selection.lowerBound..<max(index + 1, selection.lowerBound + 1)
+                    }
+                    self.resizing = (resizing.end, range)
+                    return
+                }
                 guard let start = drag?.start ?? layout.index(at: value.startLocation, count: count, clamped: false),
                       let end = layout.index(at: value.location, count: count, clamped: true)
                 else { return }
@@ -154,6 +235,11 @@ public struct BlockGridView: View {
             }
             .onEnded { _ in
                 defer { drag = nil }
+                if let resizing {
+                    self.resizing = nil
+                    if let selection, resizing.range != selection { onResize?(selection, resizing.range) }
+                    return
+                }
                 guard let dragged else {
                     onDeselect?()
                     return
@@ -259,7 +345,18 @@ public struct BlockGridView: View {
                 // dashed outline when clearing. Without a brush, dragged and selected blocks are outlined.
                 let line = max(1.5, side * 0.12)
                 let previewed = dragged ?? (brush != nil ? hovered.map { $0..<($0 + 1) } : nil)
-                if let brush, previewed?.contains(cell.index) == true {
+                let isSelected = selection?.contains(cell.index) == true
+                if let resizing, resizing.range.contains(cell.index) != isSelected {
+                    // A dragged end previews like the brush: the activity's color on blocks it takes in, a dashed
+                    // outline on those it lets go.
+                    if isSelected {
+                        context.stroke(
+                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
+                    } else if let color = resizableCategory.flatMap({ snapshot.categories[$0] }).map(theme.color(of:)) {
+                        context.fill(path, with: .color(color.opacity(0.7)))
+                        context.stroke(path, with: .color(color), lineWidth: line)
+                    }
+                } else if let brush, previewed?.contains(cell.index) == true {
                     if let color = brush.categoryID.flatMap({ snapshot.categories[$0] }).map(theme.color(of:)) {
                         context.fill(path, with: .color(color.opacity(0.7)))
                         context.stroke(path, with: .color(color), lineWidth: line)
@@ -267,10 +364,10 @@ public struct BlockGridView: View {
                         context.stroke(
                             path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
                     }
-                } else if (dragged ?? selection)?.contains(cell.index) == true {
+                } else if (resizing?.range ?? dragged ?? selection)?.contains(cell.index) == true {
                     context.fill(path, with: .color(theme.text.opacity(0.2)))
                     context.stroke(path, with: .color(theme.text), lineWidth: line)
-                } else if brush == nil, drag == nil, let run = hoveredRange, run.contains(cell.index) {
+                } else if brush == nil, drag == nil, resizing == nil, let run = hoveredRange, run.contains(cell.index) {
                     // The stretch of one category (or one gap) under the pointer.
                     context.stroke(path, with: .color(theme.text.opacity(0.75)), lineWidth: line)
                 }
@@ -282,6 +379,19 @@ public struct BlockGridView: View {
                 context.stroke(
                     Path(roundedRect: ring, cornerRadius: radius + gap * 0.55),
                     with: .color(theme.text.opacity(pulse)), lineWidth: max(1, gap * 0.45))
+            }
+        }
+
+        if onDrag != nil, let range = handled {
+            // A knob at each end of the selection, in the activity's color with a ring, to drag it longer or shorter.
+            let points = handlePoints(of: range, layout: grid)
+            let diameter = Self.knobDiameter(side: side)
+            let color = resizableCategory.flatMap { snapshot.categories[$0] }.map(theme.color(of:)) ?? theme.text
+            for point in [points.start, points.end] {
+                let rect = CGRect(x: point.x - diameter / 2, y: point.y - diameter / 2, width: diameter, height: diameter)
+                context.fill(Path(ellipseIn: rect.offsetBy(dx: 0, dy: 1)), with: .color(.black.opacity(0.35)))
+                context.fill(Path(ellipseIn: rect), with: .color(theme.text))
+                context.fill(Path(ellipseIn: rect.insetBy(dx: diameter * 0.2, dy: diameter * 0.2)), with: .color(color))
             }
         }
 
