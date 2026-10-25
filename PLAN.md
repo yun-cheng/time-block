@@ -150,12 +150,23 @@ Escalates the further past bedtime you are:
 - Tomorrow's grid can show the debt: "You start 30 blocks in the red."
 
 ### 3.6 Sleep‑shift plan ("adjust timezone")
-Gradually move your schedule earlier (or later) instead of all at once.
-- Inputs: **step size** (15 / 30 / 60 min or custom), **every N days** (default 1), **until** a date *or* a target bedtime.
-- Example: bedtime 01:00, step 30 min/day, until 23:00 → 01:00, 00:30, 00:00, 23:30, 23:00 (done in 4 days).
-- Wake time shifts with it (keeps sleep duration) or stays fixed (user choice).
-- Also usable for **jet lag**: pick a destination timezone + travel date, and the plan pre‑shifts you.
-- The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan.
+Gradually move your schedule earlier (or later) instead of all at once (Settings ▸ Sleep Shift).
+- Inputs: **bedtime or wake time** and the time to get it to, the **step** (10–60 min), **every N days** (default 1),
+  and either the **start day** (default today) or the **day to be there by**, which starts it as many steps before
+  as it takes (too soon to make at that step size says so and won't start). Switching between the two keeps the plan.
+- Steps land on **nights**: a step day's bedtime moves, and wake time follows the next morning, so every night is as
+  long as before and a morning that's gone never moves. Starting today moves tonight's bedtime; the shift is done the
+  first day that's all on the target.
+- Example: bedtime 01:00, step 30 min/day, to 23:00 → 01:00, 00:30, 00:00, 23:30, 23:00 (done in 4 days).
+- The other end shifts with it (keeps sleep duration) or stays fixed (user choice).
+- Starting a shift makes the target the schedule in Settings and keeps where you started; each day's schedule is
+  that many steps along. Wake time and bedtime each stop at their target, and the shift ends by itself once it's
+  done. Stop keeps today's times as the schedule.
+- The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan. Routine templates keep
+  their clock times as the day moves.
+- A day's rollover comes from the schedule of the date a moment falls on, so 05:30 is still "tonight" while that
+  date's wake time is 08:30.
+- Later: **jet lag**: pick a destination timezone + travel date, and the plan pre‑shifts you.
 
 ### 3.6a Views (tracks)
 The same day can be looked at through different **views**. Each view is its own **track** of logs, so one block can hold
@@ -183,7 +194,7 @@ or the menu bar panel; each widget picks its own view in its Edit sheet, so an A
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
               (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups,
-              editedCategories/editedGroups over the built-ins, removedCategories ids, and templates; a category
+              editedCategories/editedGroups over the built-ins, removedCategories ids, templates and sleepShift; a category
               saves its group by id)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, logs, isPlanned (templates laid out): one JSON file
               per day
@@ -192,10 +203,11 @@ BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template
               at most one log per block per track; painting joins runs and splits the ones it covers)
 Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
-ShiftPlan     startDate, stepMinutes, everyNDays, direction, endDate?, targetBedMinute?, shiftWake: Bool
+SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays (the target is
+              AppSettings.schedule)
 CalendarLink  calendarIdentifier, categoryID, isEnabled
 ```
-Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awakeBlocks(on:)`, `remaining(at:)` (can be negative), `plannedSchedule(on:)` (applies ShiftPlan), DST‑safe.
+Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awakeBlocks(on:)`, `remaining(at:)` (can be negative), `AppSettings.schedule(on:)` (applies SleepShift), DST‑safe.
 
 ---
 
@@ -209,7 +221,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left; widget sees logs once signed with a team |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
-| M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | |
+| M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
 | M8 | **iPhone + Apple Watch** | CloudKit sync, watch app, complications, Smart Stack, location and motion data | |

@@ -1,0 +1,248 @@
+import SwiftUI
+import TimeBlockKit
+
+/// Moves your schedule to new times a step at a time, like 30 minutes a day, instead of all at once. While a shift
+/// runs, the schedule above is where it's heading and each day's grid uses that day's step.
+struct SleepShiftSettings: View {
+    @Bindable var model: AppModel
+    @State private var isEditing = false
+
+    var body: some View {
+        Section {
+            if let shift = model.settings.sleepShift {
+                running(shift)
+            } else if isEditing {
+                SleepShiftEditor(model: model, done: { isEditing = false })
+                    .background { ScrollIntoView() }
+            } else {
+                Button("Shift Gradually…", systemImage: "moon.zzz") { isEditing = true }
+            }
+        } header: {
+            Text("Sleep Shift")
+        } footer: {
+            Text("Moves your bedtime or wake time a step a night: bedtime first, then the next morning's wake time, so you sleep as long. The grid and counter follow each day's step.")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func running(_ shift: SleepShift) -> some View {
+        let target = model.settings.schedule
+        let today = model.dayLog.day
+        let steps = Self.changes(of: shift, target: target, after: today)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "moon.zzz")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(times(shift.from)) → \(times(target))")
+                        .monospacedDigit()
+                    Text(Self.summary(of: shift, target: target, today: model.schedule))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            if !steps.isEmpty {
+                let names = steps.map { "\(Self.dayName($0.day, today: today)) \(times($0.schedule))" }
+                // The first few and the last.
+                Text((names.count > 5 ? names.prefix(3) + ["…", names[names.count - 1]] : names[...]).joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .padding(.leading, 28)
+            }
+            HStack {
+                Spacer()
+                Button("Stop Shift") { model.stopSleepShift() }
+                    .help("Keep today's times as your schedule")
+            }
+        }
+    }
+
+    /// "Today 11:30–02:30 · 30 min earlier every day".
+    static func summary(of shift: SleepShift, target: Schedule, today: Schedule) -> String {
+        let wake = SleepShift.distance(from: shift.from.wakeMinute, to: target.wakeMinute)
+        let bed = SleepShift.distance(from: shift.from.bedMinute, to: target.bedMinute)
+        let direction = (abs(bed) >= abs(wake) ? bed : wake) < 0 ? "earlier" : "later"
+        let every = shift.everyDays == 1 ? "every day" : "every \(shift.everyDays) days"
+        return "Today \(times(today)) · \(shift.stepMinutes) min \(direction) \(every)"
+    }
+
+    /// Each day after `today` whose schedule is new, up to the one that's all on `target`.
+    static func changes(of shift: SleepShift, target: Schedule, after today: String) -> [(day: String, schedule: Schedule)] {
+        let days = DayID.days(from: today, to: shift.finishDay(target: target)) ?? 0
+        guard days > 0 else { return [] }
+        var previous = shift.schedule(on: today, target: target)
+        return (1...days).compactMap { offset in
+            guard let day = DayID.adding(offset, to: today) else { return nil }
+            let schedule = shift.schedule(on: day, target: target)
+            defer { previous = schedule }
+            return schedule == previous ? nil : (day, schedule)
+        }
+    }
+
+    /// "Tomorrow", "Thu", or "Thu 5 Nov" a week or more out; "on Thu" with `on`.
+    static func dayName(_ day: String, today: String, on: Bool = false) -> String {
+        let days = DayID.days(from: today, to: day) ?? 0
+        guard let date = DayID.date(day) else { return day }
+        switch days {
+        case ...0: return on ? "today" : "Today"
+        case 1: return on ? "tomorrow" : "Tomorrow"
+        case 2..<7: return (on ? "on " : "") + date.formatted(.dateTime.weekday(.abbreviated))
+        default: return (on ? "on " : "") + date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        }
+    }
+}
+
+private func clock(_ minute: Int) -> String {
+    String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
+}
+
+/// "07:00–23:00".
+private func times(_ schedule: Schedule) -> String {
+    "\(clock(schedule.wakeMinute))–\(clock(schedule.bedMinute))"
+}
+
+/// Sets up a shift: the bedtime or wake time to get to, how big and how often the steps are, and the day they
+/// start or the day to be there by.
+private struct SleepShiftEditor: View {
+    @Bindable var model: AppModel
+    let done: () -> Void
+
+    private enum Timing: Hashable {
+        case start, finish
+    }
+
+    @State private var end = Schedule.End.bed
+    @State private var minute: Int
+    @State private var keepsSleep = true
+    @State private var stepMinutes = 30
+    @State private var everyDays = 1
+    @State private var timing = Timing.start
+    @State private var date: Date
+
+    init(model: AppModel, done: @escaping () -> Void) {
+        self.model = model
+        self.done = done
+        // An hour earlier, from tonight.
+        _minute = State(initialValue: (model.schedule.bedMinute + 23 * 60) % (24 * 60))
+        _date = State(initialValue: DayID.date(model.dayLog.day) ?? .now)
+    }
+
+    var body: some View {
+        let from = model.schedule
+        let target = from.moving(end, to: minute, keepsSleep: keepsSleep)
+        let shift = shift(from: from, target: target, timing: timing)
+        let today = model.dayLog.day
+        let isLate = (DayID.days(from: today, to: shift.startDay) ?? 0) < 0
+        VStack(alignment: .leading, spacing: 10) {
+            Picker("Move", selection: $end) {
+                Text("Bedtime").tag(Schedule.End.bed)
+                Text("Wake time").tag(Schedule.End.wake)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: end) {
+                // An hour earlier than now.
+                minute = ((end == .bed ? from.bedMinute : from.wakeMinute) + 23 * 60) % (24 * 60)
+            }
+            DatePicker("To", selection: time, displayedComponents: .hourAndMinute)
+            Toggle(isOn: $keepsSleep) {
+                Text(end == .bed ? "Wake time moves too" : "Bedtime moves too")
+                let other = end == .bed ? (from.wakeMinute, target.wakeMinute) : (from.bedMinute, target.bedMinute)
+                Text(keepsSleep ? "To \(clock(other.1)), so you sleep as long" : "Stays at \(clock(other.0))")
+            }
+            Picker("Step", selection: $stepMinutes) {
+                ForEach([10, 15, 20, 30, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
+            }
+            LabeledContent("Every") {
+                HStack(spacing: 6) {
+                    Text(everyDays == 1 ? "day" : "\(everyDays) days").monospacedDigit()
+                    Stepper("Every", value: $everyDays, in: 1...7)
+                        .labelsHidden()
+                }
+            }
+            Picker("Set", selection: $timing) {
+                Text("Start day").tag(Timing.start)
+                Text("Finish day").tag(Timing.finish)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: timing) { old, new in
+                // The same shift, by its other end.
+                let shift = self.shift(from: from, target: target, timing: old)
+                let day = new == .start ? shift.startDay : shift.finishDay(target: target)
+                date = DayID.date(day) ?? date
+            }
+            DatePicker(
+                timing == .start ? "Starts" : "There by", selection: $date, in: (DayID.date(today) ?? .now)...,
+                displayedComponents: .date)
+            Text(preview(shift, target: target, isLate: isLate))
+                .font(.caption)
+                .foregroundStyle(isLate ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                .monospacedDigit()
+            HStack {
+                Button("Cancel", action: done)
+                Spacer()
+                Button("Start Shift") {
+                    model.startSleepShift(shift, to: target)
+                    done()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(shift.stepCount(to: target) == 0 || isLate)
+            }
+        }
+    }
+
+    /// The shift as set: starting on the chosen day, or starting as late as gets you there by it.
+    private func shift(from: Schedule, target: Schedule, timing: Timing) -> SleepShift {
+        let day = DayID.string(from: date)
+        return switch timing {
+        case .start: SleepShift(from: from, startDay: day, stepMinutes: stepMinutes, everyDays: everyDays)
+        case .finish:
+            SleepShift(from: from, finishingOn: day, target: target, stepMinutes: stepMinutes, everyDays: everyDays)
+        }
+    }
+
+    /// "4 steps: 00:30, 00:00, 23:30, 23:00, there on Fri." or, by a day, "… from tonight."
+    private func preview(_ shift: SleepShift, target: Schedule, isLate: Bool) -> String {
+        let count = shift.stepCount(to: target)
+        let today = model.dayLog.day
+        guard count > 0 else { return "That's your \(end == .bed ? "bedtime" : "wake time") already." }
+        if isLate {
+            let soonest = SleepShift(
+                from: shift.from, startDay: today, stepMinutes: shift.stepMinutes, everyDays: shift.everyDays)
+            let finish = SleepShiftSettings.dayName(soonest.finishDay(target: target), today: today, on: true)
+            return "\(count) \(count == 1 ? "step" : "steps") from tonight gets you there \(finish) at the soonest. Take bigger steps or pick a later day."
+        }
+        let moved = (1...count).map { step in
+            let schedule = shift.schedule(afterSteps: step, target: target)
+            return clock(end == .bed ? schedule.bedMinute : schedule.wakeMinute)
+        }
+        let shown = moved.count > 6 ? moved.prefix(5) + ["…", moved[moved.count - 1]] : moved[...]
+        let steps = "\(count) \(count == 1 ? "step" : "steps"): \(shown.joined(separator: ", "))"
+        switch timing {
+        case .start:
+            return "\(steps), there \(SleepShiftSettings.dayName(shift.finishDay(target: target), today: today, on: true))."
+        case .finish:
+            let start = SleepShiftSettings.dayName(shift.startDay, today: today)
+            let night = switch start {
+            case "Today": "tonight"
+            case "Tomorrow": "tomorrow night"
+            default: "\(start) night"
+            }
+            return "\(steps), from \(night)."
+        }
+    }
+
+    /// The time to get to, snapped to 5-minute blocks like the schedule.
+    private var time: Binding<Date> {
+        let calendar = Calendar.current
+        let midnight = calendar.startOfDay(for: .now)
+        return Binding {
+            midnight.addingTimeInterval(Double(minute * 60))
+        } set: { date in
+            let parts = calendar.dateComponents([.hour, .minute], from: date)
+            minute = Schedule.snappedMinute(editing: minute, to: (parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+        }
+    }
+}

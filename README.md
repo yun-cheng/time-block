@@ -10,6 +10,9 @@ whole UI slowly turns into a horror show.
 
 - **1 block = 5 minutes.** Rows are clock hours of 12 blocks; only your waking hours are shown.
 - **Counter:** blocks left over the day's usable total (`92/192`). It goes negative after bedtime.
+- **Sleep shift:** in Settings, move bedtime or wake time to a new time a step a night (bedtime 01:00 to 23:00, 30
+  minutes a night). Bedtime moves first and the next morning's wake time follows, so you sleep as long. Set the day
+  it starts or the day to be there by; each day's grid and counter use that day's times.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, red is taken
   from sleep.

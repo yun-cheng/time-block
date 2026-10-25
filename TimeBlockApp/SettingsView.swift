@@ -21,13 +21,22 @@ struct SettingsView: View {
             } header: {
                 Text("Schedule")
             } footer: {
-                Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.")
+                Text("\(schedule.awakeBlocks / 12)h \(schedule.awakeBlocks % 12 * 5)m awake. Times snap to 5-minute blocks. A bedtime before your wake time means after midnight.\(shiftNote)")
                     .foregroundStyle(.secondary)
             }
+            SleepShiftSettings(model: model)
             TemplateSettings(model: model)
             ActivitySettings(model: model)
         }
         .formStyle(.grouped)
+    }
+
+    /// While a sleep shift runs, the schedule is where it's heading rather than today's.
+    private var shiftNote: String {
+        guard model.settings.sleepShift != nil else { return "" }
+        let today = model.schedule
+        return String(format: " A sleep shift is getting you here: today is %02d:%02d–%02d:%02d.",
+                      today.wakeMinute / 60, today.wakeMinute % 60, today.bedMinute / 60, today.bedMinute % 60)
     }
 
     /// Edits one of the schedule's minute-of-day fields with a time picker, snapped to 5 minutes.

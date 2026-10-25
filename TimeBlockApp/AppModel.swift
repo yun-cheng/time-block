@@ -11,12 +11,15 @@ final class AppModel {
     var settings: AppSettings {
         didSet {
             guard settings != oldValue else { return }
+            let scheduleChanged = settings.schedule(on: dayLog.day) != oldValue.schedule(on: dayLog.day)
             // Block indexes count from wake time, so a selection would point at other times.
-            if settings.schedule != oldValue.schedule { selection = nil }
-            SettingsStore.save(settings)
+            if scheduleChanged { selection = nil }
             loadDayIfNeeded()
+            // A shift that's there already is over, so changing the schedule later doesn't start it again.
+            settings.endSleepShiftIfDone(on: dayLog.day)
+            SettingsStore.save(settings)
             // Templates are clock times: moving the wake time moves their blocks too.
-            if settings.templates != oldValue.templates || settings.schedule != oldValue.schedule {
+            if settings.templates != oldValue.templates || scheduleChanged {
                 replan()
             }
             WidgetCenter.shared.reloadAllTimelines()
@@ -45,9 +48,11 @@ final class AppModel {
     @ObservationIgnored private let logger = Logger(subsystem: "dev.timeblock.TimeBlock", category: "logs")
 
     init() {
-        let settings = SettingsStore.load()
+        var settings = SettingsStore.load()
+        let day = settings.dayID(for: .now)
+        if settings.endSleepShiftIfDone(on: day) { SettingsStore.save(settings) }
         self.settings = settings
-        dayLog = store.load(day: settings.schedule.dayID(for: .now), wakeMinute: settings.schedule.wakeMinute)
+        dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
         planDayIfNeeded()
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -56,6 +61,9 @@ final class AppModel {
             }
         }
     }
+
+    /// Today's schedule, which a sleep shift moves day by day.
+    var schedule: Schedule { settings.schedule(on: dayLog.day) }
 
     var snapshot: DaySnapshot { snapshot(at: now) }
 
@@ -71,14 +79,14 @@ final class AppModel {
     /// Logs `range` in the current view as a category, or clears it with nil.
     func set(_ range: Range<Int>, to categoryID: String?) {
         loadDayIfNeeded()
-        dayLog.set(range, to: categoryID, in: settings.track, schedule: settings.schedule, categories: settings.categories)
+        dayLog.set(range, to: categoryID, in: settings.track, schedule: schedule, categories: settings.categories)
         save()
     }
 
     /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
     func setNote(_ note: String?, for range: Range<Int>) {
         loadDayIfNeeded()
-        dayLog.setNote(note, for: range, in: settings.track, schedule: settings.schedule, categories: settings.categories)
+        dayLog.setNote(note, for: range, in: settings.track, schedule: schedule, categories: settings.categories)
         save()
     }
 
@@ -150,28 +158,46 @@ final class AppModel {
         return template.id
     }
 
+    /// Starts moving today's schedule to `target` a step at a time.
+    func startSleepShift(_ shift: SleepShift, to target: Schedule) {
+        var settings = settings
+        settings.schedule = target
+        settings.sleepShift = shift
+        self.settings = settings
+    }
+
+    /// Stops a sleep shift where it's got to: today's schedule becomes the one you keep.
+    func stopSleepShift() {
+        var settings = settings
+        settings.schedule = schedule
+        settings.sleepShift = nil
+        self.settings = settings
+    }
+
     /// Switches to the next day's logs once the day rolls over.
     private func loadDayIfNeeded() {
-        let day = settings.schedule.dayID(for: now)
+        let day = settings.dayID(for: now)
         guard day != dayLog.day else { return }
-        dayLog = store.load(day: day, wakeMinute: settings.schedule.wakeMinute)
+        dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
         selection = nil
         planDayIfNeeded()
+        settings.endSleepShiftIfDone(on: day)
     }
 
     /// Lays the day's templates out the first time it's seen, the whole day, so a lunch you didn't change
     /// counts as lunch even when the app opens after it.
     private func planDayIfNeeded() {
         guard !dayLog.isPlanned else { return }
-        dayLog.plan(settings.templates, schedule: settings.schedule, categories: settings.categories)
+        dayLog.plan(settings.templates, schedule: schedule, categories: settings.categories)
         save()
     }
 
     /// Lays changed templates out again over the blocks still to come; what's already happened stays.
     private func replan() {
-        let status = DayStatus(schedule: settings.schedule, nowMinute: settings.schedule.timelineMinute(for: now))
+        let schedule = schedule
+        let status = DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: now))
         dayLog.plan(
-            settings.templates, from: status.currentIndex.map { $0 + 1 } ?? 0, schedule: settings.schedule,
+            settings.templates, from: status.currentIndex.map { $0 + 1 } ?? 0, schedule: schedule,
             categories: settings.categories)
         save()
     }

@@ -50,7 +50,8 @@ struct DayProvider: AppIntentTimelineProvider {
         let track = configuration.view.track
         if context.isPreview { return DayEntry(date: .now, snapshot: Self.sample(at: .now, track: track)) }
         let settings = SettingsStore.load()
-        let log = LogStore.shared.load(day: settings.schedule.dayID(for: .now), wakeMinute: settings.schedule.wakeMinute)
+        let day = settings.dayID(for: .now)
+        let log = LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
         return DayEntry(date: .now, snapshot: settings.snapshot(at: .now, log: log, track: track))
     }
 
@@ -58,8 +59,8 @@ struct DayProvider: AppIntentTimelineProvider {
         let settings = SettingsStore.load()
         var logs: [String: DayLog] = [:]
         let entries = BlockClock.boundaries(from: .now, count: Self.entryCount).map { date in
-            let day = settings.schedule.dayID(for: date)
-            let log = logs[day] ?? LogStore.shared.load(day: day, wakeMinute: settings.schedule.wakeMinute)
+            let day = settings.dayID(for: date)
+            let log = logs[day] ?? LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
             logs[day] = log
             return DayEntry(date: date, snapshot: settings.snapshot(at: date, log: log, track: configuration.view.track))
         }
