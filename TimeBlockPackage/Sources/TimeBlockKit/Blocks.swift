@@ -192,6 +192,13 @@ public struct BlockCell: Hashable, Sendable {
     public let categoryID: String?
     public let source: BlockLog.Source?
     public let note: String?
+
+    /// The same block logged by hand as `categoryID`, or emptied with nil: what an edit would make it.
+    public func logged(as categoryID: String?) -> BlockCell {
+        BlockCell(
+            index: index, phase: phase, isOvertime: isOvertime, categoryID: categoryID,
+            source: categoryID == nil ? nil : .manual, note: nil)
+    }
 }
 
 public enum DayGrid {

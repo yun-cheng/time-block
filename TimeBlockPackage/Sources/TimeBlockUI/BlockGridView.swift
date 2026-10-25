@@ -170,6 +170,29 @@ public struct BlockGridView: View {
         return snapshot.isLogged(anyOf: selection)
     }
 
+    /// The blocks an edit being dragged is put on: the brush's drag (or the block under it), or where a dragged end
+    /// or a moved selection would put the selection.
+    private var edited: Range<Int>? {
+        if let range = resizing?.range ?? moved { return range }
+        guard brush != nil else { return nil }
+        return dragged ?? hovered.map { $0..<($0 + 1) }
+    }
+
+    /// What each block an edit being dragged would change ends up holding: the activity, or nil once it's emptied.
+    private var preview: [Int: String?] {
+        var preview: [Int: String?] = [:]
+        if let moving, let moved, let selection {
+            for index in selection { preview.updateValue(nil, forKey: index) }
+            for index in moved { preview.updateValue(snapshot.cells[index - moving.offset].categoryID, forKey: index) }
+        } else if let resizing, let selection, let category = resizableCategory {
+            for index in selection { preview.updateValue(nil, forKey: index) }
+            for index in resizing.range { preview.updateValue(category, forKey: index) }
+        } else if let brush, let edited {
+            for index in edited { preview.updateValue(brush.categoryID, forKey: index) }
+        }
+        return preview.filter { snapshot.cells.indices.contains($0.key) }
+    }
+
     /// Where the selection being moved would land.
     private var moved: Range<Int>? {
         guard let moving, let selection else { return nil }
@@ -341,6 +364,8 @@ public struct BlockGridView: View {
         let offset = schedule.gridOffset
         let visible = snapshot.cells.filter { rows.contains(($0.index + offset) / perRow) }
         let frame = grid.frame
+        let preview = preview
+        let edited = edited
 
         if showsHourLabels {
             let fontSize = min(11, max(7, side * 0.8))
@@ -368,7 +393,9 @@ public struct BlockGridView: View {
             let path = Path(roundedRect: rect, cornerRadius: radius)
                 .rotated(by: angle, around: CGPoint(x: rect.midX, y: rect.midY))
 
-            switch theme.paint(for: cell, categories: snapshot.categories) {
+            // A block an edit is being dragged over shows what it would end up as.
+            let shown = preview[cell.index].map(cell.logged(as:)) ?? cell
+            switch theme.paint(for: shown, categories: snapshot.categories) {
             case .solid(let color):
                 if mood == .nightmare && cell.phase == .past && noise(cell.index, 5) < 0.1 {
                     // Dead block: only the outline is left.
@@ -388,47 +415,17 @@ public struct BlockGridView: View {
             }
 
             if onDrag != nil {
-                // The brush previews on the drag or the hovered block: the new color over the old block, or a
-                // dashed outline when clearing. Without a brush, dragged and selected blocks are outlined.
+                // While an edit is dragged, the blocks it's put on are outlined, showing what they'd end up as. A
+                // selection, or a drag making one, is washed over as well.
                 let line = max(1.5, side * 0.12)
-                let previewed = dragged ?? (brush != nil ? hovered.map { $0..<($0 + 1) } : nil)
-                let isSelected = selection?.contains(cell.index) == true
-                if let moved, let moving, moved.contains(cell.index) || isSelected {
-                    // The selection previews where it would land, in its own colors; the blocks it would leave, and
-                    // its gaps, get a dashed outline.
-                    let source = cell.index - moving.offset
-                    let color = moved.contains(cell.index)
-                        ? snapshot.cells[source].categoryID.flatMap { snapshot.categories[$0] }.map(theme.color(of:))
-                        : nil
-                    if let color {
-                        context.fill(path, with: .color(color.opacity(0.7)))
-                        context.stroke(path, with: .color(color), lineWidth: line)
-                    } else {
-                        context.stroke(
-                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
+                if let edited {
+                    if edited.contains(cell.index) {
+                        context.stroke(path, with: .color(theme.text), lineWidth: line)
                     }
-                } else if let resizing, resizing.range.contains(cell.index) != isSelected {
-                    // A dragged end previews like the brush: the activity's color on blocks it takes in, a dashed
-                    // outline on those it lets go.
-                    if isSelected {
-                        context.stroke(
-                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
-                    } else if let color = resizableCategory.flatMap({ snapshot.categories[$0] }).map(theme.color(of:)) {
-                        context.fill(path, with: .color(color.opacity(0.7)))
-                        context.stroke(path, with: .color(color), lineWidth: line)
-                    }
-                } else if let brush, previewed?.contains(cell.index) == true {
-                    if let color = brush.categoryID.flatMap({ snapshot.categories[$0] }).map(theme.color(of:)) {
-                        context.fill(path, with: .color(color.opacity(0.7)))
-                        context.stroke(path, with: .color(color), lineWidth: line)
-                    } else {
-                        context.stroke(
-                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
-                    }
-                } else if (resizing?.range ?? dragged ?? selection)?.contains(cell.index) == true {
+                } else if (dragged ?? selection)?.contains(cell.index) == true {
                     context.fill(path, with: .color(theme.text.opacity(0.2)))
                     context.stroke(path, with: .color(theme.text), lineWidth: line)
-                } else if brush == nil, drag == nil, resizing == nil, moving == nil, let run = hoveredRange, run.contains(cell.index) {
+                } else if brush == nil, drag == nil, let run = hoveredRange, run.contains(cell.index) {
                     // The stretch of one category (or one gap) under the pointer.
                     context.stroke(path, with: .color(theme.text.opacity(0.75)), lineWidth: line)
                 }

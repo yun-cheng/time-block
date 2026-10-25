@@ -76,14 +76,17 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   Clicking off the blocks deselects.
 - **Drag the ends:** a selection that is all one activity gets a round handle at each end, on the first block's
   top-left corner and the last block's bottom-right, like the ends of selected text (resize cursor on hover).
-  Dragging one moves that end, previewed like the brush (the activity's color on blocks taken in, a dashed outline
-  on blocks let go); letting go logs it, keeping the note, and the selection follows. A still click on a handle is
-  an ordinary click.
+  Dragging one moves that end, previewed as the result (see below); letting go logs it, keeping the note, and the
+  selection follows. A still click on a handle is an ordinary click.
 - **Drag to move:** dragging from inside a selection that holds anything logged moves it, by whole blocks and
-  no further than either end of the day (open hand over it, closed while moving). It previews in its own colors
-  where it would land, with a dashed outline on its gaps and on the blocks it leaves; letting go moves everything
-  in it, gaps and notes included, over what was there, clears what it left, and the selection follows. A still
-  click inside still deselects; a selection with nothing logged is dragged to select afresh, as before.
+  no further than either end of the day (open hand over it, closed while moving), previewed as the result. Letting
+  go moves everything in it, gaps and notes included, over what was there, clears what it left, and the selection
+  follows. A still click inside still deselects; a selection with nothing logged is dragged to select afresh, as
+  before.
+- **Previews show the result:** while a brush, an end or a selection is dragged, the blocks it would change are
+  drawn as they'd end up, like an event in Calendar: blocks taken in in the activity's own color, blocks let go
+  empty, and what it would land on gone. A white outline marks the blocks it's put on. (Dashed outlines are only
+  ever planned blocks from a calendar.)
 - **Right-click to clear:** a logged block's menu has Clear Blocks, emptying its run, or the selection
   when the block is in it. Unlogged blocks have no menu.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
