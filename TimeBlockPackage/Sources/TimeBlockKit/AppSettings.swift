@@ -215,19 +215,24 @@ public struct AppSettings: Codable, Hashable, Sendable {
     }
 }
 
-/// How the grid marks the time, so a block's time can be read off its place: with wider gaps along each hour row.
+/// How the grid marks the time, so a block's time can be read off its place: with wider gaps along each hour row,
+/// and minute numbers above it.
 public struct GridMarks: Codable, Hashable, Sendable {
     /// Minutes between the wider gaps that split each row, 10, 15, 20 or 30, or 0 for none.
     public var gapMinutes: Int
+    /// Minutes between the numbers written above the grid, 10, 15, 20 or 30, or 0 for none.
+    public var labelMinutes: Int
 
-    public init(gapMinutes: Int = 30) {
+    public init(gapMinutes: Int = 30, labelMinutes: Int = 0) {
         self.gapMinutes = gapMinutes
+        self.labelMinutes = labelMinutes
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let standard = Self.standard
         gapMinutes = try container.decodeIfPresent(Int.self, forKey: .gapMinutes) ?? standard.gapMinutes
+        labelMinutes = try container.decodeIfPresent(Int.self, forKey: .labelMinutes) ?? standard.labelMinutes
     }
 
     public static let standard = GridMarks()
@@ -235,6 +240,12 @@ public struct GridMarks: Codable, Hashable, Sendable {
     /// Blocks between the wider gaps, or nil when there are none.
     public var blocksPerGroup: Int? {
         gapMinutes > 0 ? gapMinutes / Schedule.blockMinutes : nil
+    }
+
+    /// The minutes past the hour written above the grid; the hour labels stand for :00.
+    public var labeledMinutes: [Int] {
+        guard labelMinutes > 0 else { return [] }
+        return Array(stride(from: labelMinutes, to: 60, by: labelMinutes))
     }
 }
 

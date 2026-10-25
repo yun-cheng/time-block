@@ -28,10 +28,16 @@ struct AppSettingsTests {
         #expect(decoded.grid == .standard)
     }
 
-    @Test func gridMarksSplitTheMinutes() {
+    @Test func gridMarksSplitAndNumberTheMinutes() {
         #expect(GridMarks.standard.blocksPerGroup == 6)
-        #expect(GridMarks(gapMinutes: 10).blocksPerGroup == 2)
+        #expect(GridMarks.standard.labeledMinutes == [])
+        #expect(GridMarks(labelMinutes: 30).labeledMinutes == [30])
+        #expect(GridMarks(labelMinutes: 15).labeledMinutes == [15, 30, 45])
+        #expect(GridMarks(labelMinutes: 10).labeledMinutes == [10, 20, 30, 40, 50])
+        #expect(GridMarks(labelMinutes: 20).labeledMinutes == [20, 40])
         #expect(GridMarks(gapMinutes: 0).blocksPerGroup == nil)
+        // The numbers don't depend on the gaps.
+        #expect(GridMarks(gapMinutes: 30, labelMinutes: 15).labeledMinutes == [15, 30, 45])
     }
 
     @Test func favoritesAndOwnActivitiesAreSaved() throws {

@@ -35,6 +35,12 @@ struct SettingsView: View {
                     }
                     Text("None").tag(0)
                 }
+                Picker("Minute numbers", selection: $model.settings.grid.labelMinutes) {
+                    ForEach([10, 15, 20, 30], id: \.self) { minutes in
+                        Text("Every \(minutes) minutes").tag(minutes)
+                    }
+                    Text("None").tag(0)
+                }
             }
             SleepShiftSettings(model: model)
             TemplateSettings(model: model)
