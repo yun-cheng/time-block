@@ -31,6 +31,9 @@ public struct BlockGridView: View {
     /// Called with the selection and its new extent when a handle at either end of a selection of one activity
     /// is dragged. Without it there are no handles.
     var onResize: ((Range<Int>, Range<Int>) -> Void)?
+    /// Called with the selection and how many blocks along it was dragged, when a selection holding something logged
+    /// is dragged from inside. Without it a drag there selects afresh.
+    var onMove: ((Range<Int>, Int) -> Void)?
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
@@ -41,6 +44,8 @@ public struct BlockGridView: View {
     @State private var lastClick: (index: Int, time: Date)?
     /// The selection's end being dragged, and the blocks it would cover now.
     @State private var resizing: (end: SelectionEnd, range: Range<Int>)?
+    /// The block a drag inside the selection began on, and how many blocks along it has moved the selection.
+    @State private var moving: (from: Int, offset: Int)?
     /// Whether the pointer is over a selection handle.
     @State private var isOverHandle = false
 
@@ -53,7 +58,7 @@ public struct BlockGridView: View {
         showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
         brush: Brush? = nil, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
         onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil,
-        onResize: ((Range<Int>, Range<Int>) -> Void)? = nil
+        onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
@@ -67,6 +72,7 @@ public struct BlockGridView: View {
         self.onDeselect = onDeselect
         self.onClear = onClear
         self.onResize = onResize
+        self.onMove = onMove
     }
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
@@ -113,7 +119,7 @@ public struct BlockGridView: View {
                         if let range = labeled {
                             BlockInfo(
                                 snapshot: snapshot, theme: theme, range: range,
-                                brush: resizing != nil ? resizableCategory.map(Brush.category) : brush)
+                                brush: resizing != nil || moving != nil ? resizableCategory.map(Brush.category) : brush)
                                 .fixedSize()
                                 .position(infoPosition(for: range, layout: layout, size: proxy.size))
                                 .allowsHitTesting(false)
@@ -122,13 +128,23 @@ public struct BlockGridView: View {
                 }
             }
             #if canImport(AppKit)
-            // An open hand over a knob, closed while dragging one.
-            .onChange(of: resizing != nil ? 2 : isOverHandle ? 1 : 0) { old, new in
-                if old > 0 { NSCursor.pop() }
-                if new > 0 { (new == 2 ? NSCursor.closedHand : NSCursor.openHand).push() }
+            .onChange(of: cursor) { old, new in
+                if old != nil { NSCursor.pop() }
+                new?.push()
             }
             #endif
     }
+
+    #if canImport(AppKit)
+    /// Resize arrows over a knob and while dragging one; an open hand over a selection that can be moved, closed while
+    /// moving it.
+    private var cursor: NSCursor? {
+        if moving != nil { return .closedHand }
+        if resizing != nil || isOverHandle { return .resizeLeftRight }
+        if let hovered, isMovable, selection?.contains(hovered) == true { return .openHand }
+        return nil
+    }
+    #endif
 
     private var dragged: Range<Int>? {
         drag.map { min($0.start, $0.end)..<(max($0.start, $0.end) + 1) }
@@ -145,7 +161,19 @@ public struct BlockGridView: View {
 
     /// Blocks the label describes: the drag in progress, else what the pointer is over, else the selection.
     private var labeled: Range<Int>? {
-        resizing?.range ?? dragged ?? hoveredRange ?? selection
+        resizing?.range ?? moved ?? dragged ?? hoveredRange ?? selection
+    }
+
+    /// Whether dragging inside the selection moves it: it holds something logged, and there's no brush.
+    private var isMovable: Bool {
+        guard onMove != nil, brush == nil, let selection else { return false }
+        return snapshot.isLogged(anyOf: selection)
+    }
+
+    /// Where the selection being moved would land.
+    private var moved: Range<Int>? {
+        guard let moving, let selection else { return nil }
+        return selection.lowerBound + moving.offset..<selection.upperBound + moving.offset
     }
 
     /// The activity the selection holds throughout, when it's logged as one, so its ends can be dragged.
@@ -158,9 +186,10 @@ public struct BlockGridView: View {
         return category
     }
 
-    /// The blocks with handles: the selection, or what it's being dragged to.
+    /// The blocks with handles: the selection, or what it's being dragged to. None while it's being moved.
     private var handled: Range<Int>? {
-        resizing?.range ?? (resizableCategory != nil ? selection : nil)
+        guard moving == nil else { return nil }
+        return resizing?.range ?? (resizableCategory != nil ? selection : nil)
     }
 
     /// The middle of the knob on each end of `range`: on the top-left corner of its first block and the bottom-right
@@ -218,6 +247,19 @@ public struct BlockGridView: View {
                     resizing = (end, selection)
                     drag = nil
                 }
+                // So does a press inside a selection that can be moved: it moves it.
+                if resizing == nil, moving == nil, isMovable, let drag, drag.start == drag.end,
+                   hypot(value.translation.width, value.translation.height) >= 3, selection?.contains(drag.start) == true {
+                    moving = (drag.start, 0)
+                    self.drag = nil
+                }
+                if let moving, let selection {
+                    // It stops at either end of the day.
+                    guard let index = layout.index(at: value.location, count: count, clamped: true) else { return }
+                    let offset = min(max(index - moving.from, -selection.lowerBound), count - selection.upperBound)
+                    self.moving = (moving.from, offset)
+                    return
+                }
                 if let resizing, let selection {
                     // Drag an end past the other and it stops there: a run is at least one block.
                     guard let index = layout.index(at: value.location, count: count, clamped: true) else { return }
@@ -235,6 +277,11 @@ public struct BlockGridView: View {
             }
             .onEnded { _ in
                 defer { drag = nil }
+                if let moving {
+                    self.moving = nil
+                    if let selection, moving.offset != 0 { onMove?(selection, moving.offset) }
+                    return
+                }
                 if let resizing {
                     self.resizing = nil
                     if let selection, resizing.range != selection { onResize?(selection, resizing.range) }
@@ -346,7 +393,21 @@ public struct BlockGridView: View {
                 let line = max(1.5, side * 0.12)
                 let previewed = dragged ?? (brush != nil ? hovered.map { $0..<($0 + 1) } : nil)
                 let isSelected = selection?.contains(cell.index) == true
-                if let resizing, resizing.range.contains(cell.index) != isSelected {
+                if let moved, let moving, moved.contains(cell.index) || isSelected {
+                    // The selection previews where it would land, in its own colors; the blocks it would leave, and
+                    // its gaps, get a dashed outline.
+                    let source = cell.index - moving.offset
+                    let color = moved.contains(cell.index)
+                        ? snapshot.cells[source].categoryID.flatMap { snapshot.categories[$0] }.map(theme.color(of:))
+                        : nil
+                    if let color {
+                        context.fill(path, with: .color(color.opacity(0.7)))
+                        context.stroke(path, with: .color(color), lineWidth: line)
+                    } else {
+                        context.stroke(
+                            path, with: .color(theme.text), style: StrokeStyle(lineWidth: line, dash: [line * 1.5, line]))
+                    }
+                } else if let resizing, resizing.range.contains(cell.index) != isSelected {
                     // A dragged end previews like the brush: the activity's color on blocks it takes in, a dashed
                     // outline on those it lets go.
                     if isSelected {
@@ -367,7 +428,7 @@ public struct BlockGridView: View {
                 } else if (resizing?.range ?? dragged ?? selection)?.contains(cell.index) == true {
                     context.fill(path, with: .color(theme.text.opacity(0.2)))
                     context.stroke(path, with: .color(theme.text), lineWidth: line)
-                } else if brush == nil, drag == nil, resizing == nil, let run = hoveredRange, run.contains(cell.index) {
+                } else if brush == nil, drag == nil, resizing == nil, moving == nil, let run = hoveredRange, run.contains(cell.index) {
                     // The stretch of one category (or one gap) under the pointer.
                     context.stroke(path, with: .color(theme.text.opacity(0.75)), lineWidth: line)
                 }

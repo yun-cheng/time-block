@@ -38,6 +38,8 @@ PLAN.md.
   it. The selection stays, and its activity stays lit, until you click off the blocks.
 - **Drag the ends:** select a run of one activity and a round handle shows at each end. Drag one to make it
   longer or shorter: the blocks it takes in are logged as it, and the ones it lets go are cleared.
+- **Drag to move:** drag a selection that holds something logged to move it somewhere else, gaps and notes
+  included. What it lands on is replaced, and the blocks it leaves are cleared.
 - **Right-click to clear:** right-click a logged block and pick Clear Blocks to empty its whole stretch, or the
   selection when the block is in it.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one

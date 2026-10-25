@@ -90,6 +90,13 @@ final class AppModel {
         save()
     }
 
+    /// Moves what `range` holds in the current view `offset` blocks along.
+    func move(_ range: Range<Int>, by offset: Int) {
+        loadDayIfNeeded()
+        dayLog.move(range, by: offset, in: settings.track, schedule: schedule, categories: settings.categories)
+        save()
+    }
+
     /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
     func setNote(_ note: String?, for range: Range<Int>) {
         loadDayIfNeeded()

@@ -4,8 +4,8 @@ import TimeBlockKit
 /// Lets the day view log blocks, either way round: select blocks, then click a category; or pick a
 /// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
 /// its category can be changed again; a brush is put down after one drag, so the next click can't
-/// log by accident. Selected blocks that are logged can be given a note, and a selection of one activity can be
-/// dragged longer or shorter by its ends.
+/// log by accident. Selected blocks that are logged can be given a note or dragged somewhere else, and a selection
+/// of one activity can be dragged longer or shorter by its ends.
 public struct DayEditor {
     public var brush: Binding<Brush?>
     public var selection: Binding<Range<Int>?>
@@ -16,11 +16,13 @@ public struct DayEditor {
     public var toggleFavorite: ((String) -> Void)?
     /// Moves the ends of a run of one activity: logs the blocks it takes in and clears the ones it lets go.
     public var resize: ((Range<Int>, Range<Int>) -> Void)?
+    /// Moves what a range holds some blocks along, clearing the blocks it leaves.
+    public var move: ((Range<Int>, Int) -> Void)?
 
     public init(
         brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void,
         annotate: ((Range<Int>, String?) -> Void)? = nil, toggleFavorite: ((String) -> Void)? = nil,
-        resize: ((Range<Int>, Range<Int>) -> Void)? = nil
+        resize: ((Range<Int>, Range<Int>) -> Void)? = nil, move: ((Range<Int>, Int) -> Void)? = nil
     ) {
         self.brush = brush
         self.selection = selection
@@ -28,6 +30,7 @@ public struct DayEditor {
         self.annotate = annotate
         self.toggleFavorite = toggleFavorite
         self.resize = resize
+        self.move = move
     }
 
     /// The grid picked out `range`: log it with the brush, or else select it.
@@ -62,6 +65,12 @@ public struct DayEditor {
     func resized(_ range: Range<Int>, to newRange: Range<Int>) {
         resize?(range, newRange)
         selection.wrappedValue = newRange
+    }
+
+    /// The selection was dragged `offset` blocks along: move what it holds there, and select it there.
+    func moved(_ range: Range<Int>, by offset: Int) {
+        move?(range, offset)
+        selection.wrappedValue = range.lowerBound + offset..<range.upperBound + offset
     }
 
     private func log(_ range: Range<Int>, _ choice: Brush) {
@@ -126,7 +135,8 @@ public struct DayView: View {
                 snapshot: snapshot, theme: theme, time: time, blockSize: 20, brush: editor?.brush.wrappedValue,
                 selection: editor?.selection.wrappedValue, onDrag: editor.map { editor in { editor.dragged($0) } },
                 onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0) } },
-                onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } })
+                onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } },
+                onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } })
                 .frame(maxWidth: .infinity)
             NowChip(snapshot: snapshot, theme: theme)
             StoryBar(snapshot: snapshot, theme: theme)
@@ -187,6 +197,7 @@ public struct DayView: View {
             let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
             return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected. "
                 + "Pick an activity to log it, Clear to empty it, "
+                + (editor.move != nil && snapshot.isLogged(anyOf: range) ? "drag it to move it, " : "")
                 + (paletteChoice(editor) != nil ? "drag a handle at either end to make it longer or shorter, " : "")
                 + "or click off the blocks to deselect."
         }

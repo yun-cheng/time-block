@@ -85,7 +85,12 @@ public struct DaySnapshot: Sendable {
     public func clearable(at index: Int, selection: Range<Int>? = nil) -> Range<Int>? {
         guard cells.indices.contains(index) else { return nil }
         let range = selection.flatMap { $0.contains(index) ? $0 : nil } ?? run(around: index)
-        return cells[range.clamped(to: cells.indices)].contains { $0.categoryID != nil } ? range : nil
+        return isLogged(anyOf: range) ? range : nil
+    }
+
+    /// Whether any block in `range` is logged.
+    public func isLogged(anyOf range: Range<Int>) -> Bool {
+        cells[range.clamped(to: cells.indices)].contains { $0.categoryID != nil }
     }
 
     /// The unlogged blocks right before `index`, back to the last logged block or wake time.
