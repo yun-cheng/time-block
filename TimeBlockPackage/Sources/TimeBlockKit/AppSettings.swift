@@ -18,11 +18,14 @@ public struct AppSettings: Codable, Hashable, Sendable {
     /// Ids of activities (and postures) the user removed. They're kept, retired, so blocks logged with them keep
     /// their name and color, and can be put back.
     public var removedCategories: [String]
+    /// Time pre-logged on the days it comes back on, such as meals and coffee.
+    public var templates: [Template]
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
         customCategories: [BlockCategory] = [], customGroups: [CategoryGroup] = [],
-        editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = []
+        editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = [],
+        templates: [Template] = []
     ) {
         self.schedule = schedule
         self.track = track
@@ -32,6 +35,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.editedCategories = editedCategories
         self.editedGroups = editedGroups
         self.removedCategories = removedCategories
+        self.templates = templates
     }
 
     /// Every activity group as it is now, in order: the built-in ones, then your own.
@@ -134,6 +138,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         editedCategories = try container.decodeIfPresent([BlockCategory].self, forKey: .editedCategories) ?? []
         editedGroups = try container.decodeIfPresent([CategoryGroup].self, forKey: .editedGroups) ?? []
         removedCategories = try container.decodeIfPresent([String].self, forKey: .removedCategories) ?? []
+        templates = try container.decodeIfPresent([Template].self, forKey: .templates) ?? []
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -149,7 +154,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
-             removedCategories
+             removedCategories, templates
         case legacyCategories = "categories"
     }
 
@@ -163,6 +168,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(editedCategories, forKey: .editedCategories)
         try container.encode(editedGroups, forKey: .editedGroups)
         try container.encode(removedCategories, forKey: .removedCategories)
+        try container.encode(templates, forKey: .templates)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).

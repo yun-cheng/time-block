@@ -9,11 +9,32 @@ public struct DayLog: Codable, Hashable, Sendable {
     /// so a block keeps its clock time.
     public private(set) var wakeMinute: Int
     public private(set) var logs: [BlockLog]
+    /// Whether the day's templates have been laid out on it (see `plan`).
+    public private(set) var isPlanned: Bool
 
-    public init(day: String, wakeMinute: Int, logs: [BlockLog] = []) {
+    public init(day: String, wakeMinute: Int, logs: [BlockLog] = [], isPlanned: Bool = false) {
         self.day = day
         self.wakeMinute = wakeMinute
         self.logs = logs
+        self.isPlanned = isPlanned
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        day = try container.decode(String.self, forKey: .day)
+        wakeMinute = try container.decode(Int.self, forKey: .wakeMinute)
+        logs = try container.decode([BlockLog].self, forKey: .logs)
+        // Days saved before templates were never planned.
+        isPlanned = try container.decodeIfPresent(Bool.self, forKey: .isPlanned) ?? false
+    }
+
+    /// The day of the week, as a `Calendar` weekday (1 is Sunday).
+    public func weekday(calendar: Calendar = .current) -> Int? {
+        let parts = day.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+              let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        else { return nil }
+        return calendar.component(.weekday, from: date)
     }
 
     /// The logs with block indexes counted from `schedule`'s wake time.
@@ -63,6 +84,43 @@ public struct DayLog: Codable, Hashable, Sendable {
                 note: note?.isEmpty == false ? note : nil, source: log.source)
         }
         logs = Self.joined(kept + noted)
+    }
+
+    /// Pre-logs the templates that come back on this day, from block `index` on, in the blocks still free in their
+    /// category's track. What templates logged from `index` on before is taken back first, so a changed template
+    /// moves; blocks before `index` keep what they had. Paused templates, and ones for retired activities, log
+    /// nothing.
+    public mutating func plan(
+        _ templates: [Template], from index: Int = 0, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults, calendar: Calendar = .current
+    ) {
+        rebase(to: schedule)
+        logs = logs.compactMap { log in
+            guard log.source == .template, log.range.upperBound > index else { return log }
+            guard log.startIndex < index else { return nil }
+            var kept = log
+            kept.length = index - log.startIndex
+            return kept
+        }
+        let byID = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let weekday = weekday(calendar: calendar)
+        for template in templates where template.isEnabled && weekday.map(template.weekdays.contains) == true {
+            guard let category = byID[template.categoryID], !category.isRetired else { continue }
+            let taken = Set(logs.filter { byID[$0.categoryID]?.track == category.track }.flatMap(\.range))
+            let range = template.range(in: schedule)
+            var start: Int?
+            for block in max(index, range.lowerBound)..<max(index, range.upperBound) + 1 {
+                let isFree = block < range.upperBound && !taken.contains(block)
+                if isFree, start == nil { start = block }
+                if !isFree, let from = start {
+                    logs.append(BlockLog(
+                        startIndex: from, length: block - from, categoryID: category.id, source: .template))
+                    start = nil
+                }
+            }
+        }
+        logs = Self.joined(logs)
+        isPlanned = true
     }
 
     /// Counts block indexes from `schedule`'s wake time from now on.
