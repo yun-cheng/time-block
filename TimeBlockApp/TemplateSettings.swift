@@ -55,8 +55,7 @@ struct TemplateSettings: View {
             }
             if editing == template.id {
                 TemplateEditor(
-                    template: binding, activities: activities, groups: model.settings.groups,
-                    favorites: model.settings.favorites,
+                    template: binding, activities: activities, favorites: model.settings.favorites,
                     remove: {
                         editing = nil
                         model.settings.templates.removeAll { $0.id == template.id }
@@ -117,15 +116,16 @@ struct TemplateSettings: View {
 private struct TemplateEditor: View {
     @Binding var template: Template
     let activities: [BlockCategory]
-    let groups: [CategoryGroup]
     let favorites: [String]
     let remove: () -> Void
     let done: () -> Void
+    @State private var showsActivities = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LabeledContent("Activity") {
-                activityMenu
+                activityButton
             }
             TimeField("Starts", minute: $template.startMinute)
             LabeledContent("Length") {
@@ -154,32 +154,41 @@ private struct TemplateEditor: View {
         .padding(.bottom, 4)
     }
 
-    /// Starred activities first, then every activity by group.
-    private var activityMenu: some View {
+    /// The activity, or a prompt to choose one; a click opens the activities, as the timer's does.
+    private var activityButton: some View {
         let current = activities.first { $0.id == template.categoryID }
-        return Menu {
-            Section("Starred") {
-                ForEach(activities.filter { favorites.contains($0.id) }) { item($0) }
-            }
-            ForEach(groups) { group in
-                let members = activities.filter { $0.group?.id == group.id }
-                if !members.isEmpty {
-                    Menu(group.name) {
-                        ForEach(members) { item($0) }
-                    }
-                }
-            }
+        return Button {
+            showsActivities = true
         } label: {
-            Label(current?.name ?? "Choose", systemImage: current?.symbol ?? "questionmark")
+            HStack(spacing: 6) {
+                Image(systemName: current?.symbol ?? "tag")
+                    .foregroundStyle(current.map { Color(rgb: $0.color) } ?? .secondary)
+                Text(current?.name ?? "Choose Activity")
+                    .foregroundStyle(current == nil ? .secondary : .primary)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 6).fill(.primary.opacity(0.07)))
+            .contentShape(RoundedRectangle(cornerRadius: 6))
         }
+        .buttonStyle(.plain)
         .fixedSize()
-    }
-
-    private func item(_ category: BlockCategory) -> some View {
-        Button {
-            template.categoryID = category.id
-        } label: {
-            Label(category.name, systemImage: category.symbol)
+        .help("Choose the activity")
+        .popover(isPresented: $showsActivities, arrowEdge: .bottom) {
+            CategoryPalette(
+                categories: activities, favorites: activities.filter { favorites.contains($0.id) },
+                selected: [.category(template.categoryID)],
+                // Drawn like the settings around it, whatever the day's mood.
+                theme: MoodTheme(mood: .calm, colorScheme: colorScheme), showsClear: false,
+                choose: { choice in
+                    if let id = choice.categoryID { template.categoryID = id }
+                    showsActivities = false
+                })
+            .padding(14)
+            .frame(width: 430)
         }
     }
 

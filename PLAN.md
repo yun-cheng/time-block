@@ -245,7 +245,8 @@ time-logging coaches split a day, with plain names:
 
 ### 3.4 Pre‑logging
 - **Recurring templates** (Settings ▸ Routine): "Breakfast 08:00, 6 blocks, every day", "Coffee 15:00, 2 blocks,
-  weekdays". Each picks an activity, a start, a length and its days, and can be paused.
+  weekdays". Each picks an activity, a start, a length and its days, and can be paused. The activity is picked from
+  the same palette as a timer's (starred, by group, or searched), in a popover.
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
 - A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
   change counts even when the app opens after it), as `.template` logs in blocks still free in their track. Logging
