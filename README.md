@@ -14,10 +14,11 @@ whole UI slowly turns into a horror show.
   parts. Minute numbers can go above the grid as well, every 10 to 30 minutes. The widget follows the same settings.
 - **Counter:** blocks left over the day's usable total (`92/192`). It goes negative after bedtime.
 - **Sleep shift:** in Settings, move bedtime or wake time to a new time a step a night (bedtime 01:00 to 23:00, 30
-  minutes a night). Bedtime moves first and the next morning's wake time follows, so you sleep as long. Set the day
-  it starts or the day to be there by; each day's grid and counter use that day's times. Slept in? Change today's
-  times under Schedule and the shift carries on from them, Hold Tonight puts each step a night later, and Edit
-  changes the rest of the shift.
+  minutes a night). Bedtime moves first and the next morning's wake time follows, so you sleep as long. Set the day it
+  starts or the day to be there by, a day at a time with ‹ › as at the top of the day (from today on), or from a
+  calendar by clicking the date; each day's grid and counter use that day's times. Slept in? Change today's times
+  under Schedule and the shift carries on from them, Hold Tonight puts each step a night later, and Edit changes the
+  rest of the shift.
 - **Wind down:** in Settings, set how long before bedtime you need to get ready for sleep, in hours and minutes like a
   timer's length (none to 2 hours, 30 minutes to start). Those last blocks are tinted amber, and when they start the
   whole day turns warm.

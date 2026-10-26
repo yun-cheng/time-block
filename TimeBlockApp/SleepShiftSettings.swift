@@ -197,9 +197,7 @@ private struct SleepShiftEditor: View {
                 let day = new == .start ? shift.startDay : shift.finishDay(target: target)
                 date = DayID.date(day) ?? date
             }
-            DatePicker(
-                timing == .start ? "Starts" : "There by", selection: $date, in: (DayID.date(today) ?? .now)...,
-                displayedComponents: .date)
+            ShiftDayPicker(title: timing == .start ? "Starts" : "There by", date: $date, today: today)
             Text(preview(shift, target: target, isLate: isLate))
                 .font(.caption)
                 .foregroundStyle(isLate ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
@@ -259,5 +257,60 @@ private struct SleepShiftEditor: View {
             }
             return "\(steps), from \(night)."
         }
+    }
+}
+
+/// A day from today on, as the day's own ‹ and › go: a day back or on either side of the date, which picks one from a
+/// calendar. ‹ stops at today.
+private struct ShiftDayPicker: View {
+    let title: String
+    @Binding var date: Date
+    let today: String
+    @State private var showsCalendar = false
+
+    var body: some View {
+        let first = DayID.date(today) ?? .now
+        LabeledContent(title) {
+            HStack(spacing: 2) {
+                Button {
+                    step(-1)
+                } label: {
+                    Label("Previous Day", systemImage: "chevron.left")
+                }
+                .disabled(DayID.string(from: date) <= today)
+                .help("Previous Day")
+                Button {
+                    showsCalendar.toggle()
+                } label: {
+                    Text(title(of: date)).monospacedDigit()
+                }
+                .help("Choose a Day")
+                .popover(isPresented: $showsCalendar, arrowEdge: .bottom) {
+                    DatePicker(title, selection: $date, in: first..., displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
+                        .padding()
+                }
+                Button {
+                    step(1)
+                } label: {
+                    Label("Next Day", systemImage: "chevron.right")
+                }
+                .help("Next Day")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+        }
+    }
+
+    /// "Sat 24 Oct", as the day's own date reads, with the year when it isn't this one.
+    private func title(of date: Date) -> String {
+        let format = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
+        let isThisYear = DayID.string(from: date).prefix(4) == today.prefix(4)
+        return date.formatted(isThisYear ? format : format.year())
+    }
+
+    private func step(_ days: Int) {
+        date = DayID.adding(days, to: DayID.string(from: date)).flatMap { DayID.date($0) } ?? date
     }
 }

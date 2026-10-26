@@ -274,8 +274,10 @@ Escalates the further past bedtime you are:
 ### 3.6 Sleep‑shift plan ("adjust timezone")
 Gradually move your schedule earlier (or later) instead of all at once (Settings ▸ Sleep Shift).
 - Inputs: **bedtime or wake time** and the time to get it to, the **step** (10–60 min), **every N days** (default 1),
-  and either the **start day** (default today) or the **day to be there by**, which starts it as many steps before
-  as it takes (too soon to make at that step size says so and won't start). Switching between the two keeps the plan.
+  and either the **start day** (default today) or the **day to be there by**, which starts it as many steps before as
+  it takes (too soon to make at that step size says so and won't start). Switching between the two keeps the plan. The
+  day goes a day at a time with ‹ ›, as the day's own date does, and no earlier than today; clicking it opens a
+  calendar.
 - Steps land on **nights**: a step day's bedtime moves, and wake time follows the next morning, so every night is as
   long as before and a morning that's gone never moves. Starting today moves tonight's bedtime; the shift is done the
   first day that's all on the target.
