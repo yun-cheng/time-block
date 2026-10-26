@@ -183,12 +183,8 @@ private struct SleepShiftEditor: View {
             Picker("Step", selection: $stepMinutes) {
                 ForEach([10, 15, 20, 30, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
             }
-            LabeledContent("Every") {
-                HStack(spacing: 6) {
-                    Text(everyDays == 1 ? "day" : "\(everyDays) days").monospacedDigit()
-                    Stepper("Every", value: $everyDays, in: 1...7)
-                        .labelsHidden()
-                }
+            Picker("Every", selection: $everyDays) {
+                ForEach(1...7, id: \.self) { Text($0 == 1 ? "day" : "\($0) days").tag($0) }
             }
             Picker("Set", selection: $timing) {
                 Text("Start day").tag(Timing.start)
