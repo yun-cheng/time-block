@@ -295,8 +295,8 @@ Gradually move your schedule earlier (or later) instead of all at once (Settings
   **Edit** opens the same inputs as you set them (bedtime or wake time, start or finish day), from where the shift
   has got to. Each restarts the shift from this morning's times, so today's morning and the days before stay as
   they were.
-- The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan. Routine templates keep
-  their clock times as the day moves.
+- The grid/counter always use *today's* planned bedtime, so horror mode tracks the plan. Routine templates set at a
+  clock time keep it as the day moves; those set after waking or before bed move with it.
 - A day's rollover comes from the schedule of the date a moment falls on, so 05:30 is still "tonight" while that
   date's wake time is 08:30.
 - Later: **jet lag**: pick a destination timezone + travel date, and the plan pre‑shifts you.
