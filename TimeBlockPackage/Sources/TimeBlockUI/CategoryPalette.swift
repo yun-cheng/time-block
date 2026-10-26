@@ -43,7 +43,7 @@ public struct CategoryChip: View {
         self.action = action
     }
 
-    init(name: String, symbol: String, color: Color, theme: MoodTheme, isSelected: Bool, action: @escaping () -> Void) {
+    public init(name: String, symbol: String, color: Color, theme: MoodTheme, isSelected: Bool, action: @escaping () -> Void) {
         self.name = name
         self.symbol = symbol
         self.color = color

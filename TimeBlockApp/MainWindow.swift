@@ -12,6 +12,8 @@ struct MainWindow: View {
     /// Whether a menu is open, such as the grid's right-click menu. The day stops animating meanwhile: every frame
     /// would build the menu again, and its icons would flash.
     @State private var isMenuOpen = false
+    @State private var showsTimerStarter = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         GeometryReader { window in
@@ -32,6 +34,11 @@ struct MainWindow: View {
                 // Fill the window, but scroll when it is too short for the whole day.
                 .frame(minHeight: window.size.height - 20)
                 .padding(10)
+            }
+        }
+        .overlay {
+            if showsTimerStarter {
+                TimerDialog(model: model, theme: theme, isOpen: $showsTimerStarter)
             }
         }
         .frame(minWidth: 400, minHeight: 600)
@@ -67,7 +74,12 @@ struct MainWindow: View {
                 .disabled(undoTitles.redo == nil)
             }
             ToolbarItem {
-                TimerButton(model: model)
+                Button {
+                    showsTimerStarter.toggle()
+                } label: {
+                    Label("Start Timer", systemImage: "stopwatch")
+                }
+                .help("Start a timer that logs an activity as it goes")
             }
             ToolbarItem {
                 Button {
@@ -100,6 +112,10 @@ struct MainWindow: View {
 }
 
 extension MainWindow {
+    private var theme: MoodTheme {
+        MoodTheme(mood: model.snapshot.mood, colorScheme: colorScheme)
+    }
+
     private struct UndoTitles: Equatable {
         var undo: String?
         var redo: String?
@@ -121,39 +137,6 @@ extension MainWindow {
         undoTitles = UndoTitles(
             undo: undoManager.canUndo ? undoManager.undoMenuItemTitle : nil,
             redo: undoManager.canRedo ? undoManager.redoMenuItemTitle : nil)
-    }
-}
-
-/// Starts a timer from a popup: how it counts, then the activity to time. It closes once one starts.
-struct TimerButton: View {
-    let model: AppModel
-    @State private var isOpen = false
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        Button {
-            isOpen.toggle()
-        } label: {
-            Label("Start Timer", systemImage: "stopwatch")
-        }
-        .help("Start a timer that logs an activity as it goes")
-        .popover(isPresented: $isOpen, arrowEdge: .bottom) {
-            let snapshot = model.snapshot
-            TimerStarter(controls: controls, snapshot: snapshot, theme: MoodTheme(mood: snapshot.mood, colorScheme: colorScheme))
-                .padding(14)
-                .frame(width: 360)
-        }
-    }
-
-    /// The model's timers, the popup closing once one starts.
-    private var controls: TimerControls {
-        var controls = model.timerControls
-        let start = controls.start
-        controls.start = { id in
-            start(id)
-            isOpen = false
-        }
-        return controls
     }
 }
 

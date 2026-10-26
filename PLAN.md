@@ -135,11 +135,16 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   which notifies at zero with a sound and counts on past it in the accent color until stopped. There's no pause:
   stop logs what it ran, and delete, once confirmed, drops it unlogged; a run under 10 seconds was a slip and logs
   nothing. Each run's exact times are kept with the day (`sessions`), and hovering its blocks shows them
-  (`⏱ 10:03–10:31`). Timers are saved beside the settings, so they carry on through a quit, and the widget draws
-  their blocks too. In the menu bar panel the timers sit over a palette that starts one (no chip is lit: the list
-  shows what's going); in the window a stopwatch in the toolbar opens the same starter in a popup, which closes once
-  a timer starts, and the timers going are listed under the grid, below the current activity. This replaced the
-  menu bar's one‑click "Now" logging.
+  (`⏱ 10:03–10:31`). Timers are saved beside the settings, so they carry on through a quit, and the widget draws their
+  blocks too. In the menu bar panel the timers sit over a palette that starts one (no chip is lit: the list shows
+  what's going); in the window a stopwatch in the toolbar opens one dialog over the day: Count Down or Count Up on
+  top, both named, the one picked filled in, then the countdown, its length typed or picked in hours and minutes, set
+  on blocks like the day's (a row an hour up to 3 hours, or past that an hour to a big block over a row of minutes, up
+  to 24) or picked from starred lengths (30 min and 1 h to start), starting at a default, 30 min to start; counting
+  up, the length hides. Then an Activity row whose button opens the activities, over Cancel and Start. Start starts it
+  and closes the dialog, and the timers going are listed under the grid, below the current activity. An earlier
+  version took two steps, with system tabs and then a switch for up and down, which felt heavy or unclear. Timers
+  replaced the menu bar's one‑click "Now" logging.
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
 - **Little text on screen:** the popup names the selected times ("08:00–08:30"), and nothing else explains itself.
