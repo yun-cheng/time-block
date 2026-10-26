@@ -61,7 +61,6 @@ PLAN.md.
 - **Add one more:** pick **Add** in the two tools above the activities (or hold ⌘), and the pointer gets a green
   plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
   the rest, and painting adds the same way. Once it has added, the tool goes back to **Normal**, which replaces.
-  In the menu bar, Add or ⌘‑click adds to the block in progress.
 - **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
   made it, and ⇧⌘Z or Redo puts it back.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
@@ -75,7 +74,13 @@ PLAN.md.
 - **Any day, like a calendar:** every day is kept. In the toolbar, as in Calendar, ‹ › go back and forth a day
   (⌘[ ⌘]) and Today (⌘T) comes back; click the date beside them to pick one from a calendar. Every day can be edited like today: fill in one you
   forgot to log, or pre‑log one ahead, with your routine already on it. Past days keep the wake and bedtime they had.
-- **Menu bar:** one click logs the block in progress, optionally filling the unlogged gap before it.
+- **Timers:** log as you go. In the menu bar, pick how a timer counts (up from zero, or down from 5 to 90 minutes,
+  25 for a Pomodoro) and click an activity to start one; in the window, the stopwatch in the toolbar does the same,
+  and the timers going are listed under the grid. A timer's blocks fill in as it runs, every block it touches,
+  alongside whatever they hold, so several can run at once (one per activity). Stop it to keep what it ran, or
+  delete it (after you confirm) to drop it unlogged. A countdown notifies you at zero and keeps counting past it
+  (`−2:13`) until you stop it. Hover the blocks a timer ran in to see exactly when (`⏱ 10:03–10:31`). Timers keep
+  going when the app quits, and the widget fills in their blocks too.
 - **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
   it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you paint over it.
   Change or pause one, and only the blocks still to come move.

@@ -727,6 +727,16 @@ private struct BlockInfo: View {
                     .italic()
                     .foregroundStyle(theme.text)
             }
+            let timed = snapshot.sessions(of: layer.map { [$0] } ?? shared?.categoryIDs ?? [], in: range)
+            if !timed.isEmpty {
+                Label(
+                    timed.prefix(2).map { "\(time($0.start))–\(time($0.end))" }.joined(separator: ", ")
+                        + (timed.count > 2 ? " +\(timed.count - 2)" : ""),
+                    systemImage: "stopwatch"
+                )
+                .monospacedDigit()
+                .foregroundStyle(theme.secondaryText)
+            }
             if case .layer = brush {
                 Image(systemName: "plus").foregroundStyle(theme.secondaryText)
                 if let category = brush?.categoryID.flatMap({ snapshot.categories[$0] }) {
@@ -770,6 +780,11 @@ private struct BlockInfo: View {
 
     private func clock(_ minute: Int) -> String {
         String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
+    }
+
+    /// A timer's exact time, "10:03".
+    private func time(_ date: Date) -> String {
+        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
     }
 }
 

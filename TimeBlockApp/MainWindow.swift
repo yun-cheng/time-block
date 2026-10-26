@@ -26,7 +26,8 @@ struct MainWindow: View {
                             brush: $model.brush, tool: $model.tool, selection: $model.selection, layer: $model.selectedLayer,
                             paint: { model.set($0, to: $1.categoryID, layer: $2) }, toggle: { model.toggle($0, $1) },
                             annotate: { model.setNote($1, for: $0, layer: $2) }, toggleFavorite: model.toggleFavorite,
-                            resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }))
+                            resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }),
+                        timers: model.timerControls, date: context.date)
                 }
                 // Fill the window, but scroll when it is too short for the whole day.
                 .frame(minHeight: window.size.height - 20)
@@ -64,6 +65,9 @@ struct MainWindow: View {
                 }
                 .help(undoTitles.redo ?? "Redo")
                 .disabled(undoTitles.redo == nil)
+            }
+            ToolbarItem {
+                TimerButton(model: model)
             }
             ToolbarItem {
                 Button {
@@ -117,6 +121,39 @@ extension MainWindow {
         undoTitles = UndoTitles(
             undo: undoManager.canUndo ? undoManager.undoMenuItemTitle : nil,
             redo: undoManager.canRedo ? undoManager.redoMenuItemTitle : nil)
+    }
+}
+
+/// Starts a timer from a popup: how it counts, then the activity to time. It closes once one starts.
+struct TimerButton: View {
+    let model: AppModel
+    @State private var isOpen = false
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button {
+            isOpen.toggle()
+        } label: {
+            Label("Start Timer", systemImage: "stopwatch")
+        }
+        .help("Start a timer that logs an activity as it goes")
+        .popover(isPresented: $isOpen, arrowEdge: .bottom) {
+            let snapshot = model.snapshot
+            TimerStarter(controls: controls, snapshot: snapshot, theme: MoodTheme(mood: snapshot.mood, colorScheme: colorScheme))
+                .padding(14)
+                .frame(width: 360)
+        }
+    }
+
+    /// The model's timers, the popup closing once one starts.
+    private var controls: TimerControls {
+        var controls = model.timerControls
+        let start = controls.start
+        controls.start = { id in
+            start(id)
+            isOpen = false
+        }
+        return controls
     }
 }
 

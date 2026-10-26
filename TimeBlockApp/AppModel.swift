@@ -3,6 +3,7 @@ import Observation
 import os
 import TimeBlockKit
 import TimeBlockUI
+import UserNotifications
 import WidgetKit
 
 @MainActor
@@ -49,14 +50,27 @@ final class AppModel {
     /// The one activity of the selected blocks picked out, by clicking its card of a stack; nil for all they hold.
     var selectedLayer: String?
 
-    /// Whether logging the current block from the menu bar also fills the unlogged blocks before it.
-    var fillsGap = true
+    /// The timers going, which log their activities live. They're saved, so they carry on when the app quits, and
+    /// the widget shows what they log.
+    private(set) var timers: [LiveTimer] {
+        didSet {
+            guard timers != oldValue else { return }
+            TimerStore.save(timers)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
+    /// What new timers count down from, in minutes, or nil to count up.
+    var countdownMinutes: Int? {
+        didSet { UserDefaults.standard.set(countdownMinutes ?? 0, forKey: "countdownMinutes") }
+    }
 
     /// Ticks often enough for the menu bar count to flip on time at each 5-minute boundary.
     private(set) var now = Date()
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private let store = LogStore.shared
     @ObservationIgnored private let logger = Logger(subsystem: "dev.timeblock.TimeBlock", category: "logs")
+    @ObservationIgnored private let alarms = Alarms()
 
     init() {
         var settings = SettingsStore.load()
@@ -64,6 +78,9 @@ final class AppModel {
         if settings.endSleepShiftIfDone(on: day) { SettingsStore.save(settings) }
         self.settings = settings
         dayLog = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+        timers = TimerStore.load()
+        let minutes = UserDefaults.standard.integer(forKey: "countdownMinutes")
+        countdownMinutes = minutes > 0 ? minutes : nil
         planDayIfNeeded()
         keepTodaysSchedule()
         // The widget may have drawn the day before it could see what's saved, as on the first signed launch.
@@ -82,7 +99,7 @@ final class AppModel {
     var snapshot: DaySnapshot { snapshot(at: now) }
 
     func snapshot(at date: Date) -> DaySnapshot {
-        settings.snapshot(at: date, log: dayLog)
+        settings.snapshot(at: date, log: dayLog, timers: timers)
     }
 
     // MARK: Other days
@@ -250,22 +267,50 @@ final class AppModel {
         if log.day == dayLog.day { WidgetCenter.shared.reloadAllTimelines() }
     }
 
-    /// Logs the block in progress, and the unlogged blocks before it when `fillsGap` is on.
-    func logNow(_ categoryID: String) {
+    // MARK: Timers
+
+    /// Starts a timer of an activity, counting as `countdownMinutes` says, unless the activity has one going already.
+    func startTimer(_ categoryID: String) {
         now = Date()
-        loadDayIfNeeded()
-        let snapshot = snapshot
-        guard let current = snapshot.status.currentIndex else { return }
-        let start = fillsGap ? snapshot.unloggedRun(before: current).lowerBound : current
-        set(start..<(current + 1), to: categoryID, on: dayLog.day)
+        guard !timers.contains(where: { $0.categoryID == categoryID }) else { return }
+        let timer = LiveTimer(
+            categoryID: categoryID, countdown: countdownMinutes.map { TimeInterval($0 * 60) }, startedAt: now)
+        timers.append(timer)
+        alarms.set(for: timer, name: name(of: categoryID), at: now)
     }
 
-    /// Adds an activity to the block in progress, alongside what it holds, or takes it off.
-    func toggleNow(_ categoryID: String) {
+    /// Stops a timer, logging what it ran.
+    func stopTimer(_ id: UUID) {
         now = Date()
+        guard let index = timers.firstIndex(where: { $0.id == id }) else { return }
+        let timer = timers.remove(at: index)
+        alarms.cancel(id)
+        record(timer.session(at: now), as: "Stop Timer")
+    }
+
+    /// Drops a timer without logging what it ran.
+    func deleteTimer(_ id: UUID) {
+        timers.removeAll { $0.id == id }
+        alarms.cancel(id)
+    }
+
+    /// Logs a stretch a timer ran on each day it ran on, unless it was too short to mean it.
+    private func record(_ session: TimerSession, as name: String) {
+        guard session.duration >= TimerSession.shortest else { return }
         loadDayIfNeeded()
-        guard let current = snapshot.status.currentIndex else { return }
-        toggle(current..<(current + 1), categoryID, on: dayLog.day)
+        for day in Set([settings.dayID(for: session.start), settings.dayID(for: session.end)]).sorted() {
+            if log(of: day) != nil {
+                edit(name, on: day) { $0.record(session, schedule: $1) }
+            } else {
+                var log = store.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+                log.record(session, schedule: schedule(of: log))
+                save(log)
+            }
+        }
+    }
+
+    private func name(of categoryID: String) -> String {
+        settings.categories.first { $0.id == categoryID }?.name ?? categoryID
     }
 
     /// Stars a category, adding it to the palette, or unstars it.
@@ -410,5 +455,41 @@ final class AppModel {
             save(log)
         }
         if let day = otherLog?.day, day > dayLog.day { otherLog = load(day) }
+    }
+}
+
+/// Says when a countdown gets to zero, with a notification and a sound, even while the app is in front. The timer
+/// keeps counting past it.
+private final class Alarms: NSObject, UNUserNotificationCenterDelegate {
+    override init() {
+        super.init()
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    /// Sets the alarm for a countdown, asking leave to notify the first time.
+    func set(for timer: LiveTimer, name: String, at date: Date) {
+        guard let zero = timer.zeroDate, let countdown = timer.countdown, zero > date else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "\(name): time's up"
+        content.body = "\(Int(countdown) / 60) min done. The timer keeps going until you stop it."
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: timer.id.uuidString, content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: zero.timeIntervalSince(date), repeats: false))
+        let center = UNUserNotificationCenter.current()
+        Task {
+            guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
+            try? await center.add(request)
+        }
+    }
+
+    func cancel(_ id: UUID) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id.uuidString])
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound]
     }
 }

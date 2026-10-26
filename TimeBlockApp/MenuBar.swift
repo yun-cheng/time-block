@@ -39,7 +39,7 @@ struct MenuBarPanel: View {
                 .frame(height: 170)
                 .background(MoodBackground(theme: theme))
             Divider()
-            NowLogger(model: model, snapshot: snapshot, theme: theme)
+            NowTimers(model: model, snapshot: snapshot, theme: theme)
                 .padding(12)
             Divider()
             HStack {
@@ -74,43 +74,41 @@ struct MenuBarPanel: View {
     }
 }
 
-/// Logs the block in progress with one click.
-struct NowLogger: View {
-    @Bindable var model: AppModel
+/// Times what you're doing now: the timers going, and a palette that starts one.
+struct NowTimers: View {
+    let model: AppModel
     let snapshot: DaySnapshot
     let theme: MoodTheme
 
     var body: some View {
-        if let current = snapshot.status.currentIndex {
-            let schedule = snapshot.status.schedule
-            let gap = snapshot.unloggedRun(before: current)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Now, \(clock(schedule.clockMinute(ofBlock: current)))")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                CategoryPalette(
-                    categories: snapshot.trackCategories, favorites: snapshot.favorites,
-                    selected: Set(snapshot.currentCell?.categoryIDs.map(Brush.category) ?? []), theme: theme,
-                    showsClear: false, choose: { if let id = $0.categoryID { model.logNow(id) } },
-                    toggle: model.toggleNow, isAdding: model.tool == .add, toggleFavorite: model.toggleFavorite)
-                if !gap.isEmpty {
-                    Toggle(isOn: $model.fillsGap) {
-                        Text("Also fill \(durationText(blocks: gap.count)) unlogged since \(clock(schedule.clockMinute(ofBlock: gap.lowerBound)))")
-                    }
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 11))
+        let controls = model.timerControls
+        VStack(alignment: .leading, spacing: 10) {
+            if !controls.timers.isEmpty {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    TimerList(controls: controls, categories: snapshot.categories, theme: theme, date: context.date)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            Text("Logging starts at \(clock(snapshot.status.schedule.wakeMinute)).")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if snapshot.status.currentIndex != nil {
+                TimerStarter(controls: controls, snapshot: snapshot, theme: theme)
+            } else {
+                Text("Logging starts at \(clock(snapshot.status.schedule.wakeMinute)).")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func clock(_ minute: Int) -> String {
         String(format: "%02d:%02d", minute / 60, minute % 60)
+    }
+}
+
+extension AppModel {
+    /// The timers, to show and change in the window and the menu bar.
+    var timerControls: TimerControls {
+        TimerControls(
+            timers: timers, countdown: Binding { self.countdownMinutes } set: { self.countdownMinutes = $0 },
+            start: startTimer, stop: stopTimer, delete: deleteTimer)
     }
 }

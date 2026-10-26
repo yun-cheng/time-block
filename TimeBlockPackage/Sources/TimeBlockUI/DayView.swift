@@ -167,16 +167,25 @@ public struct DayView: View {
     var time: Double
     /// Without one the day is read-only.
     var editor: DayEditor?
+    /// Today's timers, listed under the grid with buttons to stop them.
+    var timers: TimerControls?
+    /// The moment shown, which timers count to.
+    var date: Date
     @Environment(\.colorScheme) private var colorScheme
     /// The grid takes the keyboard when blocks are selected, for Delete.
     @FocusState private var isGridFocused: Bool
     /// Holding ⌘ adds, as the Add tool does.
     @State private var isCommandDown = false
 
-    public init(snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil) {
+    public init(
+        snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil, timers: TimerControls? = nil,
+        date: Date = .now
+    ) {
         self.snapshot = snapshot
         self.time = time
         self.editor = editor
+        self.timers = timers
+        self.date = date
     }
 
     private var clockLabel: String {
@@ -266,6 +275,12 @@ public struct DayView: View {
                 }
             if !status.isOver && !status.isAhead {
                 NowChip(snapshot: snapshot, theme: theme)
+                if let timers, !timers.timers.isEmpty {
+                    TimerList(controls: timers, categories: snapshot.categories, theme: theme, date: date)
+                        // Clicks around the buttons shouldn't drop the selection.
+                        .contentShape(Rectangle())
+                        .onTapGesture {}
+                }
             }
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)

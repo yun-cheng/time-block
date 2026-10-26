@@ -125,7 +125,17 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards. While adding (Add, or ⌘) it adds the activity instead.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
-- Menu bar: shows the counter; click → "Now: [starred activities, search]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
+- **Timers (live logging):** besides logging blocks before or after, start a timer of an activity and its blocks
+  fill in as it runs, any block it touches, alongside what they hold, so several timers running at once stack like
+  any other layers (one timer per activity). A timer counts up from zero or down from a length (Pomodoro, 25 min),
+  which notifies at zero with a sound and counts on past it in the accent color until stopped. There's no pause:
+  stop logs what it ran, and delete, once confirmed, drops it unlogged; a run under 10 seconds was a slip and logs
+  nothing. Each run's exact times are kept with the day (`sessions`), and hovering its blocks shows them
+  (`⏱ 10:03–10:31`). Timers are saved beside the settings, so they carry on through a quit, and the widget draws
+  their blocks too. In the menu bar panel the timers sit over a palette that starts one (no chip is lit: the list
+  shows what's going); in the window a stopwatch in the toolbar opens the same starter in a popup, which closes once
+  a timer starts, and the timers going are listed under the grid, below the current activity. This replaced the
+  menu bar's one‑click "Now" logging.
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
 - **Little text on screen:** the line under the activities names the selected times ("08:00–08:30 selected") or what
@@ -306,7 +316,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | ✅ done (signed with a team, §2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
-| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; several activities a block, with Normal and Add tools; the unlogged nudge left |
+| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, saving done; several activities a block, with Normal and Add tools; timers that log live, counting up or down, in place of menu bar "Now" logging; the unlogged nudge left |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
@@ -326,6 +336,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Platforms | Mac first; iPhone and Watch in M8 |
 | Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
+| Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |
