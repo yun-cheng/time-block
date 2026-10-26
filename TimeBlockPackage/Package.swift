@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TimeBlock",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         .library(name: "TimeBlockKit", targets: ["TimeBlockKit"]),
         .library(name: "TimeBlockUI", targets: ["TimeBlockUI"]),

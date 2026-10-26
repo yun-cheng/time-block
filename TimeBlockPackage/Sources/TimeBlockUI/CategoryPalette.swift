@@ -343,3 +343,20 @@ public struct FlowLayout: Layout {
         return frames
     }
 }
+
+extension View {
+    /// Sizes what's in a palette's popover: 430 points wide, or on a phone, where the popover is a sheet, as wide as
+    /// the screen, scrolling when it's taller than the sheet.
+    public func palettePopover() -> some View {
+        #if os(macOS)
+        frame(width: 430)
+        #else
+        ViewThatFits(in: .vertical) {
+            self
+            ScrollView { self }
+        }
+        .frame(idealWidth: 430, maxWidth: 430)
+        .presentationDetents([.medium, .large])
+        #endif
+    }
+}

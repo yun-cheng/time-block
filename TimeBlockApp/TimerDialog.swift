@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
@@ -177,7 +176,7 @@ struct TimerDialog: View {
                     showsActivities = false
                 })
             .padding(14)
-            .frame(width: 430)
+            .palettePopover()
         }
     }
 

@@ -375,7 +375,15 @@ public struct DayView: View {
             .focusable(editor != nil, interactions: .edit)
             .focusEffectDisabled()
             .focused($isGridFocused)
+            #if os(macOS)
             .onDeleteCommand { editor?.clearSelection() }
+            #else
+            .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                guard editor?.selection.wrappedValue != nil else { return .ignored }
+                editor?.clearSelection()
+                return .handled
+            }
+            #endif
             .onKeyPress(.return) {
                 guard editor?.selection.wrappedValue != nil else { return .ignored }
                 showsActivities = true
@@ -406,7 +414,7 @@ public struct DayView: View {
         .popover(isPresented: $showsActivities, arrowEdge: .trailing) {
             activities(editor, theme: theme)
                 .padding(14)
-                .frame(width: 430)
+                .palettePopover()
         }
     }
 

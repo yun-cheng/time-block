@@ -250,7 +250,7 @@ private struct TemplateEditor: View {
                     isPresented.wrappedValue = false
                 })
             .padding(14)
-            .frame(width: 430)
+            .palettePopover()
         }
     }
 

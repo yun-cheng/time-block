@@ -1,7 +1,9 @@
 #if canImport(AppKit)
 import AppKit
+#endif
 import SwiftUI
 
+#if canImport(AppKit)
 /// Keeps `isDown` up to date with whether ⌘ is held, so a pointer can change the moment it's pressed.
 struct CommandKeyTracker: ViewModifier {
     @Binding var isDown: Bool
