@@ -66,9 +66,9 @@ PLAN.md.
 - **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
   made it, and ⇧⌘Z or Redo puts it back.
 - **Find any activity:** the activities shown are your starred ones, by group. Type in the search field above them
-  to find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Click a group
-  tab under it to see all of that group's activities; Starred (or the group again) goes back. Right‑click a chip to
-  star or unstar it.
+  to find any of the ~170 built in, whatever group is shown (`meal` finds Breakfast, Lunch, Dinner…); Return picks
+  the top match. Click a group in the list beside them to see all of its activities; Starred goes back. Right‑click a
+  chip to star or unstar it.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
 - **Any day, like a calendar:** every day is kept. In the toolbar, as in Calendar, ‹ › go back and forth a day

@@ -78,10 +78,10 @@ public struct CategoryChip: View {
     }
 }
 
-/// Picks what to log: a search field over every category in the track, the starred ones (then Clear) while it
-/// is empty, and the matches while typing. Return takes the best match. Right-clicking a chip stars or unstars it.
-/// Clicking a group shows every category in it, starred or not, and narrows search to it; clicking it again goes
-/// back. While adding (`isAdding`, or ⌘ held), clicking a chip toggles it rather than choosing it, when there's a way
+/// Picks what to log: a search field over every category in the track, and under it a list of Starred and the
+/// groups beside the chips. The chips are the starred categories (then Clear), or every category in the group
+/// picked, starred or not; while typing they're the matches from every group. Return takes the best match.
+/// Right-clicking a chip stars or unstars it. While adding (`isAdding`, or ⌘ held), clicking a chip toggles it rather than choosing it, when there's a way
 /// to, and the add pointer over the chips says so.
 public struct CategoryPalette: View {
     let categories: [BlockCategory]
@@ -130,25 +130,39 @@ public struct CategoryPalette: View {
         groups.first { $0.id == groupID }
     }
 
-    /// Matches while searching; otherwise the picked group's categories, or the favorites plus the lit categories
-    /// that aren't.
+    /// Matches from every group while searching; otherwise the picked group's categories, or the favorites plus the
+    /// lit categories that aren't.
     private var shown: [BlockCategory] {
-        let group = group
-        let pool = group.map { group in categories.filter { $0.group?.id == group.id } } ?? categories
-        if isSearching { return Array(ActivitySearch.results(for: query, in: pool).prefix(30)) }
-        if group != nil { return pool }
+        if isSearching { return Array(ActivitySearch.results(for: query, in: categories).prefix(30)) }
+        if let group { return categories.filter { $0.group?.id == group.id } }
         let lit = Set(selected.compactMap(\.categoryID))
         return favorites + categories.filter { lit.contains($0.id) && !favorites.contains($0) }
     }
 
     public var body: some View {
         let shown = shown
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             searchField(firstMatch: shown.first)
-            let groups = groups
-            if groups.count > 1 {
-                groupFilter(groups)
+            HStack(alignment: .top, spacing: 10) {
+                let groups = groups
+                if groups.count > 1 {
+                    sidebar(groups)
+                    // As tall as the sidebar or the chips, whichever is taller.
+                    Rectangle()
+                        .fill(theme.text.opacity(0.1))
+                        .frame(width: 1)
+                        .frame(maxHeight: .infinity)
+                }
+                chips(shown)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .tracksCommandKey($isCommandDown)
+    }
+
+    private func chips(_ shown: [BlockCategory]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             FlowLayout(spacing: 8) {
                 ForEach(shown) { category in
                     CategoryChip(
@@ -178,12 +192,11 @@ public struct CategoryPalette: View {
             // Room for the selected chip's ring.
             .padding(3)
             if isSearching, shown.isEmpty {
-                Text("Nothing\(group.map { " in \($0.name)" } ?? "") matches \u{201C}\(query)\u{201D}.")
+                Text("Nothing matches \u{201C}\(query)\u{201D}.")
                     .font(.system(size: 11))
                     .foregroundStyle(theme.secondaryText)
             }
         }
-        .tracksCommandKey($isCommandDown)
     }
 
     private func searchField(firstMatch: BlockCategory?) -> some View {
@@ -218,53 +231,61 @@ public struct CategoryPalette: View {
             }
         }
         .font(.system(size: 12))
-        // Room for a long name, not the whole width.
-        .frame(maxWidth: 200)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(RoundedRectangle(cornerRadius: 7).fill(theme.text.opacity(0.07)))
     }
 
-    /// Tabs over the chips, Starred then a tab per group: plain words, underlined when picked, so they read as
-    /// views of the list rather than more chips to log with.
-    private func groupFilter(_ groups: [CategoryGroup]) -> some View {
-        FlowLayout(spacing: 12) {
-            groupTab("Starred", color: theme.text, isPicked: groupID == nil, help: "Show starred activities") {
+    /// Starred, then each group by its color, beside the chips. The one shown is lit in its color, and none is while
+    /// searching, as search looks through them all.
+    private func sidebar(_ groups: [CategoryGroup]) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            sidebarRow("Starred", tint: theme.text, isPicked: groupID == nil, help: "Show starred activities") {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.secondaryText)
+            } action: {
                 groupID = nil
             }
             ForEach(groups) { group in
-                let isPicked = group.id == groupID
-                groupTab(
-                    group.name, color: Color(rgb: theme.grade(group.color)), isPicked: isPicked,
-                    help: isPicked ? "Show starred activities" : "Show all of \(group.name)"
-                ) {
-                    groupID = isPicked ? nil : group.id
+                let color = Color(rgb: theme.grade(group.color))
+                sidebarRow(group.name, tint: color, isPicked: group.id == groupID, help: "Show all of \(group.name)") {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 9, height: 9)
+                } action: {
+                    groupID = group.id
                 }
             }
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
-    private func groupTab(
-        _ name: String, color: Color, isPicked: Bool, help: String, action: @escaping () -> Void
+    private func sidebarRow(
+        _ name: String, tint: Color, isPicked: Bool, help: String, @ViewBuilder mark: () -> some View, action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            Text(name.uppercased())
-                .font(.system(size: 9.5, weight: isPicked ? .bold : .semibold))
-                .tracking(0.6)
-                .foregroundStyle(isPicked ? theme.text : theme.secondaryText.opacity(0.8))
-                .lineLimit(1)
-                .padding(.bottom, 4)
-                .overlay(alignment: .bottom) {
-                    Capsule()
-                        .fill(color)
-                        .frame(height: 2)
-                        .opacity(isPicked ? 1 : 0)
-                }
-                .contentShape(Rectangle())
+        let isLit = isPicked && !isSearching
+        return Button {
+            query = ""
+            action()
+        } label: {
+            HStack(spacing: 6) {
+                mark()
+                    .frame(width: 10)
+                Text(name)
+                    .font(.system(size: 13, weight: isLit ? .semibold : .regular))
+                    .foregroundStyle(isLit ? theme.text : theme.secondaryText)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 5).fill(tint.opacity(isLit ? 0.22 : 0)))
+            .contentShape(RoundedRectangle(cornerRadius: 5))
         }
         .buttonStyle(.plain)
         .help(help)
-        .accessibilityAddTraits(isPicked ? .isSelected : [])
+        .accessibilityAddTraits(isLit ? .isSelected : [])
     }
 
     private func pick(_ choice: Brush) {

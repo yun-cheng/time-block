@@ -189,10 +189,11 @@ time-logging coaches split a day, with plain names:
 | Drift | muted plum | Doomscroll, Social media, Videos, Procrastinating |
 - Grey = unlogged, red = taken from sleep. Leisure is rest you chose; Drift is time that slipped away.
 - **Starred** activities make up the palette, listed by group (no manual order); common ones are starred out
-  of the box. A search field above it finds any other by name, by other words ("meal" finds Lunch, "slack" finds
-  Work chat) or by group; Return logs the best match. Under it, clicking a group lists all of that group's
-  activities (search then looks only in it); the Starred tab, or the group again, goes back. Right-click a chip,
-  or star it in Settings' library, to star or unstar.
+  of the box. A search field across the top finds any other by name, by other words ("meal" finds Lunch, "slack"
+  finds Work chat) or by group, always in every group; Return logs the best match. Beside the chips, a list of
+  Starred and the groups, each with its color dot, shows all of a group's activities, lit in its color while shown
+  (a sidebar, after a row of group tabs wrapped untidily). Right-click a chip, or star it in Settings' library, to
+  star or unstar.
 - Summaries (legend, story bar) report time per **group** ("Life 2h 10m"), not per activity.
 - Your own activities pick a name, group and SF Symbol, and your own groups a name and color; they follow the
   built-in groups. Built-in activities and groups can be edited the same way, saved as edits over the originals

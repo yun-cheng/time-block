@@ -281,7 +281,7 @@ public struct DayView: View {
         .popover(isPresented: $showsActivities, arrowEdge: .trailing) {
             activities(editor, theme: theme)
                 .padding(14)
-                .frame(width: 360)
+                .frame(width: 430)
         }
     }
 
