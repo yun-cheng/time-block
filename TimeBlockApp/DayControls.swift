@@ -57,7 +57,12 @@ struct DayPicker: View {
             Button {
                 showsCalendar.toggle()
             } label: {
-                Text(title).monospacedDigit()
+                ZStack {
+                    // As wide as the month's longest date, so ‹ and › stay put going from day to day.
+                    Text(title(of: widestDay)).hidden()
+                    Text(title(of: shownDate))
+                }
+                .monospacedDigit()
             }
             .help("Go to a Day")
             .popover(isPresented: $showsCalendar, arrowEdge: .bottom) {
@@ -85,9 +90,17 @@ struct DayPicker: View {
         .padding(.leading, -6)
     }
 
-    /// The day shown: "Sat 24 Oct", with the year when it isn't this one.
-    private var title: String {
-        let date = DayID.date(model.shownDay) ?? .now
+    private var shownDate: Date { DayID.date(model.shownDay) ?? .now }
+
+    /// A day of the shown month whose date has two digits. In the day's monospaced type, it's as long as any.
+    private var widestDay: Date {
+        var day = Calendar.current.dateComponents([.year, .month], from: shownDate)
+        day.day = 28
+        return Calendar.current.date(from: day) ?? shownDate
+    }
+
+    /// A day as shown: "Sat 24 Oct", with the year when it isn't this one.
+    private func title(of date: Date) -> String {
         let format = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
         let isThisYear = model.shownDay.prefix(4) == model.dayLog.day.prefix(4)
         return date.formatted(isThisYear ? format : format.year())
@@ -95,7 +108,7 @@ struct DayPicker: View {
 
     private var date: Binding<Date> {
         Binding {
-            DayID.date(model.shownDay) ?? .now
+            shownDate
         } set: { date in
             model.show(DayID.string(from: date))
             showsCalendar = false

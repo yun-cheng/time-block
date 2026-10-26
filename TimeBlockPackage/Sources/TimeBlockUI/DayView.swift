@@ -205,13 +205,17 @@ public struct DayView: View {
         .foregroundStyle(theme.secondaryText)
     }
 
+    /// How big the whole day's counter is, and another day's share in its place, so the blocks stay put going
+    /// between days.
+    private static let counterSize: CGFloat = 64
+
     /// Where today's counter would be, another day's share of blocks logged, or planned.
     private func otherDayHeader(theme: MoodTheme) -> some View {
         let awake = snapshot.status.schedule.awakeBlocks
         let logged = snapshot.cells.prefix(awake).filter { $0.categoryID != nil }.count
         return VStack(alignment: .leading, spacing: 0) {
             Text("\(awake > 0 ? logged * 100 / awake : 0)%")
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(size: Self.counterSize, weight: .bold, design: .rounded))
                 .foregroundStyle(theme.text)
             Text(snapshot.status.isAhead ? "planned" : "logged")
                 .font(.system(size: 14, weight: .semibold))
@@ -234,13 +238,14 @@ public struct DayView: View {
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 topLine(theme: theme)
-                HStack(alignment: .bottom) {
+                // From the top, so the view switch stays put whatever stats a day has under it.
+                HStack(alignment: .top) {
                     if otherDate != nil {
                         otherDayHeader(theme: theme)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
                             CounterView(
-                                value: status.blocksLeft, theme: theme, size: 64,
+                                value: status.blocksLeft, theme: theme, size: Self.counterSize,
                                 total: status.schedule.awakeBlocks, time: time)
                             Text(MoodCopy.caption(snapshot.mood))
                                 .font(.system(size: 14, weight: .semibold))

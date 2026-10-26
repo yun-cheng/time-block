@@ -114,6 +114,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   bar.
 - **One column as wide as the blocks:** the counter, stats, timers, story bar and legend take the grid's width (its
   hour labels in), so their edges line up with it however wide the window is; the extra room is left either side.
+- **Nothing moves going between days** but what changed: another day's share logged is the counter's size, the header
+  hangs from the top whatever stats a day has, and the date takes the room of the month's longest, so ‹ › stay put.
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
