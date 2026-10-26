@@ -41,7 +41,8 @@ PLAN.md.
 ### Logging
 
 - **Hover** a block to see its time and what it holds. A logged stretch (or an unlogged gap) is outlined as a whole,
-  with its range: `18:20–19:25 · Social · 1h 5m`.
+  with a label above it that follows the pointer along: `18:20–19:25 · Social · 1h 5m`. While blocks are selected,
+  the label stays still on them.
 - **Select, then pick:** click a block to select its whole stretch, double‑click to select just that block, or
   drag to select exactly what you cover. Click an activity under the grid to log the selection, or Clear to empty
   it. The selection stays, and its activity stays lit, until you click off the blocks.

@@ -61,6 +61,12 @@ public struct BlockGridView: View {
     @State private var moving: (from: Int, offset: Int)?
     /// Whether the pointer is over a selection handle.
     @State private var isOverHandle = false
+    /// Where the pointer last was across the grid, which the label follows.
+    @State private var pointerX: CGFloat?
+    /// Where the pointer was when the selection was made, where its label stays.
+    @State private var selectionX: CGFloat?
+    /// How wide the label is, to keep it inside its bounds.
+    @State private var infoWidth: CGFloat = 180
 
     private enum SelectionEnd {
         case start, end
@@ -91,6 +97,10 @@ public struct BlockGridView: View {
         self.onMove = onMove
         self.onSelectLayer = onSelectLayer
     }
+
+    /// The space the label may reach across, when a view around the grid names it; without one it stays inside the
+    /// grid.
+    public static let labelSpace = NamedCoordinateSpace.named("BlockGridView.labelSpace")
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
         let slots = snapshot.status.schedule.gridOffset + snapshot.cells.count
@@ -133,6 +143,7 @@ public struct BlockGridView: View {
                             }
                             .onContinuousHover { phase in
                                 if case .active(let point) = phase {
+                                    pointerX = point.x
                                     hovered = layout.index(at: point, count: snapshot.cells.count, clamped: false)
                                     hoveredLayer = hovered.flatMap { layer(at: point, in: $0, layout: layout) }
                                     pointed = hovered
@@ -149,12 +160,16 @@ public struct BlockGridView: View {
                                 snapshot: snapshot, theme: theme, range: range, layer: labeledLayer,
                                 brush: resizing != nil || moving != nil ? resizableCategory.map(Brush.category) : brush)
                                 .fixedSize()
-                                .position(infoPosition(for: range, layout: layout, size: proxy.size))
+                                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { infoWidth = $0 }
+                                .position(infoPosition(
+                                    for: range, layout: layout,
+                                    bounds: proxy.bounds(of: Self.labelSpace) ?? CGRect(origin: .zero, size: proxy.size)))
                                 .allowsHitTesting(false)
                         }
                     }
                 }
             }
+            .onChange(of: selection) { selectionX = pointerX }
             #if canImport(AppKit)
             .onChange(of: cursor) { old, new in
                 if old != nil { NSCursor.pop() }
@@ -195,17 +210,18 @@ public struct BlockGridView: View {
 
     private var hoveredRange: Range<Int>? { hoveredTarget?.range }
 
-    /// Blocks the label describes: the drag in progress, else what the pointer is over, else the selection.
+    /// Blocks the label describes: the drag in progress, else the selection, which keeps it still wherever the pointer
+    /// goes, else what the pointer is over.
     private var labeled: Range<Int>? {
-        resizing?.range ?? moved ?? dragged ?? hoveredRange ?? selection
+        resizing?.range ?? moved ?? dragged ?? selection ?? hoveredRange
     }
 
     /// The one activity the label describes, when it's about one card of a stack.
     private var labeledLayer: String? {
         if resizing != nil || moving != nil { return selectedLayer }
         if dragged != nil { return nil }
-        if let hoveredTarget { return hoveredTarget.layer }
-        return selectedLayer
+        if selection != nil { return selectedLayer }
+        return hoveredTarget?.layer
     }
 
     /// The card of block `index` under `point`, by activity, with its stack spread apart as it is under the pointer.
@@ -363,11 +379,15 @@ public struct BlockGridView: View {
         return nil
     }
 
-    /// Just above the first highlighted block, or below it on the top row.
-    private func infoPosition(for range: Range<Int>, layout: GridLayout, size: CGSize) -> CGPoint {
-        let frame = layout.frame(range.lowerBound)
-        let y = frame.minY > 30 ? frame.minY - 16 : frame.maxY + 16
-        return CGPoint(x: min(max(frame.midX, 90), size.width - 90), y: y)
+    /// Just above the first block it's about, on the top row too, where it floats over what's above the grid.
+    /// Across, it follows the pointer, but stays still over a selection, where it was made; it's kept inside `bounds`,
+    /// in the grid's own coordinates.
+    private func infoPosition(for range: Range<Int>, layout: GridLayout, bounds: CGRect) -> CGPoint {
+        let first = layout.frame(range.lowerBound)
+        let isStill = range == selection && drag == nil && resizing == nil && moving == nil
+        let x = (isStill ? selectionX : pointerX) ?? first.midX
+        let half = infoWidth / 2
+        return CGPoint(x: min(max(x, bounds.minX + half), max(bounds.minX + half, bounds.maxX - half)), y: first.minY - 16)
     }
 
     private var resolvedRows: Range<Int> { rows ?? 0..<Self.rowCount(for: snapshot) }
@@ -389,6 +409,7 @@ public struct BlockGridView: View {
     private func paintGesture(size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
+                pointerX = value.location.x
                 let layout = layout(size: size)
                 let count = snapshot.cells.count
                 // A press on a handle that moves drags that end; one that doesn't is an ordinary click.

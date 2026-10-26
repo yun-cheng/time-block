@@ -305,6 +305,8 @@ public struct DayView: View {
                 }
             }
         }
+        // The grid's label can reach across the whole day, not just the grid.
+        .coordinateSpace(BlockGridView.labelSpace)
         .padding(22)
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

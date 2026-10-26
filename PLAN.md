@@ -73,7 +73,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 
 ### 3.2 Logging
 - The window's grid starts in a look‑only state: hovering a block shows its time and contents, and outlines the
-  whole run it belongs to (one activity, or one unlogged gap) with its range and length.
+  whole run it belongs to (one activity, or one unlogged gap) with its range and length. The label always sits just
+  above the run's first block (on the top row it floats over what's above the grid) and follows the pointer across,
+  kept inside the day view. While blocks are selected it stays on them, where the selection was made, whatever the
+  pointer does.
 - **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking an activity
   chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's activity is lit.
   Clicking off the blocks deselects.
