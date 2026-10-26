@@ -36,7 +36,7 @@ struct TemplateSettings: View {
                             .frame(width: 20)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(category?.name ?? "Unknown activity")
-                            Text("\(Self.times(of: template)) · \(Self.days(template.weekdays))")
+                            Text(Self.subtitle(of: template, today: model.schedule))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -56,6 +56,7 @@ struct TemplateSettings: View {
             if editing == template.id {
                 TemplateEditor(
                     template: binding, activities: activities, favorites: model.settings.favorites,
+                    schedule: model.schedule,
                     remove: {
                         editing = nil
                         model.settings.templates.removeAll { $0.id == template.id }
@@ -81,9 +82,16 @@ struct TemplateSettings: View {
         }
     }
 
-    /// "12:00–12:30".
-    static func times(of template: Template) -> String {
-        "\(clock(template.startMinute))–\(clock(template.startMinute + template.length * Schedule.blockMinutes))"
+    /// "12:00–12:30 · Weekdays", or "07:30–08:00 · 30m after waking · Every day" with today's times.
+    static func subtitle(of template: Template, today schedule: Schedule) -> String {
+        let start = template.startMinute(in: schedule)
+        let times = "\(clock(start))–\(clock(start + template.length * Schedule.blockMinutes))"
+        let anchor: String? = switch template.anchor {
+        case .clock: nil
+        case .wake: "\(TemplateEditor.duration(minutes: template.offset)) after waking"
+        case .bed: "\(TemplateEditor.duration(minutes: template.offset)) before bed"
+        }
+        return [times, anchor, days(template.weekdays)].compactMap { $0 }.joined(separator: " · ")
     }
 
     private static func clock(_ minute: Int) -> String {
@@ -117,6 +125,8 @@ private struct TemplateEditor: View {
     @Binding var template: Template
     let activities: [BlockCategory]
     let favorites: [String]
+    /// Today's: going back to a clock time starts it where it starts today.
+    let schedule: Schedule
     let remove: () -> Void
     let done: () -> Void
     @State private var showsActivities = false
@@ -127,7 +137,13 @@ private struct TemplateEditor: View {
             LabeledContent("Activity") {
                 activityButton
             }
-            TimeField("Starts", minute: $template.startMinute)
+            // What it's counted from, and under it the time, so the time stays put whichever it is.
+            LabeledContent("Starts") {
+                VStack(alignment: .trailing, spacing: 6) {
+                    anchorPicker
+                    startField
+                }
+            }
             LabeledContent("Length") {
                 // A block to 12 hours.
                 DurationPicker(
@@ -208,5 +224,39 @@ private struct TemplateEditor: View {
         }
         .buttonStyle(.plain)
         .help(calendar.weekdaySymbols[weekday - 1])
+    }
+
+    private var anchorPicker: some View {
+        Picker("Starts", selection: anchorBinding) {
+            Text("At").tag(Template.Anchor.clock)
+            Text("After Waking").tag(Template.Anchor.wake)
+            Text("Before Bed").tag(Template.Anchor.bed)
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    /// The clock time it starts at, or how long after waking or before bed.
+    @ViewBuilder private var startField: some View {
+        if template.anchor == .clock {
+            TimeField("Starts", minute: $template.startMinute)
+                .labelsHidden()
+        } else {
+            // Up to a whole day.
+            DurationPicker(title: "Starts", minutes: $template.offset, range: 0...(24 * 60 - Schedule.blockMinutes))
+        }
+    }
+
+    private var anchorBinding: Binding<Template.Anchor> {
+        Binding { template.anchor } set: { template.anchor(to: $0, in: schedule) }
+    }
+
+    /// "45m", "1h", "1h 30m".
+    static func duration(minutes: Int) -> String {
+        switch (minutes / 60, minutes % 60) {
+        case (0, let m): "\(m)m"
+        case (let h, 0): "\(h)h"
+        case (let h, let m): "\(h)h \(m)m"
+        }
     }
 }

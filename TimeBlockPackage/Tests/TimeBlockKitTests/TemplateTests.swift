@@ -70,6 +70,49 @@ struct TemplateTests {
         #expect(Set(summary(log)) == ["reading 189..<192 template", "coffee 0..<6 template"])
     }
 
+    @Test func templatesCanStartAfterWakingOrBeforeBed() {
+        // 07:00–23:00: breakfast 30 minutes after waking, reading 45 minutes before bed for half an hour.
+        let breakfast = Template(id: "breakfast", categoryID: "breakfast", anchor: .wake, offset: 30, length: 6)
+        let reading = Template(id: "reading", categoryID: "reading", anchor: .bed, offset: 45, length: 6)
+        let log = monday { $0.plan([breakfast, reading], schedule: schedule, calendar: calendar) }
+        #expect(Set(summary(log)) == ["breakfast 6..<12 template", "reading 183..<189 template"])
+        #expect(breakfast.startMinute(in: schedule) == 7 * 60 + 30)
+        #expect(reading.startMinute(in: schedule) == 22 * 60 + 15)
+    }
+
+    @Test func relativeTemplatesFollowTheDaysTimes() {
+        // Up at 09:00 and to bed at 01:00, past midnight.
+        let late = Schedule(wakeMinute: 9 * 60, bedMinute: 60)
+        let breakfast = Template(id: "breakfast", categoryID: "breakfast", anchor: .wake, offset: 30, length: 6)
+        let reading = Template(id: "reading", categoryID: "reading", anchor: .bed, offset: 90, length: 6)
+        #expect(breakfast.range(in: late) == 6..<12)
+        #expect(reading.range(in: late) == 174..<180)
+        #expect(reading.startMinute(in: late) == 23 * 60 + 30)
+    }
+
+    @Test func reanchoringStartsHalfAnHourFromWakingOrBed() {
+        var lunch = lunch
+        lunch.anchor(to: .wake, in: schedule)
+        #expect(lunch.offset == 30)
+        #expect(lunch.range(in: schedule) == 6..<12)
+        lunch.offset = 60
+        lunch.anchor(to: .bed, in: schedule)
+        #expect(lunch.offset == 30)
+        #expect(lunch.range(in: schedule) == 186..<192)
+        // Back to a clock time, it starts where it does today: 30 minutes before a 23:30 bedtime.
+        lunch.anchor(to: .clock, in: Schedule(wakeMinute: 8 * 60, bedMinute: 23 * 60 + 30))
+        #expect(lunch.startMinute == 23 * 60)
+    }
+
+    @Test func templatesSavedBeforeAnchorsStartAtAClockTime() throws {
+        let json = #"{"id":"lunch","categoryID":"lunch","startMinute":720,"length":6,"weekdays":[2],"isEnabled":true}"#
+        let template = try JSONDecoder().decode(Template.self, from: Data(json.utf8))
+        #expect(template.anchor == .clock)
+        #expect(template.range(in: schedule) == 60..<66)
+        let reading = Template(id: "reading", categoryID: "reading", anchor: .bed, offset: 45, length: 6)
+        #expect(try JSONDecoder().decode(Template.self, from: JSONEncoder().encode(reading)) == reading)
+    }
+
     @Test func daysSavedBeforeTemplatesAreUnplanned() throws {
         let json = #"{"day":"2026-10-26","wakeMinute":420,"logs":[]}"#
         let log = try JSONDecoder().decode(DayLog.self, from: Data(json.utf8))
