@@ -13,6 +13,10 @@ struct MainWindow: View {
     /// would build the menu again, and its icons would flash.
     @State private var isMenuOpen = false
     @State private var showsTimerStarter = false
+    /// Whether the offer to undo the last change shows, and whether the pointer is on it, which keeps it.
+    @State private var showsUndoToast = false
+    @State private var isUndoToastHovered = false
+    @State private var undoToastHiding: Task<Void, Never>?
     /// How big the compact day is, for the window kept on top to fit.
     @State private var compactSize: CGSize?
     @Environment(\.colorScheme) private var colorScheme
@@ -25,72 +29,12 @@ struct MainWindow: View {
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { compactSize = $0 }
             } else {
-                GeometryReader { window in
-                    // The app's scroll bar drawn in SwiftUI: AppKit's would sit under the inspector, showing through it.
-                    AppScrollView(lane: 10) {
-                        day
-                            // Fill the window, but scroll when it is too short for the whole day.
-                            .frame(minHeight: window.size.height - 20)
-                            .padding(10)
+                dayColumn
+                    .frame(minWidth: 400, minHeight: 600)
+                    .inspector(isPresented: $model.showsSettings) {
+                        SettingsView(model: model)
+                            .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
                     }
-                }
-                .overlay {
-                    if showsTimerStarter {
-                        TimerDialog(model: model, theme: theme, isOpen: $showsTimerStarter)
-                    }
-                }
-                .frame(minWidth: 400, minHeight: 600)
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        DayPicker(model: model)
-                    }
-                    ToolbarItem(placement: .principal) {
-                        TrackPicker(track: $model.settings.track)
-                    }
-                    ToolbarItemGroup {
-                        Button {
-                            if undoManager?.canUndo == true { undoManager?.undo() }
-                            updateUndoTitles()
-                        } label: {
-                            Label("Undo", systemImage: "arrow.uturn.backward")
-                        }
-                        .help(undoTitles.undo ?? "Undo")
-                        .disabled(undoTitles.undo == nil)
-                        Button {
-                            if undoManager?.canRedo == true { undoManager?.redo() }
-                            updateUndoTitles()
-                        } label: {
-                            Label("Redo", systemImage: "arrow.uturn.forward")
-                        }
-                        .help(undoTitles.redo ?? "Redo")
-                        .disabled(undoTitles.redo == nil)
-                    }
-                    ToolbarItem {
-                        Button {
-                            showsTimerStarter.toggle()
-                        } label: {
-                            Label("Start Timer", systemImage: "stopwatch")
-                        }
-                        .help("Start a timer that logs an activity as it goes")
-                    }
-                    ToolbarItem {
-                        pinButton
-                    }
-                    ToolbarItem {
-                        Button {
-                            model.showsSettings.toggle()
-                        } label: {
-                            Label("Settings", systemImage: "gearshape")
-                        }
-                        .help(model.showsSettings ? "Hide Settings" : "Show Settings")
-                    }
-                }
-                .inspector(isPresented: $model.showsSettings) {
-                    SettingsView(model: model)
-                        .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
-                        // With nothing of its own in the toolbar, the panel would take the day's buttons over it.
-                        .toolbar { Spacer() }
-                }
             }
         }
         .background(WindowPin(isPinned: model.isPinned, compactSize: compactSize))
@@ -112,6 +56,10 @@ struct MainWindow: View {
         .onReceive(undoNotifications) { _ in updateUndoTitles() }
         .onChange(of: model.dayLog) { updateUndoTitles() }
         .onChange(of: model.otherLog) { updateUndoTitles() }
+        .onChange(of: model.lastChange) {
+            withAnimation(.snappy) { showsUndoToast = true }
+            hideUndoToast(after: .seconds(5))
+        }
     }
 }
 
@@ -128,7 +76,96 @@ extension MainWindow {
                     annotate: { model.setNote($1, for: $0, layer: $2) }, toggleFavorite: model.toggleFavorite,
                     resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }),
                 timers: model.timerControls, date: context.date,
-                isCompact: model.isPinned, compactAccessory: AnyView(pinButton.buttonStyle(.borderless)))
+                isCompact: model.isPinned, controls: controls)
+        }
+    }
+
+    /// The day in its scroll view, with what shows over it.
+    private var dayColumn: some View {
+        GeometryReader { window in
+            // The app's scroll bar drawn in SwiftUI: AppKit's would sit under the inspector, showing through it.
+            AppScrollView(lane: 10) {
+                day
+                    // Fill the window, but scroll when it is too short for the whole day.
+                    .frame(minHeight: window.size.height - 20)
+                    .padding(10)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if showsUndoToast {
+                UndoToast(
+                    undo: undoTitles.undo, redo: undoTitles.redo, wasUndo: model.lastChange?.kind == .undone,
+                    perform: { $0 ? redo() : undo() }
+                )
+                .onHover { isHovered in
+                    isUndoToastHovered = isHovered
+                    if !isHovered { hideUndoToast(after: .seconds(2)) }
+                }
+                .padding(.bottom, 20)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .overlay {
+            if showsTimerStarter {
+                TimerDialog(model: model, theme: theme, isOpen: $showsTimerStarter)
+            }
+        }
+    }
+
+    /// The window's buttons, each where it belongs in the day.
+    private var controls: DayControls {
+        DayControls(
+            day: { AnyView(DayPicker(model: model, theme: $0)) },
+            track: { AnyView(TrackSwitch(track: $model.settings.track, theme: $0)) },
+            timer: { theme in
+                AnyView(
+                    Button {
+                        showsTimerStarter.toggle()
+                    } label: {
+                        Label("Start Timer", systemImage: "stopwatch")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .buttonStyle(DayButtonStyle(theme: theme, isOn: showsTimerStarter))
+                    .help("Start a timer that logs an activity as it goes"))
+            },
+            corner: { theme in
+                AnyView(
+                    HStack(spacing: 0) {
+                        pinButton
+                        // Settings need the whole window.
+                        if !model.isPinned {
+                            Button {
+                                model.showsSettings.toggle()
+                            } label: {
+                                Label("Settings", systemImage: "gearshape")
+                            }
+                            .buttonStyle(DayButtonStyle(theme: theme, isOn: model.showsSettings))
+                            .help(model.showsSettings ? "Hide Settings" : "Show Settings")
+                        }
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(DayButtonStyle(theme: theme))
+                    .padding(.trailing, -6))
+            })
+    }
+
+    private func undo() {
+        if undoManager?.canUndo == true { undoManager?.undo() }
+        updateUndoTitles()
+    }
+
+    private func redo() {
+        if undoManager?.canRedo == true { undoManager?.redo() }
+        updateUndoTitles()
+    }
+
+    /// Hides the offer to undo after `delay`, unless something newer or the pointer keeps it.
+    private func hideUndoToast(after delay: Duration) {
+        undoToastHiding?.cancel()
+        undoToastHiding = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, !isUndoToastHovered else { return }
+            withAnimation(.snappy) { showsUndoToast = false }
         }
     }
 
@@ -168,66 +205,6 @@ extension MainWindow {
         undoTitles = UndoTitles(
             undo: undoManager.canUndo ? undoManager.undoMenuItemTitle : nil,
             redo: undoManager.canRedo ? undoManager.redoMenuItemTitle : nil)
-    }
-}
-
-/// Goes back and forth between days: the previous and next day, today, and the day shown, which picks one from a
-/// calendar.
-struct DayPicker: View {
-    @Bindable var model: AppModel
-    @State private var showsCalendar = false
-
-    /// Side by side, as in Calendar: ‹ Today › and the date.
-    var body: some View {
-        HStack(spacing: 6) {
-            ControlGroup {
-                Button {
-                    model.showDay(-1)
-                } label: {
-                    Label("Previous Day", systemImage: "chevron.left")
-                }
-                .help("Previous Day")
-                Button("Today") { model.showToday() }
-                    .help("Go to Today")
-                    .disabled(model.isShowingToday)
-                Button {
-                    model.showDay(1)
-                } label: {
-                    Label("Next Day", systemImage: "chevron.right")
-                }
-                .help("Next Day")
-            }
-            .fixedSize()
-            Button {
-                showsCalendar.toggle()
-            } label: {
-                Text(title).monospacedDigit()
-            }
-            .help("Go to a Day")
-            .popover(isPresented: $showsCalendar, arrowEdge: .bottom) {
-                DatePicker("Day", selection: date, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .labelsHidden()
-                    .padding()
-            }
-        }
-    }
-
-    /// The day shown: "Sat 24 Oct", with the year when it isn't this one.
-    private var title: String {
-        let date = DayID.date(model.shownDay) ?? .now
-        let format = Date.FormatStyle.dateTime.weekday(.abbreviated).day().month(.abbreviated)
-        let isThisYear = model.shownDay.prefix(4) == model.dayLog.day.prefix(4)
-        return date.formatted(isThisYear ? format : format.year())
-    }
-
-    private var date: Binding<Date> {
-        Binding {
-            DayID.date(model.shownDay) ?? .now
-        } set: { date in
-            model.show(DayID.string(from: date))
-            showsCalendar = false
-        }
     }
 }
 

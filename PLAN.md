@@ -104,8 +104,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   bar) goes on the window's undo stack, named in Edit (Undo Move Blocks …). Undo puts the day back as it was, in
   the view and on the day it changed in, with the selection it had. The stack is cleared when templates or the
   schedule change (putting old logs back would undo the new plan too).
-- **Undo and Redo buttons:** in the toolbar beside Settings, all three over the day even while Settings is open.
-  They're greyed out with nothing to undo or redo, and their tooltips name the change.
+- **Undo offered after each change:** a capsule at the bottom of the window names it (Undo Move Blocks) for a few
+  seconds, or Redo after an undo, with the other as an icon when there's one; it stays while pointed at. There are
+  no standing Undo and Redo buttons: ⌘Z and Edit do that.
+- **The window's buttons sit in the day, each where it belongs,** not in a toolbar, which folded what didn't fit into
+  a » menu, nor in a row of their own: ‹ the date › and the time on the day's top line, the view switch over the
+  stats it counts, Start Timer beside what's on now, and the window's own (Keep on Top, Settings) as icons in the top
+  corner. They're drawn in the day's colors, plain text that lights up under the pointer. Under them, a plain title
+  bar.
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
@@ -129,46 +135,44 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     day. A run of one activity alone, or one activity picked out of a stack, has handles.
 - No pick‑then‑paint brush: dragging selects, and the popup logs what's selected, so there's one way to log.
 - Logging splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
-- **Timers (live logging):** besides logging blocks before or after, start a timer of an activity and its blocks
-  fill in as it runs, any block it touches, alongside what they hold, so several timers running at once stack like
-  any other layers (one timer per activity). A timer counts up from zero or down from a length (Pomodoro, 25 min),
-  which notifies at zero with a sound and counts on past it in the accent color until stopped. There's no pause:
-  stop logs what it ran, and delete, once confirmed, drops it unlogged; a run under 10 seconds was a slip and logs
-  nothing. Each run's exact times are kept with the day (`sessions`), and hovering its blocks shows them
-  (`⏱ 10:03–10:31`). Timers are saved beside the settings, so they carry on through a quit, and the widget draws their
-  blocks too. In the menu bar panel the timers sit over a palette that starts one (no chip is lit: the list shows
-  what's going); in the window a stopwatch in the toolbar opens one dialog over the day: Count Down or Count Up on
-  top, both named, the one picked filled in, then the countdown, its length typed or picked in hours and minutes, set
-  on blocks like the day's (a row an hour up to 3 hours, or past that an hour to a big block over a row of minutes, up
-  to 24) or picked from starred lengths (30 min and 1 h to start), starting at a default, 30 min to start; counting
-  up, the length hides. Then an Activity row whose button opens the activities, over Cancel and Start. Start starts it
-  and closes the dialog, and the timers going are listed under the grid, below the current activity. An earlier
-  version took two steps, with system tabs and then a switch for up and down, which felt heavy or unclear. Timers
-  replaced the menu bar's one‑click "Now" logging.
+- **Timers (live logging):** besides logging blocks before or after, start a timer of an activity and its blocks fill in
+  as it runs, any block it touches, alongside what they hold, so several timers running at once stack like any other
+  layers (one timer per activity). A timer counts up from zero or down from a length (Pomodoro, 25 min), which notifies
+  at zero with a sound and counts on past it in the accent color until stopped. There's no pause: stop logs what it ran,
+  and delete, once confirmed, drops it unlogged; a run under 10 seconds was a slip and logs nothing. Each run's exact
+  times are kept with the day (`sessions`), and hovering its blocks shows them (`⏱ 10:03–10:31`). Timers are saved
+  beside the settings, so they carry on through a quit, and the widget draws their blocks too. In the menu bar panel the
+  timers sit over a palette that starts one (no chip is lit: the list shows what's going); in the window Start Timer,
+  beside what's on now, opens one dialog over the day: Count Down or Count Up on top, both named, the one picked filled
+  in, then the countdown, its length typed or picked in hours and minutes, set on blocks like the day's (a row an hour
+  up to 3 hours, or past that an hour to a big block over a row of minutes, up to 24) or picked from starred lengths (30
+  min and 1 h to start), starting at a default, 30 min to start; counting up, the length hides. Then an Activity row
+  whose button opens the activities, over Cancel and Start. Start starts it and closes the dialog, and the timers going
+  are listed under the grid, below the current activity. An earlier version took two steps, with system tabs and then a
+  switch for up and down, which felt heavy or unclear. Timers replaced the menu bar's one‑click "Now" logging.
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
 - **Little text on screen:** the popup names the selected times ("08:00–08:30"), and nothing else explains itself.
   Settings sections have no explaining footers. How things work is in the README and tooltips.
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
-- **Any day, like a calendar:** every day is kept, one file each. At the toolbar's left, as in Calendar, ‹ Today ›
-  go back and forth a day and back to today (Go ▸ Previous Day ⌘[, Next Day ⌘], Today ⌘T), and the date beside
-  them (always the date, "Sat 24 Oct") picks any day from a calendar. The window leaves its title out of the
-  toolbar to make room. Every day is edited like today: fill in a day you forgot to log, or pre‑log one ahead.
-  - A past day is over: every block has passed, it runs to bedtime or to the last block logged after it, and it has
-    no counter, "now" or horror, just its date and how much of it was logged. It keeps the schedule saved with it,
-    so it keeps its length when the schedule changes later (days saved before that take the settings').
+- **Any day, like a calendar:** every day is kept, one file each. On the day's top line, as in Calendar, ‹ › go back and
+  forth a day, with Today beside them to come back (Go ▸ Previous Day ⌘[, Next Day ⌘], Today ⌘T), and the date between
+  them (always the date, "Sat 24 Oct") picks any day from a calendar. The window leaves its title out of the title bar.
+  Every day is edited like today: fill in a day you forgot to log, or pre‑log one ahead.
+  - A past day is over: every block has passed, it runs to bedtime or to the last block logged after it, and it has no
+    counter, "now" or horror: where the counter would be, how much of it was logged. It keeps the schedule saved with
+    it, so it keeps its length when the schedule changes later (days saved before that take the settings').
   - A day ahead has no block started, shows how much of it is planned, and follows the settings' schedule (sleep
     shift included), its blocks keeping their clock times. Its templates are laid out when it's opened, and saved
     with it once it's changed; a saved day ahead is planned again when templates or the schedule change, like
     today's blocks still to come.
   - The menu bar and widgets stay on today, and the window moves on to the new day when it showed today (or the
     day ahead it showed has come).
-- **Keep on top:** the pin in the toolbar (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps' windows,
-  on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
-  instead of 20, and the timers going. The toolbar, stats, story bar, legend and settings are left out; logging
-  works as in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old size.
-  - The compact window keeps a plain title bar, to drag it by and close it. Its toolbar is left out rather than
-    hidden: a hidden toolbar still keeps its room, an empty strip over the day. The app sizes the window to the
+- **Keep on top:** the pin in the day's top corner (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps'
+  windows, on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
+  instead of 20, and the timers going. The buttons, stats, story bar, legend and settings are left out; logging works as
+  in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old size.
+  - The compact window keeps a plain title bar, to drag it by and close it. The app sizes the window to the
     compact day itself, keeping its top left corner, since SwiftUI doesn't shrink it. A full‑screen window leaves
     full screen first.
 
@@ -275,8 +279,9 @@ Gradually move your schedule earlier (or later) instead of all at once (Settings
 
 ### 3.6a Views (tracks)
 The same day can be looked at through different **views**. Each view is its own **track** of logs, so one block can hold
-one log per track: 10:30 is *Meeting* in Activity and *Standing* in Body. Switch with the toolbar control, View ▸ (⌘1/⌘2),
-or the menu bar panel; each widget picks its own view in its Edit sheet, so an Activity and a Body widget can sit side by side.
+one log per track: 10:30 is *Meeting* in Activity and *Standing* in Body. Switch with the control over the stats,
+View ▸ (⌘1/⌘2), or the menu bar panel; each widget picks its own view in its Edit sheet, so an Activity and a Body
+widget can sit side by side.
 
 | View | Statuses | Colors | Headline |
 |---|---|---|---|
@@ -355,6 +360,6 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
-| Logging controls | Popups rather than a palette under the grid: a + (or edit symbol) beside the selection's label opens the activities, a stopwatch in the toolbar starts timers; no pick‑then‑paint brush |
+| Logging controls | Popups rather than a palette under the grid: a + (or edit symbol) beside the selection's label opens the activities, Start Timer beside what's on now starts timers; no pick‑then‑paint brush |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

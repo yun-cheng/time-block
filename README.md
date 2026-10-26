@@ -27,16 +27,16 @@ whole UI slowly turns into a horror show.
   cards: what breaks into the rest is in front at the bottom-right (the shortest stretch, such as a trip to the
   toilet in a morning of work), the ones under it peek out at the top-left, and each counts its full time in the
   totals.
-- **Views:** switch between Activity and Body (lying, sitting, standing, walking, exercising). Each view is its
-  own track of logs, so a block can be *Meeting* and *Standing* at once.
+- **Views:** switch between Activity and Body (lying, sitting, standing, walking, exercising) above the stats. Each view
+  is its own track of logs, so a block can be *Meeting* and *Standing* at once.
 
 See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 ## Status
 
-Built: Mac app window with settings in a side panel (gear button or ⌘,), menu bar extra, and a WidgetKit widget
-in three sizes. Logs are saved one file per day. Next up is a nudge for unlogged time; see the milestones in
-PLAN.md.
+Built: Mac app window with settings in a side panel (the gear in the day's top corner, or ⌘,), menu bar extra, and a
+WidgetKit widget in three sizes. Logs are saved one file per day. Next up is a nudge for unlogged time; see the
+milestones in PLAN.md.
 
 ### Logging
 
@@ -63,29 +63,31 @@ PLAN.md.
 - **Add one more:** pick **Add** in the two tools at the top of the activities (or hold ⌘), and the pointer gets a
   green plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
   the rest. Once it has added, the tool goes back to **Normal**, which replaces.
-- **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
-  made it, and ⇧⌘Z or Redo puts it back.
+- **Undo and redo:** ⌘Z takes back the last change to your blocks, whatever made it, and ⇧⌘Z puts it back. After
+  each change, Undo shows at the bottom of the window for a few seconds (Redo after an undo), and stays while you
+  point at it.
 - **Find any activity:** the activities shown are your starred ones, by group. Type in the search field above them
   to find any of the ~170 built in, whatever group is shown (`meal` finds Breakfast, Lunch, Dinner…); Return picks
   the top match. Click a group in the list beside them to see all of its activities; Starred goes back. Right‑click a
   chip to star or unstar it.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
   hover them, and a noted stretch is selected and outlined on its own.
-- **Any day, like a calendar:** every day is kept. In the toolbar, as in Calendar, ‹ › go back and forth a day
-  (⌘[ ⌘]) and Today (⌘T) comes back; click the date beside them to pick one from a calendar. Every day can be edited like today: fill in one you
-  forgot to log, or pre‑log one ahead, with your routine already on it. Past days keep the wake and bedtime they had.
-- **Timers:** log as you go. In the window, the stopwatch in the toolbar opens a timer dialog. At the top, pick Count
-  Down or Count Up. A countdown has a length, 30 minutes to start: type its hours and minutes (↑↓ step them) or pick
-  them from the ⌄ lists, click or drag across blocks like the day's (a row of five‑minute blocks an hour, up to 3
-  hours; More Hours makes an hour one big block, up to 24, over a row of the minutes past them), or pick a starred
-  length (30 min and 1 h to start). Star keeps a length you set to pick in a click, and Set as Default makes it what
-  countdowns start at; right‑click a starred one to unstar it. Counting up, there's no length to set. Under them,
+- **Any day, like a calendar:** every day is kept. At the top of the day, as in Calendar, ‹ › go back and forth a day
+  (⌘[ ⌘]) and Today (⌘T) comes back; click the date between them to pick one from a calendar. Every day can be edited
+  like today: fill in one you forgot to log, or pre‑log one ahead, with your routine already on it. Past days keep the
+  wake and bedtime they had, and show how much of them was logged where today's counter is.
+- **Timers:** log as you go. In the window, Start Timer, beside what's on now under the grid, opens a timer dialog. At
+  the top, pick Count Down or Count Up. A countdown has a length, 30 minutes to start: type its hours and minutes (↑↓
+  step them) or pick them from the ⌄ lists, click or drag across blocks like the day's (a row of five‑minute blocks an
+  hour, up to 3 hours; More Hours makes an hour one big block, up to 24, over a row of the minutes past them), or pick a
+  starred length (30 min and 1 h to start). Star keeps a length you set to pick in a click, and Set as Default makes it
+  what countdowns start at; right‑click a starred one to unstar it. Counting up, there's no length to set. Under them,
   Choose Activity, beside Activity, opens the activities to pick the one to time; then Start. In the menu bar, pick
-  Count up or a starred length and click an activity to start one. The timers going are listed under the grid. A
-  timer's blocks fill in as it runs, every block it touches, alongside whatever they hold, so several can run at once
-  (one per activity). Stop it to keep what it ran, or delete it (after you confirm) to drop it unlogged. A countdown
-  notifies you at zero and keeps counting past it (`−2:13`) until you stop it. Hover the blocks a timer ran in to see
-  exactly when (`⏱ 10:03–10:31`). Timers keep going when the app quits, and the widget fills in their blocks too.
+  Count up or a starred length and click an activity to start one. The timers going are listed under the grid. A timer's
+  blocks fill in as it runs, every block it touches, alongside whatever they hold, so several can run at once (one per
+  activity). Stop it to keep what it ran, or delete it (after you confirm) to drop it unlogged. A countdown notifies you
+  at zero and keeps counting past it (`−2:13`) until you stop it. Hover the blocks a timer ran in to see exactly when
+  (`⏱ 10:03–10:31`). Timers keep going when the app quits, and the widget fills in their blocks too.
 - **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
   it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you log over it.
   Change or pause one, and only the blocks still to come move.
@@ -97,9 +99,9 @@ PLAN.md.
 - **Times** (wake up, bedtime, a shift's target, a routine's start): type one, step it with ↑↓ (5 minutes on the
   minutes, an hour on the hours), or pick one from the ⌄ list, every 15 minutes. A typed time rounds to the nearest
   5 minutes once you're done with it.
-- **Keep on top:** click the pin in the toolbar (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over your other
-  windows, on every Space: the counter, the blocks at a smaller size and the timers going, and you can still log in
-  it. Click the pin beside the counter to bring the whole day back.
+- **Keep on top:** click the pin in the day's top corner (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over your
+  other windows, on every Space: the counter, the blocks at a smaller size and the timers going, and you can still log
+  in it. Click the pin beside the counter to bring the whole day back.
 - **Done typing:** click anywhere outside a field (a time, a search, a note) to finish typing in it.
 
 ## Layout

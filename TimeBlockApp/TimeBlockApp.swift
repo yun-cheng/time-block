@@ -17,7 +17,7 @@ struct TimeBlockApp: App {
         .defaultSize(width: 480, height: 720)
         // Lets the window shrink to the compact day when it's kept on top.
         .windowResizability(.contentSize)
-        // The toolbar is busy with the day's buttons; the window keeps its name for the Window menu and Mission Control.
+        // No toolbar, the buttons being in the day; the window keeps its name for the Window menu and Mission Control.
         .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             TrackCommands(model: model)

@@ -163,6 +163,17 @@ final class AppModel {
     /// The main window's undo manager. Block edits are registered with it, so Edit ▸ Undo takes them back.
     @ObservationIgnored weak var undoManager: UndoManager?
 
+    /// The last change to the blocks, made, undone or redone, for the window to offer taking it back. Each is new.
+    private(set) var lastChange: BlockChange?
+
+    struct BlockChange: Equatable {
+        enum Kind { case made, undone, redone }
+        let kind: Kind
+        private let id = UUID()
+
+        init(_ kind: Kind) { self.kind = kind }
+    }
+
     /// Logs `range` in the current view of the day shown as a category, or clears it with nil. With `layer`, only that
     /// activity is replaced or cleared.
     func set(_ range: Range<Int>, to categoryID: String?, layer: String? = nil) {
@@ -232,6 +243,7 @@ final class AppModel {
         guard log != before else { return }
         put(log)
         registerUndo(name, restoring: UndoPoint(log: before, track: settings.track, selection: selection, layer: selectedLayer))
+        lastChange = BlockChange(.made)
         save(log)
     }
 
@@ -264,6 +276,7 @@ final class AppModel {
         settings.track = point.track
         selection = point.selection
         selectedLayer = point.layer
+        lastChange = BlockChange(undoManager?.isUndoing == true ? .undone : .redone)
         registerUndo(name, restoring: current)
         save(point.log)
     }

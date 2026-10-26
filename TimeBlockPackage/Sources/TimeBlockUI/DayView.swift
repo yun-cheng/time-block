@@ -120,6 +120,30 @@ public struct DayEditor {
     }
 }
 
+/// The window's own controls, each put where it belongs in the day and drawn in its theme: the day shown at the top,
+/// the view over the stats it counts, starting a timer beside what's on now, and the window's own (keep on top,
+/// settings) in the top corner.
+public struct DayControls {
+    /// Goes back and forth between days, at the top left.
+    public var day: ((MoodTheme) -> AnyView)?
+    /// Switches between views of the day (Activity, Body…), over the stats.
+    public var track: ((MoodTheme) -> AnyView)?
+    /// Starts a timer, beside what's on now.
+    public var timer: ((MoodTheme) -> AnyView)?
+    /// The window's own, at the top right.
+    public var corner: ((MoodTheme) -> AnyView)?
+
+    public init(
+        day: ((MoodTheme) -> AnyView)? = nil, track: ((MoodTheme) -> AnyView)? = nil,
+        timer: ((MoodTheme) -> AnyView)? = nil, corner: ((MoodTheme) -> AnyView)? = nil
+    ) {
+        self.day = day
+        self.track = track
+        self.timer = timer
+        self.corner = corner
+    }
+}
+
 /// The main app's day screen. Unlike widgets, it animates.
 public struct DayView: View {
     let snapshot: DaySnapshot
@@ -132,8 +156,7 @@ public struct DayView: View {
     var date: Date
     /// Just the counter, the blocks and the timers going, small, for a window kept over other apps.
     var isCompact: Bool
-    /// What goes at the end of the compact layout's top line, such as a button that brings the whole day back.
-    var compactAccessory: AnyView?
+    var controls: DayControls
     @Environment(\.colorScheme) private var colorScheme
     /// The grid takes the keyboard when blocks are selected, for Delete, and Return to open the activities.
     @FocusState private var isGridFocused: Bool
@@ -142,7 +165,7 @@ public struct DayView: View {
 
     public init(
         snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil, timers: TimerControls? = nil,
-        date: Date = .now, isCompact: Bool = false, compactAccessory: AnyView? = nil
+        date: Date = .now, isCompact: Bool = false, controls: DayControls = DayControls()
     ) {
         self.snapshot = snapshot
         self.time = time
@@ -150,7 +173,7 @@ public struct DayView: View {
         self.timers = timers
         self.date = date
         self.isCompact = isCompact
-        self.compactAccessory = compactAccessory
+        self.controls = controls
     }
 
     private var clockLabel: String {
@@ -163,19 +186,34 @@ public struct DayView: View {
         snapshot.status.isOver || snapshot.status.isAhead ? snapshot.day.flatMap { DayID.date($0) } : nil
     }
 
-    /// Another day's date where today's counter would be, and how much of it was logged, or is planned.
-    private func otherDayHeader(_ date: Date, theme: MoodTheme) -> some View {
+    /// The top line: the day shown and, today, the time; the window's own controls at the end.
+    private func topLine(theme: MoodTheme) -> some View {
+        HStack(spacing: 6) {
+            if let day = controls.day {
+                day(theme)
+                if otherDate == nil {
+                    Text(clockLabel)
+                }
+            } else {
+                let when = otherDate.map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) }
+                Label("\(snapshot.track.name) · \(when ?? clockLabel)", systemImage: snapshot.track.symbol)
+            }
+            Spacer(minLength: 8)
+            controls.corner?(theme)
+        }
+        .font(.system(size: 13, weight: .medium, design: .monospaced))
+        .foregroundStyle(theme.secondaryText)
+    }
+
+    /// Where today's counter would be, another day's share of blocks logged, or planned.
+    private func otherDayHeader(theme: MoodTheme) -> some View {
         let awake = snapshot.status.schedule.awakeBlocks
         let logged = snapshot.cells.prefix(awake).filter { $0.categoryID != nil }.count
         return VStack(alignment: .leading, spacing: 0) {
-            Label(
-                "\(snapshot.track.name) · \(date.formatted(.dateTime.weekday(.wide)))", systemImage: snapshot.track.symbol)
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .foregroundStyle(theme.secondaryText)
-            Text(date.formatted(.dateTime.day().month(.abbreviated)))
+            Text("\(awake > 0 ? logged * 100 / awake : 0)%")
                 .font(.system(size: 52, weight: .bold, design: .rounded))
                 .foregroundStyle(theme.text)
-            Text("\(awake > 0 ? logged * 100 / awake : 0)% \(snapshot.status.isAhead ? "planned" : "logged")")
+            Text(snapshot.status.isAhead ? "planned" : "logged")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(theme.secondaryText)
         }
@@ -193,34 +231,40 @@ public struct DayView: View {
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .bottom) {
-                if let date = otherDate {
-                    otherDayHeader(date, theme: theme)
-                } else {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Label("\(snapshot.track.name) · \(clockLabel)", systemImage: snapshot.track.symbol)
-                            .font(.system(size: 13, weight: .medium, design: .monospaced))
-                            .foregroundStyle(theme.secondaryText)
-                        CounterView(value: status.blocksLeft, theme: theme, size: 64, total: status.schedule.awakeBlocks, time: time)
-                        Text(MoodCopy.caption(snapshot.mood))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(theme.secondaryText)
+            VStack(alignment: .leading, spacing: 0) {
+                topLine(theme: theme)
+                HStack(alignment: .bottom) {
+                    if otherDate != nil {
+                        otherDayHeader(theme: theme)
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            CounterView(
+                                value: status.blocksLeft, theme: theme, size: 64,
+                                total: status.schedule.awakeBlocks, time: time)
+                            Text(MoodCopy.caption(snapshot.mood))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(theme.secondaryText)
+                        }
                     }
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 3) {
-                    stat("\(status.schedule.awakeBlocks)", "usable", theme)
-                    if !status.isOver && !status.isAhead {
-                        stat("\(status.blocksUsed)", "used", theme)
-                    }
-                    if !status.isAhead {
-                        stat("\(snapshot.loggedCount)", "logged", theme)
-                    }
-                    if let longestSit = snapshot.longestSit {
-                        stat(durationText(blocks: longestSit), "longest sit", theme)
-                    }
-                    if status.overtimeBlocks > 0 {
-                        stat("\(status.overtimeBlocks)", "over", theme, color: theme.accent)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        if let track = controls.track {
+                            track(theme)
+                                .padding(.bottom, 3)
+                        }
+                        stat("\(status.schedule.awakeBlocks)", "usable", theme)
+                        if !status.isOver && !status.isAhead {
+                            stat("\(status.blocksUsed)", "used", theme)
+                        }
+                        if !status.isAhead {
+                            stat("\(snapshot.loggedCount)", "logged", theme)
+                        }
+                        if let longestSit = snapshot.longestSit {
+                            stat(durationText(blocks: longestSit), "longest sit", theme)
+                        }
+                        if status.overtimeBlocks > 0 {
+                            stat("\(status.overtimeBlocks)", "over", theme, color: theme.accent)
+                        }
                     }
                 }
             }
@@ -231,7 +275,11 @@ public struct DayView: View {
             }
             grid(theme: theme, blockSize: 20)
             if !status.isOver && !status.isAhead {
-                NowChip(snapshot: snapshot, theme: theme)
+                HStack {
+                    NowChip(snapshot: snapshot, theme: theme)
+                    Spacer(minLength: 8)
+                    controls.timer?(theme)
+                }
                 timerList(theme: theme)
             }
             StoryBar(snapshot: snapshot, theme: theme)
@@ -260,7 +308,7 @@ public struct DayView: View {
                         .foregroundStyle(theme.secondaryText)
                 }
                 Spacer(minLength: 8)
-                compactAccessory
+                controls.corner?(theme)
             }
             grid(theme: theme, blockSize: 15)
             if !status.isOver && !status.isAhead {
