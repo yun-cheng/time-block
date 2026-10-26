@@ -18,8 +18,9 @@ whole UI slowly turns into a horror show.
   it starts or the day to be there by; each day's grid and counter use that day's times. Slept in? Change today's
   times under Schedule and the shift carries on from them, Hold Tonight puts each step a night later, and Edit
   changes the rest of the shift.
-- **Wind down:** in Settings, set how long before bedtime you need to get ready for sleep (15 minutes to 2 hours, 30 to
-  start). Those last blocks are tinted amber, and when they start the whole day turns warm.
+- **Wind down:** in Settings, set how long before bedtime you need to get ready for sleep, in hours and minutes like a
+  timer's length (none to 2 hours, 30 minutes to start). Those last blocks are tinted amber, and when they start the
+  whole day turns warm.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, amber is time to
   wind down, red is taken from sleep.
@@ -97,10 +98,10 @@ nudge for unlogged time; see the milestones in PLAN.md.
   ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and
   activities. New ones start unstarred. Remove any activity you don't use: blocks already logged keep it, and
   Removed, at the end of the library, puts it back (still starred, if it was).
-- **Times and lengths** (wake up, bedtime, a shift's target, a routine's start and length): the hours and the minutes
-  are each a box, like a timer's length, that you type into or open a list from with the ⌄ at its end. Step one with
-  ↑↓ (an hour on the hours, 5 minutes on the minutes). Minutes typed between blocks round to the nearest 5 once you're
-  done with them.
+- **Times and lengths** (wake up, bedtime, wind down, a shift's target, a routine's start and length): the hours and
+  the minutes are each a box, like a timer's length, that you type into or open a list from with the ⌄ at its end.
+  Step one with ↑↓ (an hour on the hours, 5 minutes on the minutes). Minutes typed between blocks round to the nearest
+  5 once you're done with them.
 - **Keep on top:** click the pin in the window's title bar (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over
   your other windows, on every Space: the counter, the blocks at a smaller size and the timers, and you can still log
   in it and start a timer (the stopwatch at the end of the counter's line), its dialog drawn smaller to fit. Click the

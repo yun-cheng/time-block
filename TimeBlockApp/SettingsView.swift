@@ -16,11 +16,9 @@ struct SettingsView: View {
                     // On a row, since the form's scroll view is around its rows rather than the form.
                     .appScrollBar()
                 TimeField("Bedtime", minute: minuteBinding(\.bedMinute))
-                Picker("Wind down", selection: $model.settings.windDownMinutes) {
-                    ForEach([15, 30, 45, 60, 90, 120], id: \.self) { minutes in
-                        Text(durationText(blocks: minutes / Schedule.blockMinutes)).tag(minutes)
-                    }
-                    Text("None").tag(0)
+                LabeledContent("Wind down") {
+                    // None to 2 hours.
+                    DurationPicker(title: "Wind down", minutes: $model.settings.windDownMinutes, range: 0...(2 * 60))
                 }
                 .help("Time before bedtime to get ready for sleep. The grid tints it, and the day turns warm when it starts.")
                 LabeledContent("Usable blocks") {
