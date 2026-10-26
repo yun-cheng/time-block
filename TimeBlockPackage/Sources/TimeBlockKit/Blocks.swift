@@ -224,6 +224,11 @@ public struct BlockCell: Hashable, Sendable {
     /// Every activity it holds, bottom first.
     public var categoryIDs: [String] { layers.map(\.categoryID) }
 
+    /// The layer of `categoryID`, when it holds it.
+    public func layer(_ categoryID: String) -> Layer? {
+        layers.first { $0.categoryID == categoryID }
+    }
+
     /// The same block holding `layers`: what an edit would make it.
     public func holding(_ layers: [Layer]) -> BlockCell {
         BlockCell(index: index, phase: phase, isOvertime: isOvertime, isWindDown: isWindDown, layers: layers)

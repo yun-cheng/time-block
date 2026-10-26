@@ -78,7 +78,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's activity is lit.
   Clicking off the blocks deselects.
 - **Drag the ends:** a selection that is all one activity gets a round handle at each end, on the first block's
-  top-left corner and the last block's bottom-right, like the ends of selected text (resize cursor on hover).
+  top-left corner and the last block's bottom-right (the card's corners, for one card of a stack, which stays spread
+  while it's dragged), like the ends of selected text (resize cursor on hover).
   Dragging one moves that end, previewed as the result (see below); letting go logs it, keeping the note, and the
   selection follows. A still click on a handle is an ordinary click.
 - **Drag to move:** dragging from inside a selection that holds anything logged moves it, by whole blocks and
@@ -109,9 +110,17 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     shortest (the toilet in a morning of work, a podcast on a commute, dinner on an evening of TV), then the one
     starting later, then the one logged last. A stretch is measured whole, so two activities keep one order in
     every block they share.
-  - Blocks holding the same activities make a run, and the hover label names them all (`Lunch + Social`). Each
-    activity counts its full time in the totals, so they can add up to more than the day. A run of one activity
-    alone has handles.
+  - **Pick one of a stack:** under the pointer (and while one of them is selected) the cards spread a little past
+    the block so each can be clicked. A click selects that activity's run through the stack (its layer), outlined on
+    its card, and its chip alone is lit. Logging replaces just that activity (the new one joins the rest), Clear and
+    Delete take it off, notes go on it, and moving or dragging its ends moves it alone, onto what the blocks it lands
+    on hold. Dragging or double‑clicking still selects everything the blocks hold.
+  - Pointing at or clicking a logged block picks out its activity's whole run (the card's, or the one on top),
+    through blocks where others are stacked on it as well; when others share any of those blocks, it's that activity
+    alone, outlined on its card in them. Right-click ▸ Clear Blocks clears the same. Blocks holding the same
+    activities make a run (dragging or double‑clicking selects everything they hold), and the hover label names them
+    all (`Lunch + Social`). Each activity counts its full time in the totals, so they can add up to more than the
+    day. A run of one activity alone, or one activity picked out of a stack, has handles.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards. While adding (Add, or ⌘) it adds the activity instead.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.

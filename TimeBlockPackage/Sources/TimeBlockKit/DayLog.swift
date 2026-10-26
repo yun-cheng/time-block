@@ -50,18 +50,22 @@ public struct DayLog: Codable, Hashable, Sendable {
 
     /// Gives `range` to a category alone, in place of everything it held, or clears it with nil. Only logs in the
     /// category's track (or `track`, when clearing) change: parts outside `range` are kept, and runs of one category
-    /// join up. A run that is given another category as a whole keeps its note.
+    /// join up. A run that is given another category as a whole keeps its note. With `layer`, only that activity is
+    /// replaced or cleared, and the one replacing it joins the rest.
     public mutating func set(
         _ range: Range<Int>, to categoryID: String?, in track: Track, schedule: Schedule,
-        categories: [BlockCategory] = BlockCategory.defaults
+        categories: [BlockCategory] = BlockCategory.defaults, layer: String? = nil
     ) {
         guard !range.isEmpty else { return }
         rebase(to: schedule)
-        let (kept, cut) = split(range, in: track, categories: categories)
+        let (kept, cut) = split(range, in: track, categories: categories) {
+            layer == nil || $0.categoryID == layer || $0.categoryID == categoryID
+        }
         var logs = kept
         if let categoryID {
-            let notes = Set(cut.map(\.note))
-            let note = cut.allSatisfy({ range.contains($0.range) }) && notes.count == 1 ? notes.first ?? nil : nil
+            let replaced = layer.map { layer in cut.filter { $0.categoryID == layer } } ?? cut
+            let notes = Set(replaced.map(\.note))
+            let note = replaced.allSatisfy({ range.contains($0.range) }) && notes.count == 1 ? notes.first ?? nil : nil
             logs.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID, note: note))
         }
         self.logs = Self.joined(logs)
@@ -90,15 +94,16 @@ public struct DayLog: Codable, Hashable, Sendable {
     }
 
     /// Writes `note` on the logged blocks of `range` in `track`, or takes their note off with nil or blank.
-    /// Logs reaching past `range` are split, so the note covers exactly those blocks.
+    /// Logs reaching past `range` are split, so the note covers exactly those blocks. With `layer`, only that activity
+    /// takes it.
     public mutating func setNote(
         _ note: String?, for range: Range<Int>, in track: Track, schedule: Schedule,
-        categories: [BlockCategory] = BlockCategory.defaults
+        categories: [BlockCategory] = BlockCategory.defaults, layer: String? = nil
     ) {
         guard !range.isEmpty else { return }
         rebase(to: schedule)
         let note = note?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let (kept, cut) = split(range, in: track, categories: categories)
+        let (kept, cut) = split(range, in: track, categories: categories) { layer == nil || $0.categoryID == layer }
         let noted = cut.map { log in
             let inside = log.range.clamped(to: range)
             return BlockLog(
@@ -110,20 +115,21 @@ public struct DayLog: Codable, Hashable, Sendable {
 
     /// Moves the ends of the run of one category at `range` in `track` to `newRange`: blocks it takes in are logged
     /// as it, overwriting what they held there, and blocks it lets go are cleared. The run keeps its note when it
-    /// has one. Nothing changes unless `range` is all logged as one category.
+    /// has one. Nothing changes unless `range` is all logged as one category. With `layer`, only that activity's run
+    /// moves its ends, alongside what the blocks it takes in hold.
     public mutating func resize(
         _ range: Range<Int>, to newRange: Range<Int>, in track: Track, schedule: Schedule,
-        categories: [BlockCategory] = BlockCategory.defaults
+        categories: [BlockCategory] = BlockCategory.defaults, layer: String? = nil
     ) {
         guard !range.isEmpty, !newRange.isEmpty, newRange != range else { return }
         rebase(to: schedule)
-        let (kept, cut) = split(range, in: track, categories: categories)
+        let (kept, cut) = split(range, in: track, categories: categories) { layer == nil || $0.categoryID == layer }
         let notes = Set(cut.map(\.note))
         guard let categoryID = cut.first?.categoryID, cut.allSatisfy({ $0.categoryID == categoryID }),
               cut.reduce(0, { $0 + $1.range.clamped(to: range).count }) == range.count
         else { return }
         logs = kept
-        let (rest, _) = split(newRange, in: track, categories: categories)
+        let (rest, _) = split(newRange, in: track, categories: categories) { layer == nil || $0.categoryID == categoryID }
         let note = notes.count == 1 ? notes.first ?? nil : nil
         logs = Self.joined(rest + [BlockLog(
             startIndex: newRange.lowerBound, length: newRange.count, categoryID: categoryID, note: note)])
@@ -131,16 +137,19 @@ public struct DayLog: Codable, Hashable, Sendable {
 
     /// Moves what `range` holds in `track` `offset` blocks along, gaps and notes included, so the blocks it lands on
     /// end up just like `range` was and the blocks it leaves are cleared. Nothing changes when `range` holds nothing.
+    /// With `layer`, only that activity moves, alongside what the blocks it lands on hold.
     public mutating func move(
         _ range: Range<Int>, by offset: Int, in track: Track, schedule: Schedule,
-        categories: [BlockCategory] = BlockCategory.defaults
+        categories: [BlockCategory] = BlockCategory.defaults, layer: String? = nil
     ) {
         guard !range.isEmpty, offset != 0 else { return }
         rebase(to: schedule)
-        let (kept, cut) = split(range, in: track, categories: categories)
+        let isMoved = { (log: BlockLog) in layer == nil || log.categoryID == layer }
+        let (kept, cut) = split(range, in: track, categories: categories, where: isMoved)
         guard !cut.isEmpty else { return }
         logs = kept
-        let (rest, _) = split(range.lowerBound + offset..<range.upperBound + offset, in: track, categories: categories)
+        let (rest, _) = split(
+            range.lowerBound + offset..<range.upperBound + offset, in: track, categories: categories, where: isMoved)
         let moved = cut.map { log in
             let inside = log.range.clamped(to: range)
             return BlockLog(

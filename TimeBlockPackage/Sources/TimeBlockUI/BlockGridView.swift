@@ -22,26 +22,37 @@ public struct BlockGridView: View {
     var isAdding: Bool
     /// Blocks picked out to log next, outlined until something is done with them.
     var selection: Range<Int>?
+    /// The one activity of the selected blocks picked out, when a card of a stack was clicked; nil when the selection
+    /// is everything they hold.
+    var selectedLayer: String?
     /// Called with the blocks dragged across. Without it the grid doesn't respond to the pointer at all.
     /// With no brush, a click reports the whole run it lands on, and a double click just the one block.
     var onDrag: ((Range<Int>) -> Void)?
     /// Called when a click should drop the selection: one off the blocks, inside the selection, or a
     /// drag over exactly the selection again.
     var onDeselect: (() -> Void)?
-    /// Called with the blocks to empty when Clear is picked from a logged block's right-click menu.
-    var onClear: ((Range<Int>) -> Void)?
+    /// Called with the blocks to empty, and the one activity to take off them (nil for everything), when Clear is
+    /// picked from a logged block's right-click menu.
+    var onClear: ((Range<Int>, String?) -> Void)?
     /// Called with the selection and its new extent when a handle at either end of a selection of one activity
     /// is dragged. Without it there are no handles.
     var onResize: ((Range<Int>, Range<Int>) -> Void)?
     /// Called with the selection and how many blocks along it was dragged, when a selection holding something logged
     /// is dragged from inside. Without it a drag there selects afresh.
     var onMove: ((Range<Int>, Int) -> Void)?
+    /// Called with an activity's run and the activity when one card of a stack is clicked. Without it a click there
+    /// selects the whole stack.
+    var onSelectLayer: ((Range<Int>, String) -> Void)?
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
     @State private var hovered: Int?
-    /// The block the pointer was last over, kept once it leaves so a right-click menu stays on the block it opened on.
+    /// The card of a stack the pointer is over, by activity.
+    @State private var hoveredLayer: String?
+    /// The block the pointer was last over, and the card of it, kept once it leaves so a right-click menu stays on
+    /// the block it opened on.
     @State private var pointed: Int?
+    @State private var pointedLayer: String?
     /// The last single click, to spot a double click.
     @State private var lastClick: (index: Int, time: Date)?
     /// The selection's end being dragged, and the blocks it would cover now.
@@ -58,9 +69,10 @@ public struct BlockGridView: View {
     public init(
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
         showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
-        brush: Brush? = nil, isAdding: Bool = false, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
-        onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil,
-        onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil
+        brush: Brush? = nil, isAdding: Bool = false, selection: Range<Int>? = nil, selectedLayer: String? = nil,
+        onDrag: ((Range<Int>) -> Void)? = nil, onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>, String?) -> Void)? = nil,
+        onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil,
+        onSelectLayer: ((Range<Int>, String) -> Void)? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
@@ -71,11 +83,13 @@ public struct BlockGridView: View {
         self.brush = brush
         self.isAdding = isAdding
         self.selection = selection
+        self.selectedLayer = selectedLayer
         self.onDrag = onDrag
         self.onDeselect = onDeselect
         self.onClear = onClear
         self.onResize = onResize
         self.onMove = onMove
+        self.onSelectLayer = onSelectLayer
     }
 
     public static func rowCount(for snapshot: DaySnapshot) -> Int {
@@ -112,23 +126,27 @@ public struct BlockGridView: View {
                             .contentShape(Rectangle())
                             .gesture(paintGesture(size: proxy.size))
                             .contextMenu {
-                                if let onClear, let pointed, let range = snapshot.clearable(at: pointed, selection: selection) {
-                                    Button("Clear Blocks", systemImage: "eraser") { onClear(range) }
+                                if let onClear, let pointed, let target = snapshot.clearable(
+                                    at: pointed, selection: selection, selectedLayer: selectedLayer, card: pointedLayer) {
+                                    Button("Clear Blocks", systemImage: "eraser") { onClear(target.range, target.layer) }
                                 }
                             }
                             .onContinuousHover { phase in
                                 if case .active(let point) = phase {
                                     hovered = layout.index(at: point, count: snapshot.cells.count, clamped: false)
+                                    hoveredLayer = hovered.flatMap { layer(at: point, in: $0, layout: layout) }
                                     pointed = hovered
+                                    pointedLayer = hoveredLayer
                                     isOverHandle = handle(at: point, layout: layout) != nil
                                 } else {
                                     hovered = nil
+                                    hoveredLayer = nil
                                     isOverHandle = false
                                 }
                             }
                         if let range = labeled {
                             BlockInfo(
-                                snapshot: snapshot, theme: theme, range: range,
+                                snapshot: snapshot, theme: theme, range: range, layer: labeledLayer,
                                 brush: resizing != nil || moving != nil ? resizableCategory.map(Brush.category) : brush)
                                 .fixedSize()
                                 .position(infoPosition(for: range, layout: layout, size: proxy.size))
@@ -161,29 +179,62 @@ public struct BlockGridView: View {
         drag.map { min($0.start, $0.end)..<(max($0.start, $0.end) + 1) }
     }
 
-    /// What the pointer is over: with a brush, the one block it would paint; otherwise the whole selection
-    /// when over it, or the run of one category around a logged block.
-    private var hoveredRange: Range<Int>? {
+    /// What the pointer is over: with a brush, the one block it would paint; over a card of a stack, the run of its
+    /// activity (the selection when that's what's selected); otherwise the whole selection when over it, or what a
+    /// click would pick out (see `DaySnapshot.target`).
+    private var hoveredTarget: (range: Range<Int>, layer: String?)? {
         guard let hovered, !isOverHandle else { return nil }
-        if brush != nil { return hovered..<(hovered + 1) }
-        if let selection, selection.contains(hovered) { return selection }
-        return snapshot.run(around: hovered)
+        if brush != nil { return (hovered..<(hovered + 1), nil) }
+        if let hoveredLayer {
+            if let selection, selection.contains(hovered), selectedLayer == hoveredLayer { return (selection, hoveredLayer) }
+            return snapshot.target(at: hovered, card: hoveredLayer)
+        }
+        if let selection, selection.contains(hovered) { return (selection, selectedLayer) }
+        return snapshot.target(at: hovered)
     }
+
+    private var hoveredRange: Range<Int>? { hoveredTarget?.range }
 
     /// Blocks the label describes: the drag in progress, else what the pointer is over, else the selection.
     private var labeled: Range<Int>? {
         resizing?.range ?? moved ?? dragged ?? hoveredRange ?? selection
     }
 
+    /// The one activity the label describes, when it's about one card of a stack.
+    private var labeledLayer: String? {
+        if resizing != nil || moving != nil { return selectedLayer }
+        if dragged != nil { return nil }
+        if let hoveredTarget { return hoveredTarget.layer }
+        return selectedLayer
+    }
+
+    /// The card of block `index` under `point`, by activity, with its stack spread apart as it is under the pointer.
+    /// Nil over a block holding one activity or none, and while painting.
+    private func layer(at point: CGPoint, in index: Int, layout: GridLayout) -> String? {
+        guard brush == nil, snapshot.cells.indices.contains(index) else { return nil }
+        let shown = snapshot.cells[index].layers.suffix(3)
+        guard shown.count > 1 else { return nil }
+        let cards = Self.cards(in: layout.frame(index), count: shown.count, spread: true)
+        for (card, layer) in zip(cards, shown).reversed() where card.insetBy(dx: -1, dy: -1).contains(point) {
+            return layer.categoryID
+        }
+        return shown.last?.categoryID
+    }
+
     /// Where each drawn layer of a block goes, bottom first: cards of one size, the top one at the bottom-right and each
-    /// under it a step up and to the left.
-    static func cards(in rect: CGRect, count: Int) -> [CGRect] {
+    /// under it a step up and to the left. Spread apart, as under the pointer, they step further and reach a little
+    /// past the block, so each is easy to click.
+    static func cards(in rect: CGRect, count: Int, spread: Bool) -> [CGRect] {
         guard count > 1 else { return [rect] }
         let step = rect.width * 0.26 / CGFloat(count - 1)
         let size = rect.width - step * CGFloat(count - 1)
+        let stride = spread ? step * 1.7 : step
+        let span = size + stride * CGFloat(count - 1)
+        let left = rect.midX - span / 2
+        let top = rect.midY - span / 2
         return (0..<count).map { level in
-            let along = step * CGFloat(level)
-            return CGRect(x: rect.minX + along, y: rect.minY + along, width: size, height: size)
+            let along = stride * CGFloat(level)
+            return CGRect(x: left + along, y: top + along, width: size, height: size)
         }
     }
 
@@ -204,10 +255,25 @@ public struct BlockGridView: View {
     /// What each block an edit being dragged would change ends up holding: its activities, or none once it's emptied.
     private var preview: [Int: [BlockCell.Layer]] {
         var preview: [Int: [BlockCell.Layer]] = [:]
-        if let moving, let moved, let selection {
+        if let moving, let moved, let selection, selectedLayer == nil {
             for index in selection { preview[index] = [] }
             for index in moved where snapshot.cells.indices.contains(index - moving.offset) {
                 preview[index] = snapshot.cells[index - moving.offset].layers
+            }
+        } else if let moving, let moved, let selection, let layer = selectedLayer {
+            // Only that activity moves, onto what the blocks it lands on hold.
+            for index in selection { preview[index] = snapshot.cells[index].layers.filter { $0.categoryID != layer } }
+            for index in moved where snapshot.cells.indices.contains(index) {
+                let others = (preview[index] ?? snapshot.cells[index].layers).filter { $0.categoryID != layer }
+                let source = index - moving.offset
+                let carried = snapshot.cells.indices.contains(source) ? snapshot.cells[source].layer(layer) : nil
+                preview[index] = others + (carried.map { [$0] } ?? [])
+            }
+        } else if let resizing, let selection, let category = resizableCategory, selectedLayer != nil {
+            for index in selection { preview[index] = snapshot.cells[index].layers.filter { $0.categoryID != category } }
+            for index in resizing.range where snapshot.cells.indices.contains(index) {
+                let others = (preview[index] ?? snapshot.cells[index].layers).filter { $0.categoryID != category }
+                preview[index] = others + [snapshot.cells[selection.lowerBound].layer(category) ?? BlockCell.Layer(categoryID: category)]
             }
         } else if let resizing, let selection, let category = resizableCategory {
             for index in selection { preview[index] = [] }
@@ -234,8 +300,12 @@ public struct BlockGridView: View {
     /// The activity the selection holds throughout, when it's logged as that alone, so its ends can be dragged.
     private var resizableCategory: String? {
         guard onResize != nil, brush == nil, let selection, snapshot.cells.indices.contains(selection.lowerBound),
-              snapshot.cells.indices.contains(selection.upperBound - 1),
-              let category = snapshot.cells[selection.lowerBound].categoryID,
+              snapshot.cells.indices.contains(selection.upperBound - 1)
+        else { return nil }
+        if let selectedLayer {
+            return snapshot.cells[selection].allSatisfy({ $0.layer(selectedLayer) != nil }) ? selectedLayer : nil
+        }
+        guard let category = snapshot.cells[selection.lowerBound].categoryID,
               snapshot.cells[selection].allSatisfy({ $0.categoryIDs == [category] })
         else { return nil }
         return category
@@ -248,14 +318,35 @@ public struct BlockGridView: View {
     }
 
     /// The middle of the knob on each end of `range`: on the top-left corner of its first block and the bottom-right
-    /// corner of its last, like the ends of selected text that runs over several lines.
+    /// corner of its last, like the ends of selected text that runs over several lines. Where the activity is a card of
+    /// a stack, on that card's corners.
     private func handlePoints(of range: Range<Int>, layout: GridLayout) -> (start: CGPoint, end: CGPoint) {
-        let first = layout.frame(range.lowerBound)
-        let last = layout.frame(range.upperBound - 1)
+        let first = frame(of: resizableCategory, at: range.lowerBound, layout: layout)
+        let last = frame(of: resizableCategory, at: range.upperBound - 1, layout: layout)
         let inset = layout.radius * 0.3
         return (
             CGPoint(x: first.minX + inset, y: first.minY + inset),
             CGPoint(x: last.maxX - inset, y: last.maxY - inset))
+    }
+
+    /// Where `layer`'s card in block `index` is drawn, as the block shows it now (an edit being dragged included), or
+    /// the whole block when it isn't in a stack.
+    private func frame(of layer: String?, at index: Int, layout: GridLayout) -> CGRect {
+        let rect = layout.frame(index)
+        guard let layer, snapshot.cells.indices.contains(index) else { return rect }
+        let cell = preview[index].map(snapshot.cells[index].holding) ?? snapshot.cells[index]
+        let shown = cell.layers.suffix(3)
+        guard shown.count > 1, let level = shown.firstIndex(where: { $0.categoryID == layer }) else { return rect }
+        let cards = Self.cards(in: rect, count: shown.count, spread: isSpread(index, depth: shown.count))
+        return cards[level - shown.startIndex]
+    }
+
+    /// Whether block `index`'s stack of `depth` cards is spread apart: under the pointer, and while one of its cards is
+    /// the selection, so each can be clicked, its ends dragged included. Not while painting or moving.
+    private func isSpread(_ index: Int, depth: Int) -> Bool {
+        guard depth > 1, brush == nil, onDrag != nil, moving == nil else { return false }
+        if let resizing { return selectedLayer != nil && resizing.range.contains(index) }
+        return index == hovered || (selectedLayer != nil && selection?.contains(index) == true)
     }
 
     /// The knobs' size, and how far from one a press still grabs it.
@@ -335,7 +426,7 @@ public struct BlockGridView: View {
                 else { return }
                 drag = (start, end)
             }
-            .onEnded { _ in
+            .onEnded { value in
                 defer { drag = nil }
                 if let moving {
                     self.moving = nil
@@ -360,10 +451,14 @@ public struct BlockGridView: View {
                     lastClick = isDouble ? nil : (index, now)
                     if isDouble {
                         onDrag?(dragged)
+                    } else if let card = layer(at: value.startLocation, in: index, layout: layout(size: size)) {
+                        // A card of a stack: its activity's run, or nothing when that's what was selected.
+                        let target = snapshot.target(at: index, card: card)
+                        if selection == target.range, selectedLayer == target.layer { onDeselect?() } else { select(target) }
                     } else if let selection, selection.contains(index) {
                         onDeselect?()
                     } else {
-                        onDrag?(snapshot.run(around: index))
+                        select(snapshot.target(at: index))
                     }
                 } else if dragged == selection {
                     onDeselect?()
@@ -371,6 +466,15 @@ public struct BlockGridView: View {
                     onDrag?(dragged)
                 }
             }
+    }
+
+    /// Selects what a click picked out: one activity of the blocks, or everything they hold.
+    private func select(_ target: (range: Range<Int>, layer: String?)) {
+        if let layer = target.layer, let onSelectLayer {
+            onSelectLayer(target.range, layer)
+        } else {
+            onDrag?(target.range)
+        }
     }
 
     private static var doubleClickInterval: TimeInterval {
@@ -442,12 +546,19 @@ public struct BlockGridView: View {
             // A block an edit is being dragged over shows what it would end up as.
             let shown = preview[cell.index].map(cell.holding) ?? cell
             // Several activities at once are stacked as cards (see `cards`), three at most drawn.
+            // They spread apart under the pointer, and while one of them is the selection, so each can be clicked.
             let depth = min(shown.layers.count, 3)
+            let isSpread = isSpread(cell.index, depth: depth)
             let stack = shown.layers.isEmpty
                 ? [shown] : (shown.layers.count - depth + 1...shown.layers.count).map { shown.holding(Array(shown.layers.prefix($0))) }
-            let cards = Self.cards(in: rect, count: stack.count)
+            let cards = Self.cards(in: rect, count: stack.count, spread: isSpread)
             let center = CGPoint(x: rect.midX, y: rect.midY)
             let cardRadius = min(radius, (cards.first?.width ?? side) * 0.3)
+            /// The outline of the card holding `layer`, or of the whole block.
+            let outline = { (layer: String?) -> Path in
+                guard let layer, depth > 1, let level = stack.firstIndex(where: { $0.categoryID == layer }) else { return path }
+                return Path(roundedRect: cards[level], cornerRadius: cardRadius).rotated(by: angle, around: center)
+            }
             for (level, layer) in stack.enumerated() {
                 let card = cards[level]
                 let cardPath = Path(roundedRect: card, cornerRadius: depth > 1 ? cardRadius : radius).rotated(by: angle, around: center)
@@ -487,16 +598,21 @@ public struct BlockGridView: View {
                 // While an edit is dragged, the blocks it's put on are outlined, showing what they'd end up as. A
                 // selection, or a drag making one, is washed over as well.
                 let line = max(1.5, side * 0.12)
+                // With one activity of a stack picked out, it's that card that's outlined.
                 if let edited {
                     if edited.contains(cell.index) {
-                        context.stroke(path, with: .color(theme.text), lineWidth: line)
+                        context.stroke(outline(brush == nil ? selectedLayer : nil), with: .color(theme.text), lineWidth: line)
                     }
-                } else if (dragged ?? selection)?.contains(cell.index) == true {
+                } else if let dragged, dragged.contains(cell.index) {
                     context.fill(path, with: .color(theme.text.opacity(0.2)))
                     context.stroke(path, with: .color(theme.text), lineWidth: line)
-                } else if brush == nil, drag == nil, let run = hoveredRange, run.contains(cell.index) {
+                } else if dragged == nil, selection?.contains(cell.index) == true {
+                    let target = outline(selectedLayer)
+                    context.fill(target, with: .color(theme.text.opacity(0.2)))
+                    context.stroke(target, with: .color(theme.text), lineWidth: line)
+                } else if brush == nil, drag == nil, let hoveredTarget, hoveredTarget.range.contains(cell.index) {
                     // The stretch of one category (or one gap) under the pointer.
-                    context.stroke(path, with: .color(theme.text.opacity(0.75)), lineWidth: line)
+                    context.stroke(outline(hoveredTarget.layer), with: .color(theme.text.opacity(0.75)), lineWidth: line)
                 }
             }
 
@@ -582,13 +698,18 @@ private struct BlockInfo: View {
     let snapshot: DaySnapshot
     let theme: MoodTheme
     let range: Range<Int>
+    /// The one activity of a stack it's about, if it's about one.
+    let layer: String?
     let brush: Brush?
 
     var body: some View {
         let schedule = snapshot.status.schedule
         let cells = snapshot.cells[range.clamped(to: snapshot.cells.indices)]
-        // Named when every block holds the same thing.
-        let shared = cells.first.flatMap { first in cells.allSatisfy { $0.categoryIDs == first.categoryIDs } ? first : nil }
+        // Named when every block holds the same thing; about one activity, the blocks as they'd be holding just that.
+        let shared = layer.map { layer in
+            cells.first.map { $0.holding($0.layer(layer).map { [$0] } ?? [BlockCell.Layer(categoryID: layer)]) }
+        } ?? cells.first.flatMap { first in cells.allSatisfy { $0.categoryIDs == first.categoryIDs } ? first : nil }
+        let notes = Set(cells.map { cell in layer.map { cell.layer($0)?.note } ?? cell.note })
         HStack(spacing: 5) {
             let start = clock(schedule.clockMinute(ofBlock: range.lowerBound))
             Text(range.count == 1 ? start : "\(start)–\(clock(schedule.clockMinute(ofBlock: range.upperBound)))")
@@ -600,7 +721,7 @@ private struct BlockInfo: View {
             if range.count > 1 {
                 Text(durationText(blocks: range.count)).foregroundStyle(theme.secondaryText)
             }
-            if let note = shared?.note, cells.allSatisfy({ $0.note == note }) {
+            if shared != nil, notes.count == 1, let note = notes.first ?? nil {
                 // The label is drawn at its natural size, so a long note is shortened here.
                 Text(note.count > 40 ? note.prefix(39) + "…" : note)
                     .italic()

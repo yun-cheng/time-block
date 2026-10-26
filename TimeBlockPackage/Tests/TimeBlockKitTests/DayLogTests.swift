@@ -170,9 +170,9 @@ struct DayLogTests {
         let snapshot = DaySnapshot(
             status: DayStatus(schedule: schedule, nowMinute: 9 * 60), logs: log.logs(for: schedule),
             categories: BlockCategory.defaults)
-        #expect(snapshot.clearable(at: 2) == 0..<4)
-        #expect(snapshot.clearable(at: 2, selection: 3..<8) == 0..<4)
-        #expect(snapshot.clearable(at: 5, selection: 3..<8) == 3..<8)
+        #expect(snapshot.clearable(at: 2)?.range == 0..<4)
+        #expect(snapshot.clearable(at: 2, selection: 3..<8)?.range == 0..<4)
+        #expect(snapshot.clearable(at: 5, selection: 3..<8)?.range == 3..<8)
         // Nothing logged to clear.
         #expect(snapshot.clearable(at: 10) == nil)
         #expect(snapshot.clearable(at: 10, selection: 8..<12) == nil)

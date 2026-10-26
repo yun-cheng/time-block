@@ -53,6 +53,11 @@ PLAN.md.
   they'll end up as until you let go.
 - **Right-click to clear:** right-click a logged block and pick Clear Blocks to empty its whole stretch, or the
   selection when the block is in it. Delete empties a selection too.
+- **Pick one of a stack:** point at a block holding several activities and its cards spread apart; click one to
+  select that activity's own stretch. Logging, Clear, Delete, notes, moving and the end handles then change that
+  activity alone, leaving whatever else the blocks hold. Pointing at or clicking a block with one activity takes
+  in its whole stretch the same way, under anything stacked on part of it. Drag or double‑click to select everything
+  the blocks hold.
 - **Add one more:** pick **Add** in the two tools above the activities (or hold ⌘), and the pointer gets a green
   plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
   the rest, and painting adds the same way. **Normal** goes back to replacing. In the menu bar, Add or ⌘‑click adds

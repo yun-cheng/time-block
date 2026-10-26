@@ -23,10 +23,10 @@ struct MainWindow: View {
                         snapshot: model.shownSnapshot(at: context.date),
                         time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
                         editor: DayEditor(
-                            brush: $model.brush, tool: $model.tool, selection: $model.selection,
-                            paint: { model.set($0, to: $1.categoryID) }, toggle: { model.toggle($0, $1) },
-                            annotate: { model.setNote($1, for: $0) }, toggleFavorite: model.toggleFavorite,
-                            resize: { model.resize($0, to: $1) }, move: { model.move($0, by: $1) }))
+                            brush: $model.brush, tool: $model.tool, selection: $model.selection, layer: $model.selectedLayer,
+                            paint: { model.set($0, to: $1.categoryID, layer: $2) }, toggle: { model.toggle($0, $1) },
+                            annotate: { model.setNote($1, for: $0, layer: $2) }, toggleFavorite: model.toggleFavorite,
+                            resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }))
                 }
                 // Fill the window, but scroll when it is too short for the whole day.
                 .frame(minHeight: window.size.height - 20)

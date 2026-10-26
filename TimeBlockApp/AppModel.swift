@@ -42,7 +42,12 @@ final class AppModel {
     var tool: Tool = .normal
 
     /// Blocks selected in the window, waiting for a category.
-    var selection: Range<Int>?
+    var selection: Range<Int>? {
+        didSet { if selection == nil { selectedLayer = nil } }
+    }
+
+    /// The one activity of the selected blocks picked out, by clicking its card of a stack; nil for all they hold.
+    var selectedLayer: String?
 
     /// Whether logging the current block from the menu bar also fills the unlogged blocks before it.
     var fillsGap = true
@@ -130,14 +135,18 @@ final class AppModel {
     /// The main window's undo manager. Block edits are registered with it, so Edit ▸ Undo takes them back.
     @ObservationIgnored weak var undoManager: UndoManager?
 
-    /// Logs `range` in the current view of the day shown as a category, or clears it with nil.
-    func set(_ range: Range<Int>, to categoryID: String?) {
-        set(range, to: categoryID, on: shownDay)
+    /// Logs `range` in the current view of the day shown as a category, or clears it with nil. With `layer`, only that
+    /// activity is replaced or cleared.
+    func set(_ range: Range<Int>, to categoryID: String?, layer: String? = nil) {
+        set(range, to: categoryID, layer: layer, on: shownDay)
     }
 
-    private func set(_ range: Range<Int>, to categoryID: String?, on day: String) {
-        edit(categoryID == nil ? "Clear Blocks" : "Log Blocks", on: day) {
-            $0.set(range, to: categoryID, in: settings.track, schedule: $1, categories: settings.categories)
+    private func set(_ range: Range<Int>, to categoryID: String?, layer: String? = nil, on day: String) {
+        let name = layer == nil
+            ? categoryID == nil ? "Clear Blocks" : "Log Blocks"
+            : categoryID == nil ? "Remove Activity" : "Replace Activity"
+        edit(name, on: day) {
+            $0.set(range, to: categoryID, in: settings.track, schedule: $1, categories: settings.categories, layer: layer)
         }
     }
 
@@ -154,24 +163,26 @@ final class AppModel {
         }
     }
 
-    /// Moves the ends of the run of one activity at `range` in the current view to `newRange`.
-    func resize(_ range: Range<Int>, to newRange: Range<Int>) {
+    /// Moves the ends of the run of one activity at `range` in the current view to `newRange`; with `layer`, of that
+    /// activity among others.
+    func resize(_ range: Range<Int>, to newRange: Range<Int>, layer: String? = nil) {
         edit("Resize Blocks", on: shownDay) {
-            $0.resize(range, to: newRange, in: settings.track, schedule: $1, categories: settings.categories)
+            $0.resize(range, to: newRange, in: settings.track, schedule: $1, categories: settings.categories, layer: layer)
         }
     }
 
-    /// Moves what `range` holds in the current view `offset` blocks along.
-    func move(_ range: Range<Int>, by offset: Int) {
+    /// Moves what `range` holds in the current view `offset` blocks along, or just `layer` of it.
+    func move(_ range: Range<Int>, by offset: Int, layer: String? = nil) {
         edit("Move Blocks", on: shownDay) {
-            $0.move(range, by: offset, in: settings.track, schedule: $1, categories: settings.categories)
+            $0.move(range, by: offset, in: settings.track, schedule: $1, categories: settings.categories, layer: layer)
         }
     }
 
-    /// Writes a note on the logged blocks of `range` in the current view, or takes it off with nil.
-    func setNote(_ note: String?, for range: Range<Int>) {
+    /// Writes a note on the logged blocks of `range` in the current view, or on `layer` of them, or takes it off with
+    /// nil.
+    func setNote(_ note: String?, for range: Range<Int>, layer: String? = nil) {
         edit(note == nil ? "Remove Note" : "Edit Note", on: shownDay) {
-            $0.setNote(note, for: range, in: settings.track, schedule: $1, categories: settings.categories)
+            $0.setNote(note, for: range, in: settings.track, schedule: $1, categories: settings.categories, layer: layer)
         }
     }
 
@@ -180,6 +191,7 @@ final class AppModel {
         let log: DayLog
         let track: Track
         let selection: Range<Int>?
+        var layer: String?
     }
 
     /// Makes a change to the logs of `day`, today or the past day shown, which can be undone as `name`. The change
@@ -191,7 +203,7 @@ final class AppModel {
         change(&log, schedule(of: log))
         guard log != before else { return }
         put(log)
-        registerUndo(name, restoring: UndoPoint(log: before, track: settings.track, selection: selection))
+        registerUndo(name, restoring: UndoPoint(log: before, track: settings.track, selection: selection, layer: selectedLayer))
         save(log)
     }
 
@@ -217,10 +229,13 @@ final class AppModel {
         loadDayIfNeeded()
         show(point.log.day)
         guard let log = log(of: point.log.day) else { return }
-        let current = UndoPoint(log: log, track: point.track, selection: settings.track == point.track ? selection : nil)
+        let isSameTrack = settings.track == point.track
+        let current = UndoPoint(
+            log: log, track: point.track, selection: isSameTrack ? selection : nil, layer: isSameTrack ? selectedLayer : nil)
         put(point.log)
         settings.track = point.track
         selection = point.selection
+        selectedLayer = point.layer
         registerUndo(name, restoring: current)
         save(point.log)
     }

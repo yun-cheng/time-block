@@ -151,4 +151,70 @@ struct LayerTests {
         #expect(cells[4].categoryIDs == ["social", "lunch"])
         #expect(cells[5].categoryIDs == ["social", "lunch"])
     }
+
+    // MARK: One layer picked out
+
+    /// Commute 0..<6 with Podcast over 2..<6.
+    private func commute(_ edit: (inout DayLog, Schedule) -> Void = { _, _ in }) -> DaySnapshot {
+        snapshot(log {
+            $0.set(0..<6, to: "commute", in: .activity, schedule: $1)
+            $0.toggle("podcast", in: 2..<6, schedule: $1)
+            edit(&$0, $1)
+        })
+    }
+
+    @Test func aLayersRunFollowsItsActivityThroughTheStack() {
+        let snapshot = commute()
+        #expect(snapshot.layerRun(around: 3, of: "commute") == 0..<6)
+        #expect(snapshot.layerRun(around: 3, of: "podcast") == 2..<6)
+    }
+
+    @Test func replacingALayerLeavesTheRest() {
+        let cells = commute { $0.set(2..<6, to: "music", in: .activity, schedule: $1, layer: "podcast") }.cells
+        #expect(cells[3].categoryIDs == ["commute", "music"])
+        #expect(cells[0].categoryIDs == ["commute"])
+    }
+
+    @Test func clearingALayerLeavesTheRest() {
+        let cells = commute { $0.set(0..<6, to: nil, in: .activity, schedule: $1, layer: "commute") }.cells
+        #expect(cells[0].categoryIDs == [])
+        #expect(cells[3].categoryIDs == ["podcast"])
+    }
+
+    @Test func aLayerMovesOnTopOfWhereItLands() {
+        let cells = commute { $0.move(2..<6, by: -2, in: .activity, schedule: $1, layer: "podcast") }.cells
+        #expect(cells[0].categoryIDs == ["commute", "podcast"])
+        #expect(cells[5].categoryIDs == ["commute"])
+    }
+
+    @Test func aLayerResizesWithoutTouchingTheRest() {
+        let cells = commute { $0.resize(2..<6, to: 1..<4, in: .activity, schedule: $1, layer: "podcast") }.cells
+        #expect(cells[0].categoryIDs == ["commute"])
+        #expect(cells[1].categoryIDs == ["commute", "podcast"])
+        #expect(cells[4].categoryIDs == ["commute"])
+    }
+
+    @Test func aNoteGoesOnTheLayerItsWrittenFor() {
+        let cells = commute { $0.setNote("Hard Fork", for: 2..<6, in: .activity, schedule: $1, layer: "podcast") }.cells
+        #expect(cells[3].layer("podcast")?.note == "Hard Fork")
+        #expect(cells[3].layer("commute")?.note == nil)
+    }
+
+    @Test func pointingAtAnActivityTakesInItsBlocksUnderOthers() {
+        let snapshot = commute()
+        // Commute alone at 0, but it runs on under Podcast: all of it, just Commute.
+        #expect(snapshot.target(at: 0) == (0..<6, "commute"))
+        // On top at 3 is Podcast; its card under it is Commute.
+        #expect(snapshot.target(at: 3) == (2..<6, "podcast"))
+        #expect(snapshot.target(at: 3, card: "commute") == (0..<6, "commute"))
+        // Nothing stacked: the run, everything it holds.
+        let work = commute { $0.set(10..<14, to: "work", in: .activity, schedule: $1) }
+        #expect(work.target(at: 11) == (10..<14, nil))
+    }
+
+    @Test func rightClickingClearsTheActivityPointedAt() {
+        let snapshot = commute()
+        #expect(snapshot.clearable(at: 0)! == (0..<6, "commute"))
+        #expect(snapshot.clearable(at: 3, selection: 2..<4, selectedLayer: "podcast")! == (2..<4, "podcast"))
+    }
 }

@@ -93,12 +93,42 @@ public struct DaySnapshot: Sendable {
         return start..<end
     }
 
-    /// What right-clicking block `index` would clear: the whole `selection` when the block is in it, or else the run
-    /// around it. Nil when none of those blocks is logged, so there's nothing to clear.
-    public func clearable(at index: Int, selection: Range<Int>? = nil) -> Range<Int>? {
+    /// The unbroken run of blocks around `index` holding `categoryID` with the same note on it: one layer of what they
+    /// hold, whatever else is stacked with it.
+    public func layerRun(around index: Int, of categoryID: String) -> Range<Int> {
+        guard cells.indices.contains(index), let layer = cells[index].layer(categoryID) else { return index..<(index + 1) }
+        let isSame = { (cell: BlockCell) in cell.layer(categoryID)?.note == layer.note && cell.layer(categoryID) != nil }
+        var start = index
+        var end = index + 1
+        while start > 0, isSame(cells[start - 1]) { start -= 1 }
+        while end < cells.count, isSame(cells[end]) { end += 1 }
+        return start..<end
+    }
+
+    /// What pointing at or clicking block `index` picks out. A logged block gives the run of its activity (`card`, one
+    /// card of a stack, or else the one on top) through every block holding it, stacked with others or not; that's
+    /// the activity alone when others share some of those blocks, so what's done to it leaves them be. An unlogged
+    /// block gives its gap.
+    public func target(at index: Int, card: String? = nil) -> (range: Range<Int>, layer: String?) {
+        guard cells.indices.contains(index), let categoryID = card ?? cells[index].categoryID else {
+            return (run(around: index), nil)
+        }
+        let range = layerRun(around: index, of: categoryID)
+        return (range, cells[range].contains { $0.layers.count > 1 } ? categoryID : nil)
+    }
+
+    /// What right-clicking block `index` (on `card`, one card of a stack) would clear: the whole `selection`, with the
+    /// activity picked out of it, when the block is in it, or else what clicking it picks out. Nil when none of
+    /// those blocks hold it, so there's nothing to clear.
+    public func clearable(
+        at index: Int, selection: Range<Int>? = nil, selectedLayer: String? = nil, card: String? = nil
+    ) -> (range: Range<Int>, layer: String?)? {
         guard cells.indices.contains(index) else { return nil }
-        let range = selection.flatMap { $0.contains(index) ? $0 : nil } ?? run(around: index)
-        return isLogged(anyOf: range) ? range : nil
+        let target: (range: Range<Int>, layer: String?) =
+            selection.flatMap { $0.contains(index) ? ($0, selectedLayer) : nil } ?? self.target(at: index, card: card)
+        let cells = cells[target.range.clamped(to: cells.indices)]
+        let holds = target.layer.map { layer in cells.contains { $0.layer(layer) != nil } } ?? cells.contains { $0.categoryID != nil }
+        return holds ? target : nil
     }
 
     /// Whether any block in `range` is logged.
