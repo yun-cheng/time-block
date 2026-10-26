@@ -82,12 +82,12 @@ nudge for unlogged time; see the milestones in PLAN.md.
   hour, up to 3 hours; More Hours makes an hour one big block, up to 24, over a row of the minutes past them), or pick a
   starred length (30 min and 1 h to start). Star keeps a length you set to pick in a click, and Set as Default makes it
   what countdowns start at; right‑click a starred one to unstar it. Counting up, there's no length to set. Under them,
-  Choose Activity, beside Activity, opens the activities to pick the one to time; then Start. In the menu bar, pick
-  Count up or a starred length and click an activity to start one. The timers going are listed under the grid. A timer's
-  blocks fill in as it runs, every block it touches, alongside whatever they hold, so several can run at once (one per
-  activity). Stop it to keep what it ran, or delete it (after you confirm) to drop it unlogged. A countdown notifies you
-  at zero and keeps counting past it (`−2:13`) until you stop it. Hover the blocks a timer ran in to see exactly when
-  (`⏱ 10:03–10:31`). Timers keep going when the app quits, and the widget fills in their blocks too.
+  Choose Activity, beside Activity, opens the activities to pick the one to time; then Start. The menu bar panel shows
+  the compact day of Keep on Top, with the same Start Timer and dialog. The timers going are listed under the grid. A
+  timer's blocks fill in as it runs, every block it touches, alongside whatever they hold, so several can run at once
+  (one per activity). Stop it to keep what it ran, or delete it (after you confirm) to drop it unlogged. A countdown
+  notifies you at zero and keeps counting past it (`−2:13`) until you stop it. Hover the blocks a timer ran in to see
+  exactly when (`⏱ 10:03–10:31`). Timers keep going when the app quits, and the widget fills in their blocks too.
 - **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
   it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you log over it.
   Change or pause one, and only the blocks still to come move.

@@ -26,8 +26,11 @@ struct MenuBarLabel: View {
     }
 }
 
+/// Today at a glance, as the window kept on top shows it: the counter, all the day's blocks and the timers, with Start
+/// Timer opening the timer dialog over it.
 struct MenuBarPanel: View {
     @Bindable var model: AppModel
+    @State private var showsTimerStarter = false
     @Environment(\.openWindow) private var openWindow
     @Environment(\.colorScheme) private var colorScheme
 
@@ -35,12 +38,18 @@ struct MenuBarPanel: View {
         let snapshot = model.snapshot
         let theme = MoodTheme(mood: snapshot.mood, colorScheme: colorScheme)
         VStack(spacing: 0) {
-            WidgetContent(family: .medium, snapshot: snapshot, theme: theme)
-                .frame(height: 170)
-                .background(MoodBackground(theme: theme))
-            Divider()
-            NowTimers(model: model, snapshot: snapshot, theme: theme)
-                .padding(12)
+            TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
+                DayView(
+                    snapshot: model.snapshot(at: context.date),
+                    time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
+                    timers: model.timerControls, date: context.date, isCompact: true,
+                    controls: DayControls(timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) }))
+            }
+            .overlay {
+                if showsTimerStarter {
+                    TimerDialog(model: model, theme: theme, isCompact: true, isOpen: $showsTimerStarter)
+                }
+            }
             Divider()
             HStack {
                 TrackPicker(track: $model.settings.track)
@@ -70,37 +79,7 @@ struct MenuBarPanel: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
-        .frame(width: 364)
-    }
-}
-
-/// Times what you're doing now: the timers going, and a palette that starts one.
-struct NowTimers: View {
-    let model: AppModel
-    let snapshot: DaySnapshot
-    let theme: MoodTheme
-
-    var body: some View {
-        let controls = model.timerControls
-        VStack(alignment: .leading, spacing: 10) {
-            if !controls.timers.isEmpty {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    TimerList(controls: controls, categories: snapshot.categories, theme: theme, date: context.date)
-                }
-            }
-            if snapshot.status.currentIndex != nil {
-                TimerStarter(controls: controls, snapshot: snapshot, theme: theme)
-            } else {
-                Text("Logging starts at \(clock(snapshot.status.schedule.wakeMinute)).")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func clock(_ minute: Int) -> String {
-        String(format: "%02d:%02d", minute / 60, minute % 60)
+        .frame(width: DayView.compactWidth(of: snapshot))
     }
 }
 

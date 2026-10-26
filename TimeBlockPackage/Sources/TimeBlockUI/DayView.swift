@@ -245,6 +245,11 @@ public struct DayView: View {
     private static let compactBlockSize: CGFloat = 15
     private static let compactPadding: CGFloat = 12
 
+    /// How wide the compact day of `snapshot` is.
+    public static func compactWidth(of snapshot: DaySnapshot) -> CGFloat {
+        BlockGridView.contentWidth(of: snapshot, blockSize: compactBlockSize) + 2 * compactPadding
+    }
+
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
         let blockSize = Self.blockSize

@@ -117,56 +117,6 @@ public struct TimerList: View {
     }
 }
 
-/// Starts a timer: pick how it counts, then the activity to time. The timers going are listed apart, so no chip is
-/// lit.
-public struct TimerStarter: View {
-    let controls: TimerControls
-    let snapshot: DaySnapshot
-    let theme: MoodTheme
-
-    public init(controls: TimerControls, snapshot: DaySnapshot, theme: MoodTheme) {
-        self.controls = controls
-        self.snapshot = snapshot
-        self.theme = theme
-    }
-
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Start a timer")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(theme.secondaryText)
-                Spacer()
-                CountdownPicker(countdown: controls.countdown, presets: controls.presets)
-            }
-            CategoryPalette(
-                categories: snapshot.trackCategories, favorites: snapshot.favorites,
-                selected: [], theme: theme, showsClear: false,
-                choose: { if let id = $0.categoryID { controls.start(id) } })
-        }
-    }
-}
-
-/// How new timers count: up from zero, or down from a length and on past it.
-struct CountdownPicker: View {
-    let countdown: Binding<Int?>
-    let presets: [Int]
-
-    var body: some View {
-        Picker("Counts", selection: countdown) {
-            Label("Count up", systemImage: "stopwatch").tag(Int?.none)
-            Divider()
-            // The presets, and a length set in the window that isn't one.
-            ForEach(Set(presets + [countdown.wrappedValue].compactMap { $0 }).sorted(), id: \.self) { minutes in
-                Label("Count down \(CountdownLength.text(minutes))", systemImage: "timer").tag(Int?.some(minutes))
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
-        .help("How new timers count: up from zero, or down from a length and on past it")
-    }
-}
-
 /// Sets a countdown the way the day is drawn: an hour to a row of five-minute blocks, filled up to the length, three
 /// hours of them. Showing hours, an hour is one big block instead, up to 24, over a row of the minutes past them; a
 /// row of hours shows once the one before it is filled. Click a block to fill up to it, or the last one filled to
