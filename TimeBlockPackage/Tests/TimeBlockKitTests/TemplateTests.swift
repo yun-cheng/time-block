@@ -112,6 +112,82 @@ struct TemplateTests {
         #expect(lunch.startMinute == 23 * 60)
     }
 
+    @Test func templatesCanStartAfterAnActivity() {
+        // 15 minutes after lunch's 12:30 end, then a coffee right after that walk, laid out in that order whatever
+        // order they're in.
+        let walk = Template(id: "walk", categoryID: "walk", anchor: .after, afterCategoryID: "lunch", offset: 15, length: 4)
+        let coffee = Template(id: "coffee", categoryID: "coffee", anchor: .after, afterCategoryID: "walk", length: 2)
+        let log = monday { $0.plan([coffee, walk, lunch], schedule: schedule, calendar: calendar) }
+        #expect(summary(log) == ["lunch 60..<66 template", "walk 69..<73 template", "coffee 73..<75 template"])
+        #expect(log.ends(of: walk) == [66])
+        #expect(walk.startMinute(in: schedule, following: 66) == 12 * 60 + 45)
+    }
+
+    @Test func templatesFollowAnActivityYouLog() {
+        let shower = Template(id: "shower", categoryID: "shower", anchor: .after, afterCategoryID: "gym", length: 3)
+        // Each time: the gym at 15:00, then again at 18:00.
+        let log = monday {
+            $0.set(96..<108, to: "gym", in: .activity, schedule: schedule)
+            $0.set(132..<136, to: "gym", in: .activity, schedule: schedule)
+            $0.plan([shower], schedule: schedule, calendar: calendar)
+        }
+        #expect(summary(log) == [
+            "gym 96..<108 manual", "shower 108..<111 template", "gym 132..<136 manual", "shower 136..<139 template",
+        ])
+        // Not logged, nothing to follow.
+        #expect(summary(monday { $0.plan([shower], schedule: schedule, calendar: calendar) }).isEmpty)
+        // Following each other round, with neither there, neither is.
+        let gym = Template(id: "gym", categoryID: "gym", anchor: .after, afterCategoryID: "shower", length: 12)
+        #expect(summary(monday { $0.plan([gym, shower], schedule: schedule, calendar: calendar) }).isEmpty)
+    }
+
+    @Test func templatesMoveWithTheActivityTheyFollow() {
+        let shower = Template(id: "shower", categoryID: "shower", anchor: .after, afterCategoryID: "gym", length: 3)
+        var log = monday { $0.plan([shower], schedule: schedule, calendar: calendar) }
+        func change(_ edit: (inout DayLog) -> Void) {
+            let before = log
+            edit(&log)
+            log.follow([shower], from: 100, after: before, schedule: schedule, calendar: calendar)
+        }
+        change { $0.set(96..<108, to: "gym", in: .activity, schedule: schedule) }
+        #expect(summary(log) == ["gym 96..<108 manual", "shower 108..<111 template"])
+        // A longer gym moves it on.
+        change { $0.set(108..<114, to: "gym", in: .activity, schedule: schedule) }
+        #expect(summary(log) == ["gym 96..<114 manual", "shower 114..<117 template"])
+        // Cleared, it stays cleared while the gym stays put.
+        change { $0.set(114..<117, to: nil, in: .activity, schedule: schedule) }
+        change { $0.set(150..<152, to: "coffee", in: .activity, schedule: schedule) }
+        #expect(!summary(log).contains { $0.hasPrefix("shower") })
+        // Another gym, earlier, gets one of its own; the one cleared after the first stays cleared.
+        var before = log
+        log.set(80..<84, to: "gym", in: .activity, schedule: schedule)
+        log.follow([shower], from: 80, after: before, schedule: schedule, calendar: calendar)
+        #expect(summary(log).filter { $0.hasPrefix("shower") } == ["shower 84..<87 template"])
+        // With the gym gone, so is what's still to come of it; blocks already past keep theirs.
+        before = log
+        log.set(80..<84, to: nil, in: .activity, schedule: schedule)
+        log.set(96..<114, to: nil, in: .activity, schedule: schedule)
+        log.follow([shower], from: 86, after: before, schedule: schedule, calendar: calendar)
+        #expect(summary(log) == ["shower 84..<86 template", "coffee 150..<152 manual"])
+    }
+
+    @Test func reanchoringAfterAnActivityStartsAsItEnds() {
+        var shower = Template(id: "shower", categoryID: "shower", startMinute: 15 * 60, length: 3)
+        shower.anchor(to: .after, after: "gym", in: schedule)
+        #expect(shower.offset == 0)
+        #expect(shower.range(in: schedule, following: 108) == 108..<111)
+        #expect(shower.range(in: schedule).isEmpty)
+        shower.offset = 15
+        // Another to follow keeps how long after.
+        shower.anchor(to: .after, after: "run", in: schedule)
+        #expect(shower.afterCategoryID == "run")
+        #expect(shower.offset == 15)
+        // Back to a clock time, it starts where it does today: 15 minutes after a run ending at 16:00.
+        shower.anchor(to: .clock, in: schedule, following: 108)
+        #expect(shower.startMinute == 16 * 60 + 15)
+        #expect(shower.afterCategoryID == nil)
+    }
+
     @Test func templatesSavedBeforeAnchorsStartAtAClockTime() throws {
         let json = #"{"id":"lunch","categoryID":"lunch","startMinute":720,"length":6,"weekdays":[2],"isEnabled":true}"#
         let template = try JSONDecoder().decode(Template.self, from: Data(json.utf8))
@@ -119,6 +195,8 @@ struct TemplateTests {
         #expect(template.range(in: schedule) == 60..<66)
         let reading = Template(id: "reading", categoryID: "reading", anchor: .bed, offset: 45, length: 6)
         #expect(try JSONDecoder().decode(Template.self, from: JSONEncoder().encode(reading)) == reading)
+        let walk = Template(id: "walk", categoryID: "walk", anchor: .after, afterCategoryID: "lunch", offset: 15, length: 4)
+        #expect(try JSONDecoder().decode(Template.self, from: JSONEncoder().encode(walk)) == walk)
     }
 
     @Test func daysSavedBeforeTemplatesAreUnplanned() throws {

@@ -195,8 +195,9 @@ public struct DayLog: Codable, Hashable, Sendable {
 
     /// Pre-logs the templates that come back on this day, from block `index` on, in the blocks still free in their
     /// category's track. What templates logged from `index` on before is taken back first, so a changed template
-    /// moves; blocks before `index` keep what they had. Paused templates, and ones for retired activities, log
-    /// nothing.
+    /// moves; blocks before `index` keep what they had. One that starts after an activity is laid out after each
+    /// time that day it's logged or pre-logged, and not at all when it isn't. Paused templates, and ones for retired
+    /// activities, log nothing.
     public mutating func plan(
         _ templates: [Template], from index: Int = 0, schedule: Schedule,
         categories: [BlockCategory] = BlockCategory.defaults, calendar: Calendar = .current
@@ -209,11 +210,67 @@ public struct DayLog: Codable, Hashable, Sendable {
             kept.length = index - log.startIndex
             return kept
         }
-        for template in templates where comesBack(template, calendar: calendar) {
+        let comingBack = templates.filter { comesBack($0, calendar: calendar) }
+        for template in comingBack where template.anchor != .after {
             preLog(template, in: template.range(in: schedule), from: index, categories: categories)
+        }
+        for template in Template.inLayingOrder(comingBack) {
+            for end in ends(of: template) {
+                preLog(template, in: template.range(in: schedule, following: end), from: index, categories: categories)
+            }
         }
         logs = Self.joined(logs)
         isPlanned = true
+    }
+
+    /// Moves the templates that start after an activity, from block `index` on, to follow it where it is now that
+    /// the logs have changed from `before`: logged, moved or cleared. Each time of it that ends where it did keeps
+    /// what follows it as it is, cleared blocks and all.
+    public mutating func follow(
+        _ templates: [Template], from index: Int, after before: DayLog, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults, calendar: Calendar = .current
+    ) {
+        var before = before
+        before.rebase(to: schedule)
+        let following = Template.inLayingOrder(templates.filter { comesBack($0, calendar: calendar) })
+        var changed = false
+        for template in following {
+            let ends = ends(of: template)
+            let old = before.ends(of: template)
+            guard ends != old else { continue }
+            if let track = categories.first(where: { $0.id == template.categoryID })?.track {
+                for end in old where !ends.contains(end) {
+                    let range = template.range(in: schedule, following: end)
+                    guard range.upperBound > index else { continue }
+                    logs = split(max(index, range.lowerBound)..<range.upperBound, in: track, categories: categories) {
+                        $0.templateID == template.id
+                    }.kept
+                }
+            }
+            for end in ends where !old.contains(end) {
+                preLog(template, in: template.range(in: schedule, following: end), from: index, categories: categories)
+            }
+            changed = true
+        }
+        if changed { logs = Self.joined(logs) }
+    }
+
+    /// Where the activity `template` starts after ends each time it's on this day, logged or pre-logged by anything
+    /// but it, in order; none when it isn't, or `template` doesn't start after one.
+    public func ends(of template: Template) -> [Int] {
+        guard template.anchor == .after, let id = template.afterCategoryID else { return [] }
+        let ranges = logs.filter { $0.categoryID == id && $0.templateID != template.id }.map(\.range)
+            .sorted { $0.lowerBound < $1.lowerBound }
+        var ends: [Int] = []
+        for range in ranges {
+            // Touching or overlapping runs of it are one time.
+            if let last = ends.last, range.lowerBound <= last {
+                ends[ends.count - 1] = max(last, range.upperBound)
+            } else {
+                ends.append(range.upperBound)
+            }
+        }
+        return ends
     }
 
     private func comesBack(_ template: Template, calendar: Calendar) -> Bool {

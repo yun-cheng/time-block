@@ -248,12 +248,17 @@ time-logging coaches split a day, with plain names:
   weekdays". Each picks an activity, a start, a length and its days, and can be paused. The activity is picked from
   the same palette as a timer's (starred, by group, or searched), in a popover. The start is a clock time, or minutes
   after waking or before bed, counted from each day's own times, so a sleep shift or a lie-in carries it along. After
-  waking and before bed start at 30 minutes; going back to a clock time keeps where it starts today.
+  waking and before bed start at 30 minutes; going back to a clock time keeps where it starts today. It can also start
+  minutes after an activity, picked from the same palette (a shower after exercise): after each time that day the
+  activity is logged or pre‑logged, touching runs of it counting as one time, and not at all on a day without it.
+  Templates that pre‑log the activity it follows are laid out first.
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
 - A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
   change counts even when the app opens after it), as `.template` logs in blocks still free in their track. Logging
-  over them replaces them. Changing, pausing or removing a template lays them out again over the blocks still to
-  come only; what has happened stays.
+  over them replaces them. Changing, pausing or removing a template lays them out again over the blocks still to come
+  only; what has happened stays. A template after an activity also follows your logging: when a time of that activity
+  starts, ends somewhere else or goes, what follows it moves over the blocks still to come (the whole of a day ahead,
+  none of a day that's over); after the times that stay put, it stays as you left it, cleared or not.
 - **Calendar import:** events become pre‑logged blocks (rounded to 5‑min boundaries), mapped to a category (default "Meeting"; per‑calendar mapping).
 
 ### 3.5 Late‑night "horror mode"
@@ -346,7 +351,9 @@ BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template
 LiveTimer     id, categoryID, countdown (seconds, nil counts up), startedAt; saved as a list beside the settings
               (TimerStore)
 TimerSession  categoryID, start, end (Dates); logs every block of the day it touches
-Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
+Template      id, categoryID, anchor (clock | wake | bed | after), startMinute (clock), offset (minutes after
+              waking, before bed or after the activity), afterCategoryID, length (blocks), weekdays (Calendar
+              weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
 SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays, leads (bed | wake),
               isByFinishDay (the target is AppSettings.schedule)

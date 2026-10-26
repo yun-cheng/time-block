@@ -10,7 +10,6 @@ struct TemplateSettings: View {
     @State private var editing: String?
 
     var body: some View {
-        let categories = Dictionary(model.settings.categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         Section {
             ForEach(model.settings.templates) { template in
                 row(template, category: categories[template.categoryID])
@@ -36,7 +35,8 @@ struct TemplateSettings: View {
                             .frame(width: 20)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(category?.name ?? "Unknown activity")
-                            Text(Self.subtitle(of: template, today: model.schedule))
+                            Text(Self.subtitle(
+                                of: template, categories: categories, today: model.dayLog, schedule: model.schedule))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
@@ -56,7 +56,7 @@ struct TemplateSettings: View {
             if editing == template.id {
                 TemplateEditor(
                     template: binding, activities: activities, favorites: model.settings.favorites,
-                    schedule: model.schedule,
+                    today: model.dayLog, schedule: model.schedule,
                     remove: {
                         editing = nil
                         model.settings.templates.removeAll { $0.id == template.id }
@@ -67,6 +67,10 @@ struct TemplateSettings: View {
         .background {
             if editing == template.id { ScrollIntoView() }
         }
+    }
+
+    private var categories: [String: BlockCategory] {
+        Dictionary(model.settings.categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     private var activities: [BlockCategory] {
@@ -82,14 +86,26 @@ struct TemplateSettings: View {
         }
     }
 
-    /// "12:00–12:30 · Weekdays", or "07:30–08:00 · 30m after waking · Every day" with today's times.
-    static func subtitle(of template: Template, today schedule: Schedule) -> String {
-        let start = template.startMinute(in: schedule)
-        let times = "\(clock(start))–\(clock(start + template.length * Schedule.blockMinutes))"
+    /// "12:00–12:30 · Weekdays", "07:30–08:00 · 30m after waking · Every day", or "10:15–10:30, 18:15–18:30 · 15m
+    /// after Gym · Weekdays", with `today`'s times: each time after an activity, and none when it isn't on today.
+    static func subtitle(
+        of template: Template, categories: [String: BlockCategory], today: DayLog, schedule: Schedule
+    ) -> String {
+        let starts = template.anchor == .after
+            ? today.ends(of: template).map { template.startMinute(in: schedule, following: $0) }
+            : [template.startMinute(in: schedule)]
+        let times = starts.isEmpty ? nil : starts.map {
+            "\(clock($0))–\(clock($0 + template.length * Schedule.blockMinutes))"
+        }.joined(separator: ", ")
+        let offset = TemplateEditor.duration(minutes: template.offset)
         let anchor: String? = switch template.anchor {
         case .clock: nil
-        case .wake: "\(TemplateEditor.duration(minutes: template.offset)) after waking"
-        case .bed: "\(TemplateEditor.duration(minutes: template.offset)) before bed"
+        case .wake: "\(offset) after waking"
+        case .bed: "\(offset) before bed"
+        case .after:
+            [template.offset == 0 ? nil : offset, "after",
+             template.afterCategoryID.flatMap { categories[$0]?.name } ?? "an activity"]
+                .compactMap { $0 }.joined(separator: " ")
         }
         return [times, anchor, days(template.weekdays)].compactMap { $0 }.joined(separator: " · ")
     }
@@ -125,22 +141,34 @@ private struct TemplateEditor: View {
     @Binding var template: Template
     let activities: [BlockCategory]
     let favorites: [String]
-    /// Today's: going back to a clock time starts it where it starts today.
+    /// Today's logs and schedule: going back to a clock time starts it where it starts today.
+    let today: DayLog
     let schedule: Schedule
     let remove: () -> Void
     let done: () -> Void
     @State private var showsActivities = false
+    @State private var showsFollowed = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LabeledContent("Activity") {
-                activityButton
+                activityButton(template.categoryID, help: "Choose the activity", isPresented: $showsActivities) {
+                    template.categoryID = $0
+                }
             }
             // What it's counted from, and under it the time, so the time stays put whichever it is.
             LabeledContent("Starts") {
                 VStack(alignment: .trailing, spacing: 6) {
                     anchorPicker
+                    if template.anchor == .after {
+                        activityButton(
+                            template.afterCategoryID, help: "Choose the activity it starts after",
+                            isPresented: $showsFollowed
+                        ) {
+                            template.anchor(to: .after, after: $0, in: schedule)
+                        }
+                    }
                     startField
                 }
             }
@@ -171,11 +199,13 @@ private struct TemplateEditor: View {
         .padding(.bottom, 4)
     }
 
-    /// The activity, or a prompt to choose one; a click opens the activities, as the timer's does.
-    private var activityButton: some View {
-        let current = activities.first { $0.id == template.categoryID }
+    /// An activity, or a prompt to choose one; a click opens the activities, as the timer's does.
+    private func activityButton(
+        _ id: String?, help: String, isPresented: Binding<Bool>, choose: @escaping (String) -> Void
+    ) -> some View {
+        let current = activities.first { $0.id == id }
         return Button {
-            showsActivities = true
+            isPresented.wrappedValue = true
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: current?.symbol ?? "tag")
@@ -193,16 +223,16 @@ private struct TemplateEditor: View {
         }
         .buttonStyle(.plain)
         .fixedSize()
-        .help("Choose the activity")
-        .popover(isPresented: $showsActivities, arrowEdge: .bottom) {
+        .help(help)
+        .popover(isPresented: isPresented, arrowEdge: .bottom) {
             CategoryPalette(
                 categories: activities, favorites: activities.filter { favorites.contains($0.id) },
-                selected: [.category(template.categoryID)],
+                selected: id.map { [.category($0)] } ?? [],
                 // Drawn like the settings around it, whatever the day's mood.
                 theme: MoodTheme(mood: .calm, colorScheme: colorScheme), showsClear: false,
                 choose: { choice in
-                    if let id = choice.categoryID { template.categoryID = id }
-                    showsActivities = false
+                    if let id = choice.categoryID { choose(id) }
+                    isPresented.wrappedValue = false
                 })
             .padding(14)
             .frame(width: 430)
@@ -226,17 +256,19 @@ private struct TemplateEditor: View {
         .help(calendar.weekdaySymbols[weekday - 1])
     }
 
+    /// What it starts from: a clock time, waking, bed, or the end of an activity, picked under it.
     private var anchorPicker: some View {
         Picker("Starts", selection: anchorBinding) {
             Text("At").tag(Template.Anchor.clock)
             Text("After Waking").tag(Template.Anchor.wake)
             Text("Before Bed").tag(Template.Anchor.bed)
+            Text("After Activity").tag(Template.Anchor.after)
         }
         .labelsHidden()
         .fixedSize()
     }
 
-    /// The clock time it starts at, or how long after waking or before bed.
+    /// The clock time it starts at, or how long after waking, before bed, or after the activity it follows.
     @ViewBuilder private var startField: some View {
         if template.anchor == .clock {
             TimeField("Starts", minute: $template.startMinute)
@@ -248,7 +280,10 @@ private struct TemplateEditor: View {
     }
 
     private var anchorBinding: Binding<Template.Anchor> {
-        Binding { template.anchor } set: { template.anchor(to: $0, in: schedule) }
+        Binding { template.anchor } set: {
+            template.anchor(
+                to: $0, after: template.afterCategoryID, in: schedule, following: today.ends(of: template).first)
+        }
     }
 
     /// "45m", "1h", "1h 30m".

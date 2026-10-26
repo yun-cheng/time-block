@@ -240,11 +240,26 @@ final class AppModel {
         guard let before = log(of: day) else { return }
         var log = before
         change(&log, schedule(of: log))
+        // What starts after an activity follows it over the blocks still to come; a day that's over stays as it was.
+        if let from = firstBlockToCome(of: log) {
+            log.follow(
+                settings.templates, from: from, after: before, schedule: schedule(of: log), categories: settings.categories)
+        }
         guard log != before else { return }
         put(log)
         registerUndo(name, restoring: UndoPoint(log: before, track: settings.track, selection: selection, layer: selectedLayer))
         lastChange = BlockChange(.made)
         save(log)
+    }
+
+    /// The block after now on today, the first on a day still to come, and none on a day that's over, today's past
+    /// bedtime included.
+    private func firstBlockToCome(of log: DayLog) -> Int? {
+        if log.day > dayLog.day { return 0 }
+        guard log.day == dayLog.day else { return nil }
+        let schedule = schedule(of: log)
+        let status = DayStatus(schedule: schedule, nowMinute: schedule.timelineMinute(for: now))
+        return status.isOver ? nil : status.currentIndex.map { $0 + 1 } ?? 0
     }
 
     /// The logs of `day`, when it's today or the other day shown.
