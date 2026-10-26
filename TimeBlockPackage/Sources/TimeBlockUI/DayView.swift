@@ -232,9 +232,18 @@ public struct DayView: View {
         }
     }
 
+    /// The whole day's blocks, and the room around its column.
+    private static let blockSize: CGFloat = 20
+    private static let padding: CGFloat = 22
+
+    /// How wide the whole day of `snapshot` is: its column, as wide as the blocks, and the room around it.
+    public static func width(of snapshot: DaySnapshot) -> CGFloat {
+        BlockGridView.contentWidth(of: snapshot, blockSize: blockSize) + 2 * padding
+    }
+
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
-        let blockSize: CGFloat = 20
+        let blockSize = Self.blockSize
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 topLine(theme: theme)
@@ -293,7 +302,7 @@ public struct DayView: View {
         }
         // One column as wide as the blocks, so the counter, stats, timers and legend line up with them.
         .frame(width: BlockGridView.contentWidth(of: snapshot, blockSize: blockSize))
-        .padding(22)
+        .padding(Self.padding)
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .modifier(DayFrame(editor: editor, theme: theme, time: time))

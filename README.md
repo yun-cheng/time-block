@@ -34,9 +34,9 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 ## Status
 
-Built: Mac app window with settings in a side panel (the gear in the day's top corner, or ⌘,), menu bar extra, and a
-WidgetKit widget in three sizes. Logs are saved one file per day. Next up is a nudge for unlogged time; see the
-milestones in PLAN.md.
+Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
+corner, or ⌘,), menu bar extra, and a WidgetKit widget in three sizes. Logs are saved one file per day. Next up is a
+nudge for unlogged time; see the milestones in PLAN.md.
 
 ### Logging
 

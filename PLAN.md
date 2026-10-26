@@ -36,7 +36,7 @@ TimeBlockPackage/          shared Swift package
 └── TimeBlockPrototype     M0 playground: time slider + widget previews; `--render` writes PNGs
 
 TimeBlock.xcodeproj        depends on TimeBlockPackage; source folders sync automatically
-├── TimeBlockApp/          Mac app: day window with a settings inspector (⌘,), menu bar extra
+├── TimeBlockApp/          Mac app: day window with a settings panel (⌘,), menu bar extra
 ├── TimeBlockWidget/       WidgetKit extension (small / medium / large), view picked per widget
 └── Config/                entitlements, widget Info.plist
 
@@ -119,6 +119,12 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **The timer over the day:** Start Timer opens a dialog over the dimmed day; a click beside it closes it. It sits in
   the middle of the window and fits in it, narrower in a narrow one and scrolling when the window is too short, and is
   drawn a little lighter than the day, with a clear edge, to stand off it.
+- **The window as wide as the day, the settings beside it:** the window keeps to the day's width (and the settings',
+  when they show), so only its height can be changed; it follows the grid when its gaps change. The settings always sit
+  to the right of the day, past the window's edge while they're hidden: showing them only widens the window over them,
+  and hiding them narrows it again, in one animation, so nothing else moves. (They were a dialog over the day for a
+  while, then SwiftUI's inspector, which slid in and out and left the day jumping to the middle of the window as it
+  narrowed.)
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
@@ -178,7 +184,7 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Keep on top:** the pin in the day's top corner (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps'
   windows, on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
   instead of 20, and the timers going. The buttons, stats, story bar, legend and settings are left out; logging works as
-  in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old size.
+  in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old height.
   - The compact window keeps a plain title bar, to drag it by and close it. The app sizes the window to the
     compact day itself, keeping its top left corner, since SwiftUI doesn't shrink it. A full‑screen window leaves
     full screen first.

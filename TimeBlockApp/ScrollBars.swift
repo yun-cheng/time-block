@@ -61,7 +61,9 @@ private struct ScrollBarProbe: NSViewRepresentable {
             if let observed { fitScroller(to: observed) }
         }
 
-        /// Keeps the scroll bar inside the part of the scroll view that shows, out from under the toolbar.
+        /// Keeps the scroll bar inside the part of the scroll view that shows, out from under the title bar. Only top
+        /// and bottom: the settings are partly past the window's edge while it widens for them, and measured then,
+        /// the bar would stay in the middle of them.
         private func fitScroller(to scrollView: NSScrollView) {
             let bounds = scrollView.bounds
             var visible = scrollView.visibleRect
@@ -71,11 +73,9 @@ private struct ScrollBarProbe: NSViewRepresentable {
             guard !visible.isEmpty else { return }
             let hiddenTop = scrollView.isFlipped ? visible.minY - bounds.minY : bounds.maxY - visible.maxY
             let hiddenBottom = scrollView.isFlipped ? bounds.maxY - visible.maxY : visible.minY - bounds.minY
-            let insets = NSEdgeInsets(
-                top: hiddenTop, left: 0, bottom: hiddenBottom, right: bounds.maxX - visible.maxX)
+            let insets = NSEdgeInsets(top: hiddenTop, left: 0, bottom: hiddenBottom, right: 0)
             let current = scrollView.scrollerInsets
-            guard current.top != insets.top || current.bottom != insets.bottom || current.right != insets.right
-            else { return }
+            guard current.top != insets.top || current.bottom != insets.bottom || current.right != 0 else { return }
             scrollView.scrollerInsets = insets
             scrollView.tile()
         }

@@ -3,7 +3,7 @@ import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
 
-/// Settings live in the main window's inspector, not a separate window.
+/// Settings live in a panel beside the main window's day, not a separate window.
 struct SettingsView: View {
     @Bindable var model: AppModel
 
@@ -96,7 +96,7 @@ struct SettingsView: View {
     }
 }
 
-/// Opens the main window with its settings inspector showing.
+/// Opens the main window with its settings showing.
 @MainActor
 func showSettings(_ model: AppModel, openWindow: OpenWindowAction) {
     // Settings need the whole window.
@@ -106,7 +106,7 @@ func showSettings(_ model: AppModel, openWindow: OpenWindowAction) {
     NSApp.activate()
 }
 
-/// Time Block ▸ Settings… (⌘,) shows the inspector instead of a separate Settings window.
+/// Time Block ▸ Settings… (⌘,) shows the settings panel instead of a separate Settings window.
 struct SettingsCommands: Commands {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
