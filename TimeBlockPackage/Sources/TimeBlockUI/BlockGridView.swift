@@ -123,8 +123,7 @@ public struct BlockGridView: View {
     /// Whether every block moves, deep past bedtime, so the whole grid is drawn again each frame.
     private var animatesBlocks: Bool { animates && snapshot.mood >= .dread }
 
-    /// Whether the current block's ring pulses on its own, over the rest of the grid, which then stays still: only
-    /// the ring is drawn again each frame.
+    /// Whether the current block's ring pulses on its own, over the rest of the grid, which then stays still.
     private var pulsesRingApart: Bool {
         animates && !animatesBlocks && snapshot.cells.contains { $0.phase == .current }
     }
@@ -144,10 +143,16 @@ public struct BlockGridView: View {
                 })
             .overlay {
                 if pulsesRingApart {
-                    AnimationClock(isOn: true) { time in
-                        Canvas { context, size in drawRing(in: &context, size: size, time: time) }
+                    GeometryReader { proxy in
+                        let grid = layout(size: proxy.size)
+                        if let index = snapshot.cells.first(where: { $0.phase == .current })?.index,
+                           grid.rows.contains((index + snapshot.status.schedule.gridOffset) / Schedule.blocksPerHour) {
+                            let ring = Self.ring(around: index, layout: grid)
+                            PulsingRing(cornerRadius: ring.cornerRadius, lineWidth: ring.lineWidth, color: theme.text)
+                                .frame(width: ring.rect.width + ring.lineWidth, height: ring.rect.height + ring.lineWidth)
+                                .position(x: ring.rect.midX, y: ring.rect.midY)
+                        }
                     }
-                    .allowsHitTesting(false)
                 }
             }
             .overlay {
@@ -541,7 +546,7 @@ public struct BlockGridView: View {
     }
 
     /// The grid at `time` on the animation clock, 0 for a still frame; without `drawsRing`, the current block's ring is
-    /// left for `drawRing` to draw over it.
+    /// left for a `PulsingRing` over it.
     private func draw(in context: inout GraphicsContext, size: CGSize, time: Double, drawsRing: Bool) {
         let perRow = Schedule.blocksPerHour
         let grid = layout(size: size)
@@ -723,22 +728,19 @@ public struct BlockGridView: View {
         }
     }
 
-    /// Just the current block's ring, if its row shows, for a grid that's otherwise still.
-    private func drawRing(in context: inout GraphicsContext, size: CGSize, time: Double) {
-        let grid = layout(size: size)
-        let offset = snapshot.status.schedule.gridOffset
-        guard let cell = snapshot.cells.first(where: { $0.phase == .current }),
-              grid.rows.contains((cell.index + offset) / Schedule.blocksPerHour) else { return }
-        drawRing(around: cell.index, in: &context, layout: grid, time: time)
+    /// Where the current block's ring goes, around the block in the gaps beside it.
+    private static func ring(around index: Int, layout grid: GridLayout) -> (rect: CGRect, cornerRadius: CGFloat, lineWidth: CGFloat) {
+        (grid.frame(index).insetBy(dx: -grid.gap * 0.55, dy: -grid.gap * 0.55), grid.radius + grid.gap * 0.55,
+         max(1, grid.gap * 0.45))
     }
 
     /// The ring around the current block, brightening and dimming as `time` goes on.
     private func drawRing(around index: Int, in context: inout GraphicsContext, layout grid: GridLayout, time: Double) {
         let pulse = time > 0 ? 0.55 + 0.45 * sin(time * 4) : 1
-        let ring = grid.frame(index).insetBy(dx: -grid.gap * 0.55, dy: -grid.gap * 0.55)
+        let ring = Self.ring(around: index, layout: grid)
         context.stroke(
-            Path(roundedRect: ring, cornerRadius: grid.radius + grid.gap * 0.55),
-            with: .color(theme.text.opacity(pulse)), lineWidth: max(1, grid.gap * 0.45))
+            Path(roundedRect: ring.rect, cornerRadius: ring.cornerRadius),
+            with: .color(theme.text.opacity(pulse)), lineWidth: ring.lineWidth)
     }
 
     private func drawDrips(
