@@ -1,7 +1,9 @@
-import AppKit
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
+
+#if os(macOS)
+import AppKit
 
 /// "▦ 92/192" in the menu bar. Menu bar items are monochrome, so the symbol carries the mood.
 struct MenuBarLabel: View {
@@ -82,6 +84,7 @@ struct MenuBarPanel: View {
         .frame(width: DayView.compactWidth(of: snapshot))
     }
 }
+#endif
 
 extension AppModel {
     /// The timers, to show and change in the window and the menu bar.

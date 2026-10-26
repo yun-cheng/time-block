@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
@@ -218,6 +217,7 @@ struct ActivitySettings: View {
 /// Scrolls the settings to show what it's behind once it's in a window: a group just opened, or a row whose editor
 /// opened near the bottom or moved along with its activity to another group. (`ScrollViewReader` doesn't reach
 /// into a `Form`'s rows.)
+#if os(macOS)
 struct ScrollIntoView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { Probe() }
     func updateNSView(_ nsView: NSView, context: Context) {}
@@ -238,6 +238,7 @@ struct ScrollIntoView: NSViewRepresentable {
         }
     }
 }
+#endif
 
 /// Renames and recolors a group. A built-in one can go back to how it came; one of your own can be removed once
 /// it's empty.
@@ -293,8 +294,7 @@ private struct GroupEditor: View {
         Binding {
             Color(rgb: group.color)
         } set: { color in
-            guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-            group.color = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent)
+            if let rgb = RGB(color) { group.color = rgb }
         }
     }
 }
@@ -328,6 +328,7 @@ private struct ActivityEditor: View {
                         category.symbol = symbol
                         picksIcon = false
                     }
+                    .presentationCompactAdaptation(.popover)
                 }
                 .onChange(of: picksIcon) { _, isOpen in
                     // Closing a popover hands focus to the first time picker, scrolling the settings to the top;
@@ -387,8 +388,7 @@ private struct ActivityEditor: View {
         Binding {
             Color(rgb: category.color)
         } set: { color in
-            guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
-            category.color = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent)
+            if let rgb = RGB(color) { category.color = rgb }
         }
     }
 }
@@ -528,7 +528,7 @@ private struct IconPicker: View {
         var found = catalog.filter { icon in
             tokens.allSatisfy { token in icon.words.contains { $0.hasPrefix(token) } }
         }.map(\.symbol)
-        if !found.contains(query), NSImage(systemSymbolName: query, accessibilityDescription: nil) != nil {
+        if !found.contains(query), symbolExists(query) {
             found.insert(query, at: 0)
         }
         return found

@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
@@ -110,6 +109,7 @@ struct SettingsView: View {
     }
 }
 
+#if os(macOS)
 /// Opens the main window with its settings showing.
 @MainActor
 func showSettings(_ model: AppModel, openWindow: OpenWindowAction) {
@@ -132,3 +132,4 @@ struct SettingsCommands: Commands {
         }
     }
 }
+#endif

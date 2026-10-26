@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 
 extension View {
@@ -7,9 +9,16 @@ extension View {
     /// always-on scroll bar sits in a wide dark track that throws margins off. For a `ScrollView`, use
     /// `AppScrollView`, which draws the same scroll bar where it shows.
     func appScrollBar() -> some View {
+        #if os(macOS)
         background(ScrollBarProbe())
+        #else
+        // Touch screens' scroll bars show only while scrolling, over the content.
+        self
+        #endif
     }
 }
+
+#if os(macOS)
 
 /// The width of the lane the app's scroll bar keeps on the right of a scroll view.
 private let scrollBarLane: CGFloat = 12
@@ -143,6 +152,8 @@ private final class ClearScroller: NSScroller {
     }
 }
 
+#endif
+
 /// How the app's scroll bar knob looks, wherever it's drawn.
 private enum KnobLook {
     static func width(hovered: Bool) -> CGFloat { hovered ? 9 : 7 }
@@ -165,6 +176,14 @@ struct AppScrollView<Content: View>: View {
     private static var contentID: String { "AppScrollView.content" }
 
     var body: some View {
+        #if os(macOS)
+        drawn
+        #else
+        ScrollView { content }
+        #endif
+    }
+
+    private var drawn: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 content

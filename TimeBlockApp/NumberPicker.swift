@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
@@ -30,18 +29,18 @@ struct NumberPicker: View {
         var fontSize: CGFloat
         var weight: Font.Weight
         var text: Color
-        var nsText: NSColor
+        var platformText: PlatformColor
         var secondary: Color
         var accent: Color
 
         static func dialog(_ theme: MoodTheme) -> Style {
             Style(
-                fontSize: 22, weight: .semibold, text: theme.text, nsText: NSColor(theme.text),
+                fontSize: 22, weight: .semibold, text: theme.text, platformText: PlatformColor(theme.text),
                 secondary: theme.secondaryText, accent: theme.accent)
         }
 
         static let settings = Style(
-            fontSize: 13, weight: .regular, text: .primary, nsText: .labelColor, secondary: .secondary,
+            fontSize: 13, weight: .regular, text: .primary, platformText: .labelColor, secondary: .secondary,
             accent: .accentColor)
 
         var isLarge: Bool { fontSize > 16 }
@@ -53,7 +52,7 @@ struct NumberPicker: View {
             // One box, like a combo box: the number to type, and the dropdown inside it, at its end.
             HStack(spacing: 0) {
                 NumberField(
-                    title: title, text: $text, isEditing: $isEditing, font: font, color: style.nsText, commit: commit,
+                    title: title, text: $text, isEditing: $isEditing, font: font, color: style.platformText, commit: commit,
                     step: step)
                     .frame(width: fieldWidth)
                     .padding(.leading, style.isLarge ? 8 : 5)
@@ -114,7 +113,7 @@ struct NumberPicker: View {
         .accessibilityLabel("Choose \(title.lowercased())")
     }
 
-    private var font: NSFont {
+    private var font: PlatformFont {
         .monospacedDigitSystemFont(ofSize: style.fontSize, weight: style.weight == .semibold ? .semibold : .regular)
     }
 
@@ -174,6 +173,7 @@ struct DurationPicker: View {
     }
 }
 
+#if os(macOS)
 /// A borderless number field that selects what it holds when clicked into, which SwiftUI's text field can't: the
 /// click puts the caret in after anything SwiftUI could do. ↑ and ↓ step it.
 private struct NumberField: NSViewRepresentable {
@@ -263,3 +263,40 @@ private struct NumberField: NSViewRepresentable {
         }
     }
 }
+#else
+/// A borderless number field. Its keyboard has a Return key, for the number to go in; ↑ and ↓ on a hardware keyboard
+/// step it.
+private struct NumberField: View {
+    let title: String
+    @Binding var text: String
+    @Binding var isEditing: Bool
+    let font: UIFont
+    let color: UIColor
+    let commit: () -> Void
+    let step: (Int) -> Void
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        TextField(title, text: $text)
+            .labelsHidden()
+            .keyboardType(.numbersAndPunctuation)
+            .multilineTextAlignment(.trailing)
+            .font(Font(font))
+            .foregroundStyle(Color(color))
+            .focused($isFocused)
+            .onSubmit(commit)
+            .onKeyPress(.upArrow) {
+                step(1)
+                return .handled
+            }
+            .onKeyPress(.downArrow) {
+                step(-1)
+                return .handled
+            }
+            .onChange(of: isFocused) { _, focused in
+                isEditing = focused
+                if !focused { commit() }
+            }
+    }
+}
+#endif

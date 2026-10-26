@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 
 /// Ends typing when you click outside what's being typed in, as on the web: on its own, a Mac window keeps a field
@@ -28,3 +29,4 @@ enum ClickAway {
         window.makeFirstResponder(nil)
     }
 }
+#endif
