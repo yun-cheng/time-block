@@ -1,3 +1,5 @@
+import Foundation
+
 /// One line of a day summary, such as "Focus 7h 50m" or "Sitting 9h 10m".
 public struct LegendItem: Identifiable, Hashable, Sendable {
     public let id: String
@@ -19,18 +21,21 @@ public struct DaySnapshot: Sendable {
     public let grid: GridMarks
     /// The day it shows (see `Schedule.dayID`), when known.
     public let day: String?
+    /// The stretches timers ran on the day, those running up to now.
+    public let sessions: [TimerSession]
 
     /// Only logs whose category belongs to `track` are drawn. `favorites` are category ids; without them
     /// every category is a favorite.
     public init(
         status: DayStatus, logs: [BlockLog], categories: [BlockCategory], favorites: [String]? = nil,
-        track: Track = .activity, grid: GridMarks = .standard, day: String? = nil
+        track: Track = .activity, grid: GridMarks = .standard, day: String? = nil, sessions: [TimerSession] = []
     ) {
         let byID = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         self.status = status
         self.track = track
         self.grid = grid
         self.day = day
+        self.sessions = sessions
         cells = DayGrid.cells(status: status, logs: logs.filter { byID[$0.categoryID]?.track == track })
         self.categories = byID
         let trackCategories = categories.filter { $0.track == track && !$0.isRetired }
@@ -137,6 +142,15 @@ public struct DaySnapshot: Sendable {
         let cells = cells[target.range.clamped(to: cells.indices)]
         let holds = target.layer.map { layer in cells.contains { $0.layer(layer) != nil } } ?? cells.contains { $0.categoryID != nil }
         return holds ? target : nil
+    }
+
+    /// The stretches timers ran of any of `categoryIDs` in blocks of `range`, earliest first.
+    public func sessions(of categoryIDs: [String], in range: Range<Int>, calendar: Calendar = .current) -> [TimerSession] {
+        guard let day else { return [] }
+        return sessions
+            .filter { categoryIDs.contains($0.categoryID) }
+            .filter { $0.blocks(on: day, schedule: status.schedule, calendar: calendar).overlaps(range) }
+            .sorted { $0.start < $1.start }
     }
 
     /// Whether any block in `range` is logged.

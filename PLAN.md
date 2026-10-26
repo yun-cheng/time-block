@@ -280,11 +280,15 @@ Category      id, name, track(.activity|.body), group? (activity only; sets the 
               editedCategories/editedGroups over the built-ins, removedCategories ids, templates and sleepShift; a category
               saves its group by id)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, schedule (the day's own; nil in days saved before it
-              was kept, which fall back to the settings), logs, isPlanned (templates laid out): one JSON file per day
+              was kept, which fall back to the settings), logs, isPlanned (templates laid out), sessions (timer
+              stretches to the second): one JSON file per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
               logs of a track can overlap, the shortest stretch on top (see 3.2); at most one log per
               block per category; painting replaces every layer, joins runs and splits the ones it covers)
+LiveTimer     id, categoryID, countdown (seconds, nil counts up), startedAt; saved as a list beside the settings
+              (TimerStore)
+TimerSession  categoryID, start, end (Dates); logs every block of the day it touches
 Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
 SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays, leads (bed | wake),

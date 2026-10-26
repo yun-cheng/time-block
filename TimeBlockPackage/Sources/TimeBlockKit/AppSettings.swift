@@ -216,15 +216,22 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(windDownMinutes, forKey: .windDownMinutes)
     }
 
-    /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`).
-    public func snapshot(at date: Date, log: DayLog, track: Track? = nil, calendar: Calendar = .current) -> DaySnapshot {
+    /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`), with what `timers` have
+    /// run so far logged on it.
+    public func snapshot(
+        at date: Date, log: DayLog, track: Track? = nil, timers: [LiveTimer] = [], calendar: Calendar = .current
+    ) -> DaySnapshot {
         let schedule = schedule(for: date, calendar: calendar)
+        var log = log
+        for session in timers.map({ $0.session(at: date) }) {
+            log.record(session, schedule: schedule, calendar: calendar)
+        }
         return DaySnapshot(
             status: DayStatus(
                 schedule: schedule, nowMinute: schedule.timelineMinute(for: date, calendar: calendar),
                 windDownBlocks: windDownBlocks),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
-            track: track ?? self.track, grid: grid, day: log.day)
+            track: track ?? self.track, grid: grid, day: log.day, sessions: log.sessions)
     }
 
     /// The schedule of a day other than today. A past day keeps the one kept with its logs, or else takes what the
@@ -242,7 +249,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
                 ? DayStatus(schedule: schedule, endedAfter: log.loggedEnd(for: schedule), windDownBlocks: windDownBlocks)
                 : DayStatus(aheadWith: schedule, windDownBlocks: windDownBlocks),
             logs: log.logs(for: schedule), categories: categories, favorites: favorites,
-            track: track ?? self.track, grid: grid, day: log.day)
+            track: track ?? self.track, grid: grid, day: log.day, sessions: log.sessions)
     }
 }
 
@@ -324,11 +331,7 @@ public struct GridMarks: Codable, Hashable, Sendable {
 public enum SettingsStore {
     private static let key = "settings"
 
-    /// In the App Group when the build has one; otherwise in the process's own container, so an unsigned app still
-    /// works and its widget shows the standard schedule.
-    private static var defaults: UserDefaults {
-        UserDefaults(suiteName: AppGroup.identifier ?? AppGroup.unsignedSuite) ?? .standard
-    }
+    private static var defaults: UserDefaults { AppGroup.defaults }
 
     public static func load() -> AppSettings {
         var data = defaults.data(forKey: key)

@@ -13,13 +13,19 @@ public struct DayLog: Codable, Hashable, Sendable {
     public private(set) var logs: [BlockLog]
     /// Whether the day's templates have been laid out on it (see `plan`).
     public private(set) var isPlanned: Bool
+    /// The stretches timers ran, to the second, in the order they ended (see `record`).
+    public private(set) var sessions: [TimerSession]
 
-    public init(day: String, wakeMinute: Int, schedule: Schedule? = nil, logs: [BlockLog] = [], isPlanned: Bool = false) {
+    public init(
+        day: String, wakeMinute: Int, schedule: Schedule? = nil, logs: [BlockLog] = [], isPlanned: Bool = false,
+        sessions: [TimerSession] = []
+    ) {
         self.day = day
         self.wakeMinute = wakeMinute
         self.schedule = schedule
         self.logs = logs
         self.isPlanned = isPlanned
+        self.sessions = sessions
     }
 
     public init(from decoder: Decoder) throws {
@@ -30,6 +36,7 @@ public struct DayLog: Codable, Hashable, Sendable {
         logs = try container.decode([BlockLog].self, forKey: .logs)
         // Days saved before templates were never planned.
         isPlanned = try container.decodeIfPresent(Bool.self, forKey: .isPlanned) ?? false
+        sessions = try container.decodeIfPresent([TimerSession].self, forKey: .sessions) ?? []
     }
 
     /// The day of the week, as a `Calendar` weekday (1 is Sunday).
@@ -91,6 +98,34 @@ public struct DayLog: Codable, Hashable, Sendable {
             logs.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID))
         }
         self.logs = Self.joined(logs)
+    }
+
+    /// Adds `categoryID` to the blocks of `range` that don't hold it yet, alongside what they hold. Blocks holding it
+    /// already keep it as it was, note and all.
+    public mutating func add(_ categoryID: String, in range: Range<Int>, schedule: Schedule) {
+        guard !range.isEmpty else { return }
+        rebase(to: schedule)
+        let held = Set(logs.filter { $0.categoryID == categoryID }.flatMap(\.range))
+        var logs = logs
+        var start: Int?
+        for block in range.lowerBound...range.upperBound {
+            let isFree = block < range.upperBound && !held.contains(block)
+            if isFree, start == nil { start = block }
+            if !isFree, let from = start {
+                logs.append(BlockLog(startIndex: from, length: block - from, categoryID: categoryID))
+                start = nil
+            }
+        }
+        self.logs = Self.joined(logs)
+    }
+
+    /// Logs a stretch a timer ran: its activity is added to every block of the day it ran in, any part of it, and its
+    /// exact times are kept, to show over those blocks.
+    public mutating func record(_ session: TimerSession, schedule: Schedule, calendar: Calendar = .current) {
+        let range = session.blocks(on: day, schedule: schedule, calendar: calendar)
+        guard !range.isEmpty else { return }
+        add(session.categoryID, in: range, schedule: schedule)
+        sessions.append(session)
     }
 
     /// Writes `note` on the logged blocks of `range` in `track`, or takes their note off with nil or blank.

@@ -20,4 +20,10 @@ public enum AppGroup {
         return unsignedSuite
         #endif
     }()
+
+    /// Where settings and timers are kept: in the App Group when the build has one, otherwise in the process's own
+    /// container, so an unsigned app still works and its widget shows the standard schedule.
+    static var defaults: UserDefaults {
+        UserDefaults(suiteName: identifier ?? unsignedSuite) ?? .standard
+    }
 }

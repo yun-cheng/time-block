@@ -52,17 +52,20 @@ struct DayProvider: AppIntentTimelineProvider {
         let settings = SettingsStore.load()
         let day = settings.dayID(for: .now)
         let log = LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
-        return DayEntry(date: .now, snapshot: settings.snapshot(at: .now, log: log, track: track))
+        return DayEntry(date: .now, snapshot: settings.snapshot(at: .now, log: log, track: track, timers: TimerStore.load()))
     }
 
     func timeline(for configuration: ViewIntent, in context: Context) async -> Timeline<DayEntry> {
         let settings = SettingsStore.load()
+        // Timers going are drawn as running on, until the app says they've stopped.
+        let timers = TimerStore.load()
         var logs: [String: DayLog] = [:]
         let entries = BlockClock.boundaries(from: .now, count: Self.entryCount).map { date in
             let day = settings.dayID(for: date)
             let log = logs[day] ?? LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
             logs[day] = log
-            return DayEntry(date: date, snapshot: settings.snapshot(at: date, log: log, track: configuration.view.track))
+            return DayEntry(
+                date: date, snapshot: settings.snapshot(at: date, log: log, track: configuration.view.track, timers: timers))
         }
         return Timeline(entries: entries, policy: .atEnd)
     }
