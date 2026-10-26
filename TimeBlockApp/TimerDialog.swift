@@ -154,22 +154,33 @@ struct TimerDialog: View {
         }
     }
 
-    /// The length's hours and minutes, typed or picked, and its blocks.
+    /// The length's hours and minutes, typed or picked, and its blocks; under them in a dialog too narrow for one row.
     private func lengthFields(_ minutes: Int) -> some View {
+        let blocks = Text("\(CountdownLength.blocks(minutes)) blocks")
+            .font(.system(size: 11))
+            .foregroundStyle(theme.secondaryText)
+            .fixedSize()
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                lengthPair
+                blocks.padding(.leading, 4)
+            }
+            VStack(spacing: 6) {
+                lengthPair
+                blocks
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var lengthPair: some View {
         HStack(spacing: 10) {
-            Spacer()
             LengthField(
                 title: "Hours", unit: "h", value: Binding { length / 60 } set: { setLength($0 * 60 + length % 60) },
                 range: 0...(CountdownLength.longest / 60), values: Array(0...(CountdownLength.longest / 60)), theme: theme)
             LengthField(
                 title: "Minutes", unit: "min", value: Binding { length % 60 } set: { setLength(length / 60 * 60 + $0) },
                 range: 0...59, values: Array(stride(from: 0, to: 60, by: Schedule.blockMinutes)), theme: theme)
-            Text("\(CountdownLength.blocks(minutes)) blocks")
-                .font(.system(size: 11))
-                .foregroundStyle(theme.secondaryText)
-                .fixedSize()
-                .padding(.leading, 4)
-            Spacer()
         }
     }
 

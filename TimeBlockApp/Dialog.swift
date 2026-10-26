@@ -13,8 +13,8 @@ struct Dialog<Content: View>: View {
     @Binding var isOpen: Bool
     @ViewBuilder let content: Content
 
-    /// The least room left around it, to the window's edges.
-    private static var margin: CGFloat { 12 }
+    /// The least room left around it, to the window's edges: the day's own, so it lines up with the day's column.
+    private static var margin: CGFloat { 32 }
 
     var body: some View {
         ZStack {

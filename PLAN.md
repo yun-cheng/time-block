@@ -117,8 +117,9 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Nothing moves going between days** but what changed: another day's share logged is the counter's size, the header
   hangs from the top whatever stats a day has, and the date takes the room of the month's longest, so ‹ › stay put.
 - **The timer over the day:** Start Timer opens a dialog over the dimmed day; a click beside it closes it. It sits in
-  the middle of the window and fits in it, narrower in a narrow one and scrolling when the window is too short, and is
-  drawn a little lighter than the day, with a clear edge, to stand off it.
+  the middle of the window, as wide as the day's column, and scrolls when the window is too short; the countdown's block
+  count goes under its length when the two don't fit in a row. It's drawn a little lighter than the day, with a clear
+  edge, to stand off it.
 - **The window as wide as the day, the settings beside it:** the window keeps to the day's width (and the settings',
   when they show), so only its height can be changed; it follows the grid when its gaps change. The settings always sit
   to the right of the day, past the window's edge while they're hidden: showing them only widens the window over them,
