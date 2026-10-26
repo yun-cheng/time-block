@@ -97,9 +97,10 @@ nudge for unlogged time; see the milestones in PLAN.md.
   ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and
   activities. New ones start unstarred. Remove any activity you don't use: blocks already logged keep it, and
   Removed, at the end of the library, puts it back (still starred, if it was).
-- **Times** (wake up, bedtime, a shift's target, a routine's start): type one, step it with ↑↓ (5 minutes on the
-  minutes, an hour on the hours), or pick one from the ⌄ list, every 15 minutes. A typed time rounds to the nearest
-  5 minutes once you're done with it.
+- **Times and lengths** (wake up, bedtime, a shift's target, a routine's start and length): the hours and the minutes
+  are each a box, like a timer's length, that you type into or open a list from with the ⌄ at its end. Step one with
+  ↑↓ (an hour on the hours, 5 minutes on the minutes). Minutes typed between blocks round to the nearest 5 once you're
+  done with them.
 - **Keep on top:** click the pin in the window's title bar (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over
   your other windows, on every Space: the counter, the blocks at a smaller size and the timers, and you can still log
   in it and start a timer (the stopwatch at the end of the counter's line), its dialog drawn smaller to fit. Click the

@@ -202,12 +202,13 @@ struct TimerDialog: View {
 
     private var lengthPair: some View {
         HStack(spacing: 10) {
-            LengthField(
+            NumberPicker(
                 title: "Hours", unit: "h", value: Binding { length / 60 } set: { setLength($0 * 60 + length % 60) },
-                range: 0...(CountdownLength.longest / 60), values: Array(0...(CountdownLength.longest / 60)), theme: theme)
-            LengthField(
+                range: 0...(CountdownLength.longest / 60), values: Array(0...(CountdownLength.longest / 60)),
+                style: .dialog(theme))
+            NumberPicker(
                 title: "Minutes", unit: "min", value: Binding { length % 60 } set: { setLength(length / 60 * 60 + $0) },
-                range: 0...59, values: Array(stride(from: 0, to: 60, by: Schedule.blockMinutes)), theme: theme)
+                range: 0...59, values: Array(stride(from: 0, to: 60, by: Schedule.blockMinutes)), style: .dialog(theme))
         }
     }
 
@@ -286,168 +287,5 @@ struct TimerDialog: View {
     private func setLength(_ minutes: Int) {
         length = min(max(minutes, 1), CountdownLength.longest)
         model.countdownMinutes = length
-    }
-}
-
-/// One part of a countdown's length, hours or minutes, typed or stepped with the arrow keys like the times in
-/// Settings, or picked from the dropdown beside it. It takes digits only, and a number goes in as it's typed; once
-/// you're done with it (Return, Tab or clicking away), one past `range` comes back into it. Clicking into it selects
-/// the number, so what's typed replaces it.
-private struct LengthField: View {
-    let title: String
-    let unit: String
-    @Binding var value: Int
-    /// What it can be typed as.
-    let range: ClosedRange<Int>
-    /// What the dropdown and the arrow keys pick from, in order.
-    let values: [Int]
-    let theme: MoodTheme
-    @State private var text = ""
-    @State private var isEditing = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            NumberField(
-                title: title, text: $text, isEditing: $isEditing, color: NSColor(theme.text), commit: commit, step: step)
-                .frame(width: 34)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(RoundedRectangle(cornerRadius: 7).fill(theme.text.opacity(0.07)))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7)
-                        .strokeBorder(theme.accent.opacity(isEditing ? 0.8 : 0), lineWidth: 1.5))
-                .onChange(of: text) {
-                    // Digits only, as many as the largest it can be has.
-                    let digits = String(text.filter(\.isASCII).filter(\.isNumber).prefix(String(range.upperBound).count))
-                    if digits != text {
-                        text = digits
-                        return
-                    }
-                    if isEditing, let typed = Int(text), range.contains(typed) { value = typed }
-                }
-            Text(unit)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(theme.secondaryText)
-            Menu {
-                ForEach(values, id: \.self) { option in
-                    Button("\(option) \(unit)") { value = option }
-                }
-            } label: {
-                Image(systemName: "chevron.down")
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Choose \(title.lowercased())")
-            .accessibilityLabel("Choose \(title.lowercased())")
-        }
-        // Whole, the room around the row going first: a row sharing its width out would cut the unit off.
-        .fixedSize()
-        .onAppear { text = "\(value)" }
-        .onChange(of: value) {
-            if !isEditing { text = "\(value)" }
-        }
-    }
-
-    /// Takes the typed number, kept in range, or puts back the one held.
-    private func commit() {
-        if let typed = Int(text) { value = min(max(typed, range.lowerBound), range.upperBound) }
-        text = "\(value)"
-    }
-
-    /// Goes to the next of the values up or down, from 21 to 25 or 20.
-    private func step(_ direction: Int) {
-        commit()
-        let next = direction > 0 ? values.first { $0 > value } : values.last { $0 < value }
-        if let next { value = next }
-        text = "\(value)"
-    }
-}
-
-/// A borderless number field that selects what it holds when clicked into, which SwiftUI's text field can't: the
-/// click puts the caret in after anything SwiftUI could do. ↑ and ↓ step it.
-private struct NumberField: NSViewRepresentable {
-    let title: String
-    @Binding var text: String
-    @Binding var isEditing: Bool
-    let color: NSColor
-    let commit: () -> Void
-    let step: (Int) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeNSView(context: Context) -> Field {
-        let field = Field()
-        field.isBordered = false
-        field.drawsBackground = false
-        field.focusRingType = .none
-        field.alignment = .right
-        field.font = .monospacedDigitSystemFont(ofSize: 22, weight: .semibold)
-        field.textColor = color
-        field.stringValue = text
-        field.delegate = context.coordinator
-        field.setAccessibilityLabel(title)
-        field.onReturn = { [unowned coordinator = context.coordinator] in coordinator.parent.commit() }
-        return field
-    }
-
-    func updateNSView(_ field: Field, context: Context) {
-        context.coordinator.parent = self
-        field.textColor = color
-        if field.stringValue != text { field.stringValue = text }
-    }
-
-    @MainActor
-    final class Coordinator: NSObject, NSTextFieldDelegate {
-        var parent: NumberField
-
-        init(_ parent: NumberField) {
-            self.parent = parent
-        }
-
-        func controlTextDidBeginEditing(_ notification: Notification) {
-            parent.isEditing = true
-        }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NSTextField else { return }
-            parent.text = field.stringValue
-        }
-
-        func controlTextDidEndEditing(_ notification: Notification) {
-            parent.isEditing = false
-            parent.commit()
-        }
-
-        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            switch selector {
-            case #selector(NSResponder.moveUp(_:)):
-                parent.step(1)
-            case #selector(NSResponder.moveDown(_:)):
-                parent.step(-1)
-            default:
-                return false
-            }
-            textView.selectAll(nil)
-            return true
-        }
-    }
-
-    final class Field: NSTextField {
-        var onReturn: (() -> Void)?
-
-        // The click starts editing and places the caret, and returns once the button is up; then select it all.
-        override func mouseDown(with event: NSEvent) {
-            super.mouseDown(with: event)
-            currentEditor()?.selectAll(nil)
-        }
-
-        // Return can press the default button before the field sees it; take the typed number first.
-        override func performKeyEquivalent(with event: NSEvent) -> Bool {
-            if [.carriageReturn, .enter].contains(event.specialKey), currentEditor() != nil { onReturn?() }
-            return super.performKeyEquivalent(with: event)
-        }
     }
 }

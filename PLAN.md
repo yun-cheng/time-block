@@ -376,7 +376,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Unlogged blocks | Stay grey, with location/activity‑based suggestions for one‑tap logging (§3.2a) |
 | Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
 | Platforms | Mac first; iPhone and Watch in M8 |
-| Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
+| Time inputs | Times and lengths alike as an hour box and a minutes box, as in the timer dialog, each typed into or opened as a list with the ⌄ inside it, like a combo box; ↑↓ step them (an hour, or 5 min). No stepper arrows, which were too small to hit. Typed minutes round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |

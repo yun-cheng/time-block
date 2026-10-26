@@ -129,12 +129,13 @@ private struct TemplateEditor: View {
             }
             TimeField("Starts", minute: $template.startMinute)
             LabeledContent("Length") {
-                HStack(spacing: 6) {
-                    Text(Self.duration(template.length)).monospacedDigit()
-                    // Up to 12 hours.
-                    Stepper("Length", value: $template.length, in: 1...(12 * Schedule.blocksPerHour))
-                        .labelsHidden()
-                }
+                // A block to 12 hours.
+                DurationPicker(
+                    title: "Length",
+                    minutes: Binding { template.length * Schedule.blockMinutes } set: {
+                        template.length = $0 / Schedule.blockMinutes
+                    },
+                    range: Schedule.blockMinutes...(12 * 60))
             }
             LabeledContent("Repeats") {
                 HStack(spacing: 3) {
@@ -207,15 +208,5 @@ private struct TemplateEditor: View {
         }
         .buttonStyle(.plain)
         .help(calendar.weekdaySymbols[weekday - 1])
-    }
-
-    /// "45m", "1h", "1h 30m".
-    static func duration(_ blocks: Int) -> String {
-        let minutes = blocks * Schedule.blockMinutes
-        return switch (minutes / 60, minutes % 60) {
-        case (0, let m): "\(m)m"
-        case (let h, 0): "\(h)h"
-        case (let h, let m): "\(h)h \(m)m"
-        }
     }
 }
