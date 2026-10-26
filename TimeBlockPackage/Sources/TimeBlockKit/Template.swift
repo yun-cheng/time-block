@@ -21,11 +21,13 @@ public struct Template: Identifiable, Codable, Hashable, Sendable {
     public var weekdays: Set<Int>
     /// Paused templates stay listed but pre-log nothing.
     public var isEnabled: Bool
+    /// Whether a notification says when it starts.
+    public var notifies: Bool
 
     public init(
         id: String = "template-\(UUID().uuidString)", categoryID: String, anchor: Anchor = .clock,
         afterCategoryID: String? = nil, startMinute: Int = 12 * 60, offset: Int = 0, length: Int,
-        weekdays: Set<Int> = Template.everyDay, isEnabled: Bool = true
+        weekdays: Set<Int> = Template.everyDay, isEnabled: Bool = true, notifies: Bool = false
     ) {
         self.id = id
         self.categoryID = categoryID
@@ -36,6 +38,7 @@ public struct Template: Identifiable, Codable, Hashable, Sendable {
         self.length = length
         self.weekdays = weekdays
         self.isEnabled = isEnabled
+        self.notifies = notifies
     }
 
     public static let everyDay: Set<Int> = Set(1...7)
@@ -119,7 +122,7 @@ public struct Template: Identifiable, Codable, Hashable, Sendable {
 }
 
 extension Template {
-    /// Templates saved before anchors start at a clock time.
+    /// Templates saved before anchors start at a clock time, and ones saved before notifications don't notify.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -131,6 +134,7 @@ extension Template {
         length = try container.decode(Int.self, forKey: .length)
         weekdays = try container.decode(Set<Int>.self, forKey: .weekdays)
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        notifies = try container.decodeIfPresent(Bool.self, forKey: .notifies) ?? false
     }
 }
 
