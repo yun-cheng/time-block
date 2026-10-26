@@ -26,10 +26,31 @@ struct MainWindow: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        layout
+            .onAppear {
+                model.undoManager = undoManager
+                updateUndoTitles()
+            }
+            .onChange(of: undoManager) {
+                model.undoManager = undoManager
+                updateUndoTitles()
+            }
+            // Edits, undos and redos post these; the model clearing its edits changes the day it's showing.
+            .onReceive(undoNotifications) { _ in updateUndoTitles() }
+            .onChange(of: model.dayLog) { updateUndoTitles() }
+            .onChange(of: model.otherLog) { updateUndoTitles() }
+            .onChange(of: model.lastChange) {
+                withAnimation(.snappy) { showsUndoToast = true }
+                hideUndoToast(after: .seconds(5))
+            }
+    }
+
+    #if os(macOS)
+    private var layout: some View {
         Group {
             if model.isPinned {
                 // No toolbar or settings: just the day, and the window fits it; the timer dialog fits in it.
-                day
+                day()
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { compactSize = $0 }
                     // Over the day, which the window keeps fitting.
@@ -74,27 +95,35 @@ struct MainWindow: View {
         .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
             isMenuOpen = false
         }
-        .onAppear {
-            model.undoManager = undoManager
-            updateUndoTitles()
+    }
+    #else
+    /// The whole day filling the screen, its blocks smaller where it's too narrow for them, with the settings beside
+    /// it where there's room (an iPad's) and in a sheet over it where there isn't (a phone's).
+    private var layout: some View {
+        GeometryReader { screen in
+            ScrollView {
+                day(blockSize: DayView.blockSize(of: model.snapshot, fitting: screen.size.width))
+                    .frame(minHeight: screen.size.height)
+            }
         }
-        .onChange(of: undoManager) {
-            model.undoManager = undoManager
-            updateUndoTitles()
+        // Under the status bar and the home indicator too.
+        .background(MoodBackground(theme: theme).ignoresSafeArea())
+        .overlay(alignment: .bottom) { undoToast }
+        .overlay {
+            if showsTimerStarter {
+                TimerDialog(model: model, theme: theme, isOpen: $showsTimerStarter)
+            }
         }
-        // Edits, undos and redos post these; the model clearing its edits changes the day it's showing.
-        .onReceive(undoNotifications) { _ in updateUndoTitles() }
-        .onChange(of: model.dayLog) { updateUndoTitles() }
-        .onChange(of: model.otherLog) { updateUndoTitles() }
-        .onChange(of: model.lastChange) {
-            withAnimation(.snappy) { showsUndoToast = true }
-            hideUndoToast(after: .seconds(5))
+        .inspector(isPresented: $model.showsSettings) {
+            SettingsView(model: model)
+                .inspectorColumnWidth(Self.settingsWidth)
         }
     }
+    #endif
 }
 
 extension MainWindow {
-    private var day: some View {
+    private func day(blockSize: CGFloat = DayView.blockSize) -> some View {
         // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
         TimelineView(.animation(minimumInterval: 1.0 / 15, paused: isMenuOpen)) { context in
             DayView(
@@ -106,34 +135,40 @@ extension MainWindow {
                     annotate: { model.setNote($1, for: $0, layer: $2) }, toggleFavorite: model.toggleFavorite,
                     resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }),
                 timers: model.timerControls, date: context.date,
-                isCompact: model.isPinned, controls: controls)
+                isCompact: model.isPinned, blockSize: blockSize, controls: controls)
         }
     }
 
+    /// The offer to undo the last change, at the bottom of the day.
+    @ViewBuilder private var undoToast: some View {
+        if showsUndoToast {
+            UndoToast(
+                undo: undoTitles.undo, redo: undoTitles.redo, wasUndo: model.lastChange?.kind == .undone,
+                perform: { $0 ? redo() : undo() }
+            )
+            .onHover { isHovered in
+                isUndoToastHovered = isHovered
+                if !isHovered { hideUndoToast(after: .seconds(2)) }
+            }
+            .padding(.bottom, 20)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private static let settingsWidth: CGFloat = 320
+
+    #if os(macOS)
     /// The day in its scroll view, with what shows over it.
     private var dayColumn: some View {
         GeometryReader { window in
             // The app's scroll bar drawn in SwiftUI, like the settings'.
             AppScrollView(lane: 10) {
-                day
+                day()
                     // Fill the window, edge to edge, but scroll when it is too short for the whole day.
                     .frame(minHeight: window.size.height)
             }
         }
-        .overlay(alignment: .bottom) {
-            if showsUndoToast {
-                UndoToast(
-                    undo: undoTitles.undo, redo: undoTitles.redo, wasUndo: model.lastChange?.kind == .undone,
-                    perform: { $0 ? redo() : undo() }
-                )
-                .onHover { isHovered in
-                    isUndoToastHovered = isHovered
-                    if !isHovered { hideUndoToast(after: .seconds(2)) }
-                }
-                .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
+        .overlay(alignment: .bottom) { undoToast }
         .overlay {
             if showsTimerStarter {
                 TimerDialog(model: model, theme: theme, isOpen: $showsTimerStarter)
@@ -145,13 +180,12 @@ extension MainWindow {
     /// The whole day's width, which fills the window.
     private var dayWidth: CGFloat { DayView.width(of: model.snapshot) }
 
-    private static let settingsWidth: CGFloat = 320
-
     /// The window's width: the day's, and the settings' beside it when there's room for them, or once it's widening
     /// or narrowing, when they show. It changes only with that, so the window's resized only in the animation.
     private var windowWidth: CGFloat {
         dayWidth + ((isResizing ? model.showsSettings : hasSettingsRoom) ? Self.settingsWidth : 0)
     }
+    #endif
 
     /// The window's buttons, each where it belongs in the day.
     private var controls: DayControls {
@@ -212,6 +246,7 @@ extension MainWindow {
         .disabled(undoTitles.redo == nil)
     }
 
+    #if os(macOS)
     /// Keeps the window over other apps', compact, or brings the whole day back.
     private var pinButton: some View {
         Button {
@@ -221,6 +256,7 @@ extension MainWindow {
         }
         .help(model.isPinned ? "Show the whole day, behind other windows again" : "Keep a compact day on top of other windows")
     }
+    #endif
 
     private var theme: MoodTheme {
         MoodTheme(mood: model.snapshot.mood, colorScheme: colorScheme)
@@ -267,6 +303,7 @@ struct DayCommands: Commands {
     }
 }
 
+#if os(macOS)
 /// Window ▸ Keep on Top (⌥⌘P).
 struct PinCommands: Commands {
     @Bindable var model: AppModel
@@ -393,6 +430,8 @@ private struct WindowPin: NSViewRepresentable {
         }
     }
 }
+
+#endif
 
 /// Switches between views of the day: Activity, Body, …
 struct TrackPicker: View {

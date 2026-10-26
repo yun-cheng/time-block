@@ -385,7 +385,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
-| M8 | **iPhone + Apple Watch** | CloudKit sync, watch app, complications, Smart Stack, location and motion data | |
+| M8 | **iPhone + Apple Watch** | CloudKit sync, watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget build for iPhone and iPad; sync, the Watch, location and motion left |
 
 ---
 
@@ -396,7 +396,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Sleep shift | Wake time shifts with bedtime (sleep length stays the same) |
 | Unlogged blocks | Stay grey, with location/activity‑based suggestions for one‑tap logging (§3.2a) |
 | Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
-| Platforms | Mac first; iPhone and Watch in M8 |
+| Platforms | Mac first; the same app and widget targets build for iPhone and iPad, the day filling the screen; sync and the Watch in M8 |
 | Time inputs | Times and lengths alike as an hour box and a minutes box, as in the timer dialog, each typed into or opened as a list with the ⌄ inside it, like a combo box; ↑↓ step them (an hour, or 5 min). No stepper arrows, which were too small to hit. Typed minutes round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |

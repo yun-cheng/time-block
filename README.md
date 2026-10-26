@@ -42,6 +42,8 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
 corner, or ⌘,), menu bar extra, notifications, and a WidgetKit widget in three sizes. Logs are saved one file per day.
+The app and widget build for iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow, with
+the settings beside it on an iPad and in a sheet on a phone.
 Next up is a nudge for unlogged time; see the milestones in PLAN.md.
 
 ### Logging
@@ -124,7 +126,7 @@ TimeBlockPackage/          Swift package, shared by everything
   TimeBlockKit/            model and block math (pure Foundation, unit-tested)
   TimeBlockUI/             SwiftUI views: grid, ring, counter, mood themes, widget content
   TimeBlockPrototype/      design playground with a time slider; also renders PNGs
-TimeBlock.xcodeproj        Mac app + widget extension, depends on the package
+TimeBlock.xcodeproj        app + widget extension for Mac, iPhone and iPad, depends on the package
 TimeBlockApp/              app target sources
 TimeBlockWidget/           widget extension sources
 Config/                    entitlements, widget Info.plist
@@ -132,7 +134,8 @@ Config/                    entitlements, widget Info.plist
 
 ## Build and run
 
-Requires Xcode 26 and macOS 14 or later.
+Requires Xcode 26 and macOS 14 or later. For iPhone and iPad, iOS 17 or later, with the iOS platform installed in
+Xcode ▸ Settings ▸ Components; pick an iPhone or iPad as the run destination in Xcode.
 
 Run the tests:
 
@@ -165,7 +168,8 @@ The app and its widget share settings and logs through the App Group `<team ID>.
 Developer team; a free Apple ID works. Both targets sign automatically with team `PS6X9X4H2H`: to build with yours,
 add your Apple ID in Xcode ▸ Settings ▸ Accounts and pick its team for both targets under Signing & Capabilities. The
 group's name follows the team, so nothing else changes. A build with no team still runs, but its widget shows the
-default 07:00–23:00 schedule and no logs.
+default 07:00–23:00 schedule and no logs. On iPhone and iPad the group is `group.dev.timeblock`, the way iOS names
+groups.
 
 macOS runs the widget from one copy of the app, not always the newest: if it shows stale data, delete old builds
 (such as Xcode's DerivedData) and reopen the app. It also keeps the widget running after a rebuild, so a new setting

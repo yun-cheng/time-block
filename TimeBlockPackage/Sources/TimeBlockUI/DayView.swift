@@ -156,6 +156,8 @@ public struct DayView: View {
     var date: Date
     /// Just the counter, the blocks and the timers, small, for a window kept over other apps.
     var isCompact: Bool
+    /// Side of the whole day's blocks, smaller on a screen too narrow for them.
+    var blockSize: CGFloat
     var controls: DayControls
     @Environment(\.colorScheme) private var colorScheme
     /// The grid takes the keyboard when blocks are selected, for Delete, and Return to open the activities.
@@ -165,7 +167,8 @@ public struct DayView: View {
 
     public init(
         snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil, timers: TimerControls? = nil,
-        date: Date = .now, isCompact: Bool = false, controls: DayControls = DayControls()
+        date: Date = .now, isCompact: Bool = false, blockSize: CGFloat = DayView.blockSize,
+        controls: DayControls = DayControls()
     ) {
         self.snapshot = snapshot
         self.time = time
@@ -173,6 +176,7 @@ public struct DayView: View {
         self.timers = timers
         self.date = date
         self.isCompact = isCompact
+        self.blockSize = blockSize
         self.controls = controls
     }
 
@@ -233,12 +237,19 @@ public struct DayView: View {
     }
 
     /// The whole day's blocks, and the room around its column.
-    private static let blockSize: CGFloat = 20
+    public static let blockSize: CGFloat = 20
     private static let padding: CGFloat = 22
 
     /// How wide the whole day of `snapshot` is: its column, as wide as the blocks, and the room around it.
-    public static func width(of snapshot: DaySnapshot) -> CGFloat {
+    public static func width(of snapshot: DaySnapshot, blockSize: CGFloat = blockSize) -> CGFloat {
         BlockGridView.contentWidth(of: snapshot, blockSize: blockSize) + 2 * padding
+    }
+
+    /// The biggest blocks, up to the usual size, that fit the whole day of `snapshot` in `width`.
+    public static func blockSize(of snapshot: DaySnapshot, fitting width: CGFloat) -> CGFloat {
+        let labels = BlockGridView.contentWidth(of: snapshot, blockSize: 0)
+        let perPoint = BlockGridView.contentWidth(of: snapshot, blockSize: 1) - labels
+        return min(blockSize, max(8, (width - 2 * padding - labels) / perPoint))
     }
 
     /// The compact day's blocks, and the room around them.
@@ -252,7 +263,6 @@ public struct DayView: View {
 
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
-        let blockSize = Self.blockSize
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 topLine(theme: theme)

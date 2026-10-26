@@ -6,11 +6,14 @@ import TimeBlockUI
 struct TimeBlockApp: App {
     @State private var model = AppModel()
 
+    #if os(macOS)
     init() {
         ClickAway.install()
     }
+    #endif
 
     var body: some Scene {
+        #if os(macOS)
         Window("Time Block", id: "main") {
             MainWindow(model: model)
         }
@@ -33,5 +36,15 @@ struct TimeBlockApp: App {
             MenuBarLabel(snapshot: model.snapshot)
         }
         .menuBarExtraStyle(.window)
+        #else
+        WindowGroup {
+            MainWindow(model: model)
+        }
+        // A keyboard's shortcuts, in the iPad's menu.
+        .commands {
+            TrackCommands(model: model)
+            DayCommands(model: model)
+        }
+        #endif
     }
 }

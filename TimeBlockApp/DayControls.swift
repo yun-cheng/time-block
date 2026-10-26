@@ -87,6 +87,8 @@ struct DayPicker: View {
                     .datePickerStyle(.graphical)
                     .labelsHidden()
                     .padding()
+                    // Small enough for a popover on a phone too, rather than a sheet.
+                    .presentationCompactAdaptation(.popover)
             }
             Button {
                 model.showDay(1)

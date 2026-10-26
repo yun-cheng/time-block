@@ -290,6 +290,7 @@ private struct ShiftDayPicker: View {
                         .datePickerStyle(.graphical)
                         .labelsHidden()
                         .padding()
+                        .presentationCompactAdaptation(.popover)
                 }
                 Button {
                     step(1)
