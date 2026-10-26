@@ -47,8 +47,8 @@ public struct CategoryGroup: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-/// One way of looking at the day. Each block can hold one log per track, so 10:00 can be Work in
-/// Activity and Standing in Body at the same time. The app shows one track at a time.
+/// One way of looking at the day. Each track is logged apart, so 10:00 can be Work in Activity and Standing
+/// in Body at the same time. The app shows one track at a time.
 public enum Track: String, CaseIterable, Codable, Hashable, Sendable {
     /// What you were doing.
     case activity
@@ -151,7 +151,8 @@ public struct BlockCategory: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
-/// A run of blocks given to one category.
+/// A run of blocks given to one category. Logs of one track can overlap: a block can hold several activities at
+/// once (see `DayGrid.cells` for which is on top).
 public struct BlockLog: Identifiable, Codable, Hashable, Sendable {
     public enum Source: String, Codable, Hashable, Sendable {
         case manual
@@ -186,38 +187,92 @@ public struct BlockLog: Identifiable, Codable, Hashable, Sendable {
 public struct BlockCell: Hashable, Sendable {
     public enum Phase: Hashable, Sendable { case past, current, future }
 
+    /// One of the activities a block holds at once.
+    public struct Layer: Hashable, Sendable {
+        public let categoryID: String
+        public let source: BlockLog.Source
+        public let note: String?
+
+        public init(categoryID: String, source: BlockLog.Source = .manual, note: String? = nil) {
+            self.categoryID = categoryID
+            self.source = source
+            self.note = note
+        }
+    }
+
     public let index: Int
     public let phase: Phase
     public let isOvertime: Bool
     /// Whether it's one of the blocks before bedtime set aside to wind down.
     public let isWindDown: Bool
-    public let categoryID: String?
-    public let source: BlockLog.Source?
-    public let note: String?
+    /// What it holds, bottom first (see `DayGrid.cells` for the order). Empty when it's unlogged.
+    public let layers: [Layer]
 
-    /// The same block logged by hand as `categoryID`, or emptied with nil: what an edit would make it.
+    public init(index: Int, phase: Phase, isOvertime: Bool, isWindDown: Bool, layers: [Layer] = []) {
+        self.index = index
+        self.phase = phase
+        self.isOvertime = isOvertime
+        self.isWindDown = isWindDown
+        self.layers = layers
+    }
+
+    /// The activity on top.
+    public var categoryID: String? { layers.last?.categoryID }
+    public var source: BlockLog.Source? { layers.last?.source }
+    public var note: String? { layers.last?.note }
+
+    /// Every activity it holds, bottom first.
+    public var categoryIDs: [String] { layers.map(\.categoryID) }
+
+    /// The same block holding `layers`: what an edit would make it.
+    public func holding(_ layers: [Layer]) -> BlockCell {
+        BlockCell(index: index, phase: phase, isOvertime: isOvertime, isWindDown: isWindDown, layers: layers)
+    }
+
+    /// The same block logged by hand as `categoryID` alone, or emptied with nil.
     public func logged(as categoryID: String?) -> BlockCell {
-        BlockCell(
-            index: index, phase: phase, isOvertime: isOvertime, isWindDown: isWindDown, categoryID: categoryID,
-            source: categoryID == nil ? nil : .manual, note: nil)
+        holding(categoryID.map { [Layer(categoryID: $0)] } ?? [])
     }
 }
 
 public enum DayGrid {
-    /// One cell per block from wake time to bedtime, plus any overtime already started. Later logs win.
+    /// One cell per block from wake time to bedtime, plus any overtime already started.
+    ///
+    /// Logs that overlap are layers, and what breaks into something else goes on top: in each block, the activity
+    /// whose unbroken stretch is shortest, so a trip to the toilet sits on a morning of work, a podcast on a commute
+    /// and dinner on an evening of TV. Of stretches as long, the one starting later broke in; of those, the one logged
+    /// last is on top. A stretch is measured whole, so two activities keep one order in every block they share.
     public static func cells(status: DayStatus, logs: [BlockLog]) -> [BlockCell] {
-        var logAt: [Int: BlockLog] = [:]
-        for log in logs {
-            for index in log.range { logAt[index] = log }
+        var layersAt: [Int: [(layer: BlockCell.Layer, order: Int)]] = [:]
+        var held: [String: Set<Int>] = [:]
+        for (order, log) in logs.enumerated() {
+            let layer = BlockCell.Layer(categoryID: log.categoryID, source: log.source, note: log.note)
+            for index in log.range { layersAt[index, default: []].append((layer, order)) }
+            held[log.categoryID, default: []].formUnion(log.range)
+        }
+        /// The unbroken stretch of `categoryID` that block `index` is in.
+        func stretch(of categoryID: String, at index: Int) -> Range<Int> {
+            let blocks = held[categoryID] ?? []
+            var start = index
+            var end = index + 1
+            while blocks.contains(start - 1) { start -= 1 }
+            while blocks.contains(end) { end += 1 }
+            return start..<end
         }
         let current = status.currentIndex ?? (status.isOver ? status.visibleBlocks : -1)
         let windDown = status.windDownRange
         return (0..<status.visibleBlocks).map { index in
             let phase: BlockCell.Phase = index < current ? .past : index == current ? .current : .future
-            let log = logAt[index]
+            let layers = (layersAt[index] ?? []).sorted { lower, upper in
+                let a = stretch(of: lower.layer.categoryID, at: index)
+                let b = stretch(of: upper.layer.categoryID, at: index)
+                if a.count != b.count { return a.count > b.count }
+                if a.lowerBound != b.lowerBound { return a.lowerBound < b.lowerBound }
+                return lower.order < upper.order
+            }
             return BlockCell(
                 index: index, phase: phase, isOvertime: index >= status.schedule.awakeBlocks,
-                isWindDown: windDown.contains(index), categoryID: log?.categoryID, source: log?.source, note: log?.note)
+                isWindDown: windDown.contains(index), layers: layers.map(\.layer))
         }
     }
 }

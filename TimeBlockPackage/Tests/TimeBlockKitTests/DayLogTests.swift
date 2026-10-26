@@ -13,8 +13,9 @@ struct DayLogTests {
         return log
     }
 
+    /// The logs in time order (they're kept in the order they're layered in).
     private func summary(_ log: DayLog) -> [String] {
-        log.logs.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound)" + ($0.note.map { " \"\($0)\"" } ?? "") }
+        log.logs.sorted { $0.startIndex < $1.startIndex }.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound)" + ($0.note.map { " \"\($0)\"" } ?? "") }
     }
 
     @Test func paintingNextToARunJoinsIt() {

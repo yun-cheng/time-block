@@ -30,6 +30,9 @@ public enum SampleDay {
         Entry(from: "19:00", to: "19:45", category: "dinner", source: .template),
         Entry(from: "19:45", to: "21:30", category: "social", source: .manual),
         Entry(from: "21:30", to: "02:59", category: "doomscroll", source: .manual),
+        // Done at the same time as the above, so layered with it.
+        Entry(from: "08:00", to: "08:30", category: "podcast", source: .manual),
+        Entry(from: "12:15", to: "12:45", category: "social", source: .template, note: "Lunch with Ana"),
 
         // Body track. 15:15–15:30 is left unlogged.
         Entry(from: "07:00", to: "07:30", category: "exercising", source: .manual),

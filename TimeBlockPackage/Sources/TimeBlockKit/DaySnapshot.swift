@@ -52,30 +52,36 @@ public struct DaySnapshot: Sendable {
         currentCell?.categoryID.flatMap { categories[$0] }
     }
 
-    /// Past waking blocks summed up by group (or by category in tracks without groups), most first.
+    /// Past waking blocks summed up by group (or by category in tracks without groups), most first. A block holding
+    /// several activities counts in full for each of their groups, so the totals can add up to more than the day.
     /// Blocks past bedtime are counted apart, in `pastOvertimeCount`.
     public var legendTotals: [LegendItem] {
         var counts: [String: (name: String, color: RGB, blocks: Int)] = [:]
         for cell in cells where cell.phase == .past && !cell.isOvertime {
-            guard let category = cell.categoryID.flatMap({ categories[$0] }) else { continue }
-            let key = category.group?.id ?? category.id
-            let name = category.group?.name ?? category.name
-            let color = category.group?.color ?? category.color
-            counts[key, default: (name, color, 0)].blocks += 1
+            var counted = Set<String>()
+            for category in cell.categoryIDs.compactMap({ categories[$0] }) {
+                let key = category.group?.id ?? category.id
+                guard counted.insert(key).inserted else { continue }
+                let name = category.group?.name ?? category.name
+                let color = category.group?.color ?? category.color
+                counts[key, default: (name, color, 0)].blocks += 1
+            }
         }
         return counts
             .map { LegendItem(id: $0.key, name: $0.value.name, color: $0.value.color, blocks: $0.value.blocks) }
             .sorted { $0.blocks > $1.blocks }
     }
 
-    /// The unbroken run of blocks around `index` holding the same category and note. Unlogged blocks run together
+    /// The unbroken run of blocks around `index` holding the same activities and notes. Unlogged blocks run together
     /// too, but a gap that has already happened stays apart from empty time still to come, from winding down and from
     /// overtime.
     public func run(around index: Int) -> Range<Int> {
         guard cells.indices.contains(index) else { return index..<(index + 1) }
         let cell = cells[index]
         func sameKind(_ other: BlockCell) -> Bool {
-            guard other.categoryID == cell.categoryID, other.note == cell.note else { return false }
+            guard other.categoryIDs == cell.categoryIDs, other.layers.map(\.note) == cell.layers.map(\.note) else {
+                return false
+            }
             return cell.categoryID != nil
                 || ((other.phase == .future) == (cell.phase == .future) && other.isOvertime == cell.isOvertime
                     && other.isWindDown == cell.isWindDown)
@@ -120,12 +126,12 @@ public struct DaySnapshot: Sendable {
         track == .body ? longestRun(of: "sitting") : nil
     }
 
-    /// The longest unbroken run of past blocks in one category, such as the longest stretch of sitting.
+    /// The longest unbroken run of past blocks holding one category, such as the longest stretch of sitting.
     public func longestRun(of categoryID: String) -> Int {
         var longest = 0
         var run = 0
         for cell in cells where cell.phase == .past {
-            run = cell.categoryID == categoryID ? run + 1 : 0
+            run = cell.categoryIDs.contains(categoryID) ? run + 1 : 0
             longest = max(longest, run)
         }
         return longest

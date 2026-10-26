@@ -8,8 +8,9 @@ struct TemplateTests {
     /// 12:00–12:30.
     let lunch = Template(id: "lunch", categoryID: "lunch", startMinute: 12 * 60, length: 6)
 
+    /// The logs in time order (they're kept in the order they're layered in).
     private func summary(_ log: DayLog) -> [String] {
-        log.logs.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound) \($0.source)" }
+        log.logs.sorted { $0.startIndex < $1.startIndex }.map { "\($0.categoryID) \($0.startIndex)..<\($0.range.upperBound) \($0.source)" }
     }
 
     /// 2026-10-26 is a Monday.

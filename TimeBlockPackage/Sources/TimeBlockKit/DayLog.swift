@@ -48,9 +48,9 @@ public struct DayLog: Codable, Hashable, Sendable {
         }
     }
 
-    /// Gives `range` to a category, or clears it with nil. Only logs in the category's track (or `track`,
-    /// when clearing) change: parts outside `range` are kept, and runs of one category join up. A run that
-    /// is given another category as a whole keeps its note.
+    /// Gives `range` to a category alone, in place of everything it held, or clears it with nil. Only logs in the
+    /// category's track (or `track`, when clearing) change: parts outside `range` are kept, and runs of one category
+    /// join up. A run that is given another category as a whole keeps its note.
     public mutating func set(
         _ range: Range<Int>, to categoryID: String?, in track: Track, schedule: Schedule,
         categories: [BlockCategory] = BlockCategory.defaults
@@ -63,6 +63,28 @@ public struct DayLog: Codable, Hashable, Sendable {
             let notes = Set(cut.map(\.note))
             let note = cut.allSatisfy({ range.contains($0.range) }) && notes.count == 1 ? notes.first ?? nil : nil
             logs.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID, note: note))
+        }
+        self.logs = Self.joined(logs)
+    }
+
+    /// Whether every block of `range` holds `categoryID`, alone or with others.
+    public func holds(_ categoryID: String, throughout range: Range<Int>, schedule: Schedule) -> Bool {
+        let held = Set(logs(for: schedule).filter { $0.categoryID == categoryID }.flatMap(\.range))
+        return !range.isEmpty && range.allSatisfy(held.contains)
+    }
+
+    /// Takes `categoryID` off `range` when every block of it holds it; otherwise adds it to what the blocks
+    /// hold, as one more activity at the same time. Nothing else they hold changes.
+    public mutating func toggle(
+        _ categoryID: String, in range: Range<Int>, schedule: Schedule,
+        categories: [BlockCategory] = BlockCategory.defaults
+    ) {
+        guard !range.isEmpty, let track = categories.first(where: { $0.id == categoryID })?.track else { return }
+        let isHeld = holds(categoryID, throughout: range, schedule: schedule)
+        rebase(to: schedule)
+        var (logs, _) = split(range, in: track, categories: categories) { $0.categoryID == categoryID }
+        if !isHeld {
+            logs.append(BlockLog(startIndex: range.lowerBound, length: range.count, categoryID: categoryID))
         }
         self.logs = Self.joined(logs)
     }
@@ -176,13 +198,16 @@ public struct DayLog: Codable, Hashable, Sendable {
         logs(for: schedule).map(\.range.upperBound).max() ?? 0
     }
 
-    /// The logs with `track`'s blocks in `range` taken out, and the logs in `track` that overlapped it.
-    private func split(_ range: Range<Int>, in track: Track, categories: [BlockCategory]) -> (kept: [BlockLog], cut: [BlockLog]) {
+    /// The logs with `track`'s blocks in `range` taken out, and the logs in `track` that overlapped it. Only the logs
+    /// `isCut` picks are taken out; the rest are kept whole.
+    private func split(
+        _ range: Range<Int>, in track: Track, categories: [BlockCategory], where isCut: (BlockLog) -> Bool = { _ in true }
+    ) -> (kept: [BlockLog], cut: [BlockLog]) {
         let trackOf = Dictionary(categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
         var kept: [BlockLog] = []
         var cut: [BlockLog] = []
         for log in logs {
-            guard trackOf[log.categoryID] == track, log.range.overlaps(range) else {
+            guard trackOf[log.categoryID] == track, log.range.overlaps(range), isCut(log) else {
                 kept.append(log)
                 continue
             }
@@ -201,18 +226,23 @@ public struct DayLog: Codable, Hashable, Sendable {
         return (kept, cut)
     }
 
-    /// Sorted, with touching logs of the same category, source and note made one.
+    /// Touching logs of the same category, source and note made one. Their order is kept, since logs that overlap are
+    /// layered in it when all else is even (see `DayGrid.cells`): two that join take the later one's place, as the one logged last.
     private static func joined(_ logs: [BlockLog]) -> [BlockLog] {
         var joined: [BlockLog] = []
-        for log in logs.sorted(by: { $0.startIndex < $1.startIndex }) {
-            if let i = joined.lastIndex(where: {
-                $0.range.upperBound == log.startIndex && $0.categoryID == log.categoryID
-                    && $0.source == log.source && $0.note == log.note
+        for log in logs {
+            var log = log
+            while let i = joined.firstIndex(where: {
+                ($0.range.upperBound == log.startIndex || log.range.upperBound == $0.startIndex)
+                    && $0.categoryID == log.categoryID && $0.source == log.source && $0.note == log.note
             }) {
-                joined[i].length += log.length
-            } else {
-                joined.append(log)
+                let other = joined.remove(at: i)
+                log = BlockLog(
+                    id: other.startIndex < log.startIndex ? other.id : log.id,
+                    startIndex: min(other.startIndex, log.startIndex), length: other.length + log.length,
+                    categoryID: log.categoryID, note: log.note, source: log.source)
             }
+            joined.append(log)
         }
         return joined
     }
