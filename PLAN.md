@@ -252,6 +252,10 @@ time-logging coaches split a day, with plain names:
   minutes after an activity, picked from the same palette (a shower after exercise): after each time that day the
   activity is logged or pre‑logged, touching runs of it counting as one time, and not at all on a day without it.
   Templates that pre‑log the activity it follows are laid out first.
+- **Notify** (off to start, a switch in the template's editor, and a bell on its row when on): a notification as it
+  starts, each time, at the first of its blocks still pre‑logged (`Lunch`, "12:10–12:30, from your routine." when a
+  meeting took its first ten minutes), and none when you logged over all of it. Today's notifications are set again
+  whenever its logs or the settings change.
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
 - A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
   change counts even when the app opens after it), as `.template` logs in blocks still free in their track. Logging
@@ -273,6 +277,9 @@ Escalates the further past bedtime you are:
   to start). Those blocks are tinted amber on the grid and ring, empty ones faintly, unlogged ones more; logged and
   planned blocks keep their activity's color. Hovering one empty says "Wind down", and it is outlined as its own
   stretch.
+- **Notifications** (Settings ▸ Notifications, both on to start): "Time to wind down" as it starts (none without a
+  wind-down), "It's bedtime", then "30 minutes past bedtime" and "2 hours past bedtime … You are borrowing from
+  tomorrow." as the day turns to dread and nightmare.
 - Widget gets the static version (widgets can't run continuous animations); the app/menu bar gets animated effects.
 - Tomorrow's grid can show the debt: "You start 30 blocks in the red."
 
@@ -338,8 +345,8 @@ blocks between days, searching activities and notes across days, and calendar ev
 ```swift
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
               (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups,
-              editedCategories/editedGroups over the built-ins, removedCategories ids, templates and sleepShift; a category
-              saves its group by id)
+              editedCategories/editedGroups over the built-ins, removedCategories ids, templates, sleepShift, and
+              notifiesWindDown and notifiesBedtime; a category saves its group by id)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, schedule (the day's own; nil in days saved before it
               was kept, which fall back to the settings), logs, isPlanned (templates laid out), sessions (timer
               stretches to the second): one JSON file per day
@@ -353,7 +360,7 @@ LiveTimer     id, categoryID, countdown (seconds, nil counts up), startedAt; sav
 TimerSession  categoryID, start, end (Dates); logs every block of the day it touches
 Template      id, categoryID, anchor (clock | wake | bed | after), startMinute (clock), offset (minutes after
               waking, before bed or after the activity), afterCategoryID, length (blocks), weekdays (Calendar
-              weekdays, 1 = Sunday), isEnabled
+              weekdays, 1 = Sunday), isEnabled, notifies
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
 SleepShift    from (Schedule), startDay (the first step's night), stepMinutes, everyDays, leads (bed | wake),
               isByFinishDay (the target is AppSettings.schedule)
@@ -372,7 +379,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
 | M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select‑then‑pick logging from a popup, notes, activity library with search and stars, own activities, saving done; several activities a block, with Normal and Add tools; timers that log live, counting up or down, in place of menu bar "Now" logging; the unlogged nudge left |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
-| M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
+| M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0, notifications done; "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |

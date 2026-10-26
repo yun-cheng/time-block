@@ -33,6 +33,15 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Section {
+                Toggle("Wind down", isOn: $model.settings.notifiesWindDown)
+                    .disabled(model.settings.windDownMinutes == 0)
+                    .help("When winding down starts")
+                Toggle("Bedtime", isOn: $model.settings.notifiesBedtime)
+                    .help("At bedtime, then 30 minutes and 2 hours past it. Each routine has its own Notify.")
+            } header: {
+                Text("Notifications")
+            }
             Section("Grid") {
                 Picker("Minute gaps", selection: $model.settings.grid.gapMinutes) {
                     ForEach([10, 15, 20, 30], id: \.self) { minutes in

@@ -3,7 +3,7 @@ import TimeBlockKit
 import TimeBlockUI
 
 /// The routine: time pre-logged on the days it comes back on, such as meals and coffee. Each template picks an
-/// activity, a start, a length and its days, and can be paused or removed.
+/// activity, a start, a length and its days, can notify when it starts, and can be paused or removed.
 struct TemplateSettings: View {
     @Bindable var model: AppModel
     /// The id of the template whose editor is open.
@@ -34,7 +34,15 @@ struct TemplateSettings: View {
                             .foregroundStyle(category.map { Color(rgb: $0.color) } ?? .secondary)
                             .frame(width: 20)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(category?.name ?? "Unknown activity")
+                            HStack(spacing: 4) {
+                                Text(category?.name ?? "Unknown activity")
+                                if template.notifies {
+                                    Image(systemName: "bell.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .help("Notifies when it starts")
+                                }
+                            }
                             Text(Self.subtitle(
                                 of: template, categories: categories, today: model.dayLog, schedule: model.schedule))
                                 .font(.caption)
@@ -136,7 +144,7 @@ struct TemplateSettings: View {
     }
 }
 
-/// Edits a template's activity, start, length and days.
+/// Edits a template's activity, start, length, days and whether it notifies.
 private struct TemplateEditor: View {
     @Binding var template: Template
     let activities: [BlockCategory]
@@ -187,6 +195,13 @@ private struct TemplateEditor: View {
                         dayButton(weekday)
                     }
                 }
+            }
+            LabeledContent("Notify") {
+                Toggle("Notify", isOn: $template.notifies)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .help("Notify when it starts, each time, where it's still pre-logged")
             }
             HStack {
                 Button("Remove", role: .destructive, action: remove)

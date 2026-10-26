@@ -23,12 +23,15 @@ final class AppModel {
             if settings.templates != oldValue.templates || scheduleChanged {
                 replan()
             }
+            planReminders()
             WidgetCenter.shared.reloadAllTimelines()
         }
     }
 
     /// Today's logs, in every track.
-    private(set) var dayLog: DayLog
+    private(set) var dayLog: DayLog {
+        didSet { if dayLog != oldValue { planReminders() } }
+    }
 
     /// The day the window shows when it isn't today: a past day, or one still to come.
     private(set) var otherLog: DayLog?
@@ -99,6 +102,7 @@ final class AppModel {
         countdownDefault = length > 0 ? length : CountdownLength.standard
         planDayIfNeeded()
         keepTodaysSchedule()
+        planReminders()
         // The widget may have drawn the day before it could see what's saved, as on the first signed launch.
         WidgetCenter.shared.reloadAllTimelines()
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
@@ -333,6 +337,11 @@ final class AppModel {
         alarms.cancel(id)
     }
 
+    /// Sets the notifications today has coming, in place of the ones set before.
+    private func planReminders() {
+        alarms.plan(settings.reminders(for: dayLog, after: Date()))
+    }
+
     /// Logs a stretch a timer ran on each day it ran on, unless it was too short to mean it.
     private func record(_ session: TimerSession, as name: String) {
         guard session.duration >= TimerSession.shortest else { return }
@@ -494,8 +503,8 @@ final class AppModel {
     }
 }
 
-/// Says when a countdown gets to zero, with a notification and a sound, even while the app is in front. The timer
-/// keeps counting past it.
+/// Says when a countdown gets to zero, with a notification and a sound, even while the app is in front; the timer
+/// keeps counting past it. Says when the day's reminders come too.
 private final class Alarms: NSObject, UNUserNotificationCenterDelegate {
     override init() {
         super.init()
@@ -516,6 +525,37 @@ private final class Alarms: NSObject, UNUserNotificationCenterDelegate {
         Task {
             guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
             try? await center.add(request)
+        }
+    }
+
+    /// The reminders set last, and the setting of them, which each new set waits on so they don't mix.
+    private var reminders: [Reminder] = []
+    private var planning: Task<Void, Never>?
+
+    /// Sets `reminders` in place of those set before, asking leave to notify the first time there are any.
+    func plan(_ reminders: [Reminder]) {
+        guard reminders != self.reminders else { return }
+        self.reminders = reminders
+        let requests = reminders.map { reminder in
+            let content = UNMutableNotificationContent()
+            content.title = reminder.title
+            content.body = reminder.body
+            content.sound = .default
+            let parts = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second], from: reminder.date)
+            return UNNotificationRequest(
+                identifier: reminder.id, content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false))
+        }
+        let center = UNUserNotificationCenter.current()
+        planning = Task { [planning] in
+            await planning?.value
+            let old = await center.pendingNotificationRequests().map(\.identifier)
+                .filter { $0.hasPrefix(Reminder.idPrefix) }
+            center.removePendingNotificationRequests(withIdentifiers: old)
+            guard !requests.isEmpty,
+                  (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
+            for request in requests { try? await center.add(request) }
         }
     }
 

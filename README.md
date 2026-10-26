@@ -22,6 +22,9 @@ whole UI slowly turns into a horror show.
 - **Wind down:** in Settings, set how long before bedtime you need to get ready for sleep, in hours and minutes like a
   timer's length (none to 2 hours, 30 minutes to start). Those last blocks are tinted amber, and when they start the
   whole day turns warm.
+- **Notifications:** you're told when winding down starts, at bedtime, and again 30 minutes and 2 hours past it, as
+  the day turns to dread and then nightmare; turn either off under Notifications in Settings. Routines notify one by
+  one (see Routine), and a countdown at zero.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, amber is time to
   wind down, red is taken from sleep.
@@ -37,8 +40,8 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 ## Status
 
 Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
-corner, or ⌘,), menu bar extra, and a WidgetKit widget in three sizes. Logs are saved one file per day. Next up is a
-nudge for unlogged time; see the milestones in PLAN.md.
+corner, or ⌘,), menu bar extra, notifications, and a WidgetKit widget in three sizes. Logs are saved one file per day.
+Next up is a nudge for unlogged time; see the milestones in PLAN.md.
 
 ### Logging
 
@@ -96,7 +99,8 @@ nudge for unlogged time; see the milestones in PLAN.md.
   time that activity happens (a Shower 15m after each Exercise), whether you logged it or a routine pre‑logged it, and
   it moves when you log, move or clear that activity. Each of those days it's pre‑logged in whatever blocks are free:
   hollow until the time comes, then logged, unless you log over it. Change or pause one, and only the blocks still to
-  come move.
+  come move. Turn on Notify, and a bell beside it says it notifies you each time it starts, where it's still
+  pre‑logged.
 - **Settings:** browse the whole library by group, one open at a time, to star more. Edit any activity (name,
   group, and an icon from a searchable picker: `meal` finds the fork and knife) or group (name, color), built-in
   ones too (Reset puts them back, and a name left empty goes back by itself), and add your own groups and
