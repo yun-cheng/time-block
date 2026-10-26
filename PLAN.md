@@ -108,10 +108,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   seconds, or Redo after an undo, with the other as an icon when there's one; it stays while pointed at. There are
   no standing Undo and Redo buttons: ⌘Z and Edit do that.
 - **The window's buttons sit in the day, each where it belongs,** not in a toolbar, which folded what didn't fit into
-  a » menu, nor in a row of their own: ‹ the date › and the time on the day's top line, the view switch over the
-  stats it counts, Start Timer beside what's on now, and the window's own (Keep on Top, Settings) as icons in the top
-  corner. They're drawn in the day's colors, plain text that lights up under the pointer. Under them, a plain title
-  bar.
+  a » menu, nor in a row of their own: ‹ the date › and the time on the day's top line, the view switch over the stats
+  it counts, Start Timer beside what's on now, and Settings as an icon in the top corner. They're drawn in the day's
+  colors, plain text that lights up under the pointer. Only Keep on Top is in the slim title bar, where it stays put
+  in the compact window too.
 - **One column as wide as the blocks:** the counter, stats, timers, story bar and legend take the grid's width (its
   hour labels in), so their edges line up with it however wide the window is; the extra room is left either side.
 - **Nothing moves going between days** but what changed: another day's share logged is the counter's size, the header
@@ -183,16 +183,16 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     today's blocks still to come.
   - The menu bar and widgets stay on today, and the window moves on to the new day when it showed today (or the
     day ahead it showed has come).
-- **Keep on top:** the pin in the day's top corner (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps'
+- **Keep on top:** the pin in the window's title bar (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps'
   windows, on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
-  instead of 20, and the timers, with Start Timer as just its stopwatch beside the pin. The other buttons, stats, story
-  bar, legend and settings are left out; logging works as in the whole day. The timer dialog fits in the compact day:
-  closer to its edges and tighter inside, Count Down and Count Up losing their icons and the Activity row wrapping when
-  there's no room. The menu bar panel shows the same compact day, with Start Timer too. The pin beside the counter (or
-  Settings) brings the whole day back at its old height.
-  - The compact window keeps a plain title bar, to drag it by and close it. The app sizes the window to the
-    compact day itself, keeping its top left corner, since SwiftUI doesn't shrink it. A full‑screen window leaves
-    full screen first.
+  instead of 20, and the timers, with Start Timer as just its stopwatch at the end of the counter's line. The other
+  buttons, stats, story bar, legend and settings are left out; logging works as in the whole day. The timer dialog
+  fits in the compact day: closer to its edges and tighter inside, Count Down and Count Up losing their icons and the
+  Activity row wrapping when there's no room. The menu bar panel shows the same compact day, with Start Timer too. The
+  pin again (or Settings) brings the whole day back, at its old height.
+  - The title bar is a slim toolbar with just the pin, in the compact window too, to drag it by, close it and unpin
+    it. The app sizes the window to the compact day itself, keeping its top left corner, since SwiftUI doesn't shrink
+    it. A full‑screen window leaves full screen first.
 
 ### 3.2a Smart suggestions for unlogged blocks
 Past blocks you didn't log stay **grey**, but carry a *hint* so back‑filling is one tap ("Confirm: 08:10–08:40 Commute?").

@@ -57,6 +57,10 @@ struct MainWindow: View {
                 .frame(minHeight: 600)
             }
         }
+        // In the title bar, where it stays put whichever day shows, the compact one too.
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { pinButton }
+        }
         .background(
             WindowPin(isPinned: model.isPinned, compactSize: compactSize, width: windowWidth, isResizing: isResizing) {
                 hasSettingsRoom = model.showsSettings
@@ -155,23 +159,17 @@ extension MainWindow {
             day: { AnyView(DayPicker(model: model, theme: $0)) },
             track: { AnyView(TrackSwitch(track: $model.settings.track, theme: $0)) },
             timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) },
-            corner: { theme in
+            // Settings need the whole window.
+            corner: model.isPinned ? nil : { theme in
                 AnyView(
-                    HStack(spacing: 0) {
-                        pinButton
-                        // Settings need the whole window.
-                        if !model.isPinned {
-                            Button {
-                                model.showsSettings.toggle()
-                            } label: {
-                                Label("Settings", systemImage: "gearshape")
-                            }
-                            .buttonStyle(DayButtonStyle(theme: theme, isOn: model.showsSettings))
-                            .help(model.showsSettings ? "Hide Settings" : "Show Settings")
-                        }
+                    Button {
+                        model.showsSettings.toggle()
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
                     }
                     .labelStyle(.iconOnly)
-                    .buttonStyle(DayButtonStyle(theme: theme))
+                    .buttonStyle(DayButtonStyle(theme: theme, isOn: model.showsSettings))
+                    .help(model.showsSettings ? "Hide Settings" : "Show Settings")
                     .padding(.trailing, -6))
             })
     }
@@ -203,7 +201,6 @@ extension MainWindow {
         } label: {
             Label(model.isPinned ? "Unpin" : "Keep on Top", systemImage: model.isPinned ? "pin.slash" : "pin")
         }
-        .labelStyle(.iconOnly)
         .help(model.isPinned ? "Show the whole day, behind other windows again" : "Keep a compact day on top of other windows")
     }
 
