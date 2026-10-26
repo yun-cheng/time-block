@@ -41,11 +41,12 @@ PLAN.md.
 ### Logging
 
 - **Hover** a block to see its time and what it holds. A logged stretch (or an unlogged gap) is outlined as a whole,
-  with a label above it that follows the pointer along: `18:20–19:25 · Social · 1h 5m`. While blocks are selected,
-  the label stays still on them.
+  with a label above it that follows the pointer along: `18:20–19:25 · Social · 1h 5m`.
 - **Select, then pick:** click a block to select its whole stretch, double‑click to select just that block, or
-  drag to select exactly what you cover. Click an activity under the grid to log the selection, or Clear to empty
-  it. The selection stays, and its activity stays lit, until you click off the blocks.
+  drag to select exactly what you cover. Its label stays put, with a **+** beside it (an edit symbol once
+  something in it is logged): click that, or press Return, to open the activities, then click one to log the
+  selection, or Clear to empty it. The selection stays, and its activity stays lit, until you click off the
+  blocks. The rest of the time the window is just your day.
 - **Drag the ends:** select a run of one activity and a round handle shows at each end. Drag one to make it
   longer or shorter: the blocks it takes in are logged as it, and the ones it lets go are cleared.
 - **Drag to move:** drag a selection that holds something logged to move it somewhere else, gaps and notes
@@ -59,15 +60,13 @@ PLAN.md.
   activity alone, leaving whatever else the blocks hold. Pointing at or clicking a block with one activity takes
   in its whole stretch the same way, under anything stacked on part of it. Drag or double‑click to select everything
   the blocks hold.
-- **Add one more:** pick **Add** in the two tools above the activities (or hold ⌘), and the pointer gets a green
-  plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
-  the rest, and painting adds the same way. Once it has added, the tool goes back to **Normal**, which replaces.
+- **Add one more:** pick **Add** in the two tools at the top of the activities (or hold ⌘), and the pointer gets a
+  green plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
+  the rest. Once it has added, the tool goes back to **Normal**, which replaces.
 - **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
   made it, and ⇧⌘Z or Redo puts it back.
-- **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
-  drag, so a stray click never logs anything. With Add (or ⌘) it's added instead.
-- **Find any activity:** the chips are your starred activities, by group. Type in the search field above them to
-  find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Click a group
+- **Find any activity:** the activities shown are your starred ones, by group. Type in the search field above them
+  to find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Click a group
   tab under it to see all of that group's activities; Starred (or the group again) goes back. Right‑click a chip to
   star or unstar it.
 - **Notes:** with logged blocks selected, type a note under the activities (`Dinner with Ana`). It shows when you
@@ -83,7 +82,7 @@ PLAN.md.
   (`−2:13`) until you stop it. Hover the blocks a timer ran in to see exactly when (`⏱ 10:03–10:31`). Timers keep
   going when the app quits, and the widget fills in their blocks too.
 - **Routine:** in Settings, add what comes back on given days (Lunch 12:00–12:30, weekdays). Each of those days
-  it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you paint over it.
+  it's pre‑logged in whatever blocks are free: hollow until the time comes, then logged, unless you log over it.
   Change or pause one, and only the blocks still to come move.
 - **Settings:** browse the whole library by group, one open at a time, to star more. Edit any activity (name,
   group, and an icon from a searchable picker: `meal` finds the fork and knife) or group (name, color), built-in

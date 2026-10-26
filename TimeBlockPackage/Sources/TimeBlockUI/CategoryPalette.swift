@@ -19,11 +19,6 @@ public enum Brush: Hashable, Sendable {
         case .clear: nil
         }
     }
-
-    /// The same category added instead, as holding ⌘ makes it.
-    public var layered: Brush {
-        if case .category(let id) = self { .layer(id) } else { self }
-    }
 }
 
 /// A category as a tappable chip. Unselected chips are neutral with only the icon in color;

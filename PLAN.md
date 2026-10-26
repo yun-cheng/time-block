@@ -75,11 +75,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - The window's grid starts in a look‑only state: hovering a block shows its time and contents, and outlines the
   whole run it belongs to (one activity, or one unlogged gap) with its range and length. The label always sits just
   above the run's first block (on the top row it floats over what's above the grid) and follows the pointer across,
-  kept inside the day view. While blocks are selected it stays on them, where the selection was made, whatever the
-  pointer does.
-- **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. Clicking an activity
-  chip logs the selection (Clear empties it) and keeps it selected; the chip of the selection's activity is lit.
-  Clicking off the blocks deselects.
+  kept inside the day view.
+- **Select, then pick:** click selects a run, double‑click a single block, drag an exact range. While blocks are
+  selected the label stays on them, where the selection was made, whatever the pointer does, with a round **+**
+  beside it (the edit symbol, a pencil on a square, when any of them is logged; hidden while dragging). Clicking it,
+  or Return, opens a popup with the Normal/Add tools, the times selected, the activity chips and the note field.
+  Clicking a chip logs the selection (Clear empties it) and keeps it selected, with the popup open; the chip of the
+  selection's activity is lit. Clicking off the blocks deselects and closes it. Nothing for logging sits under the
+  grid, so the window is the day alone until you select.
 - **Drag the ends:** a selection that is all one activity gets a round handle at each end, on the first block's
   top-left corner and the last block's bottom-right (the card's corners, for one card of a stack, which stays spread
   while it's dragged), like the ends of selected text (resize cursor on hover).
@@ -90,7 +93,7 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   go moves everything in it, gaps and notes included, over what was there, clears what it left, and the selection
   follows. A still click inside still deselects; a selection with nothing logged is dragged to select afresh, as
   before.
-- **Previews show the result:** while a brush, an end or a selection is dragged, the blocks it would change are
+- **Previews show the result:** while an end or a selection is dragged, the blocks it would change are
   drawn as they'd end up, like an event in Calendar: blocks taken in in the activity's own color, blocks let go
   empty, and what it would land on gone. A white outline marks the blocks it's put on. (Dashed outlines are only
   ever planned blocks from a calendar.)
@@ -106,8 +109,7 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
-  the selection holds, or takes it off when every selected block holds it, and a brush picked up adds the same way;
-  either way it goes back to Normal after one add.
+  the selection holds, or takes it off when every selected block holds it, then goes back to Normal.
   Holding ⌘ adds too, while it's held. Every activity all the selected blocks hold is lit.
   - **Drawn as a stack:** cards of one size, the one in front at the bottom-right, each under it a step up and to
     the left (three at most drawn). In front is what breaks into the rest: the activity whose unbroken stretch is
@@ -125,9 +127,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     activities make a run (dragging or double‑clicking selects everything they hold), and the hover label names them
     all (`Lunch + Social`). Each activity counts its full time in the totals, so they can add up to more than the
     day. A run of one activity alone, or one activity picked out of a stack, has handles.
-- **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
-  the brush is put down afterwards. While adding (Add, or ⌘) it adds the activity instead.
-- Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
+- No pick‑then‑paint brush: dragging selects, and the popup logs what's selected, so there's one way to log.
+- Logging splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
 - **Timers (live logging):** besides logging blocks before or after, start a timer of an activity and its blocks
   fill in as it runs, any block it touches, alongside what they hold, so several timers running at once stack like
   any other layers (one timer per activity). A timer counts up from zero or down from a length (Pomodoro, 25 min),
@@ -141,9 +142,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   menu bar's one‑click "Now" logging.
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
-- **Little text on screen:** the line under the activities names the selected times ("08:00–08:30 selected") or what
-  the brush does ("Drag across blocks to log Lunch"), and nothing otherwise. Settings sections have no explaining
-  footers. How things work is in the README and tooltips.
+- **Little text on screen:** the popup names the selected times ("08:00–08:30"), and nothing else explains itself.
+  Settings sections have no explaining footers. How things work is in the README and tooltips.
 - Optional nudge notification: "3 blocks unlogged — what were you doing?"
 - **Any day, like a calendar:** every day is kept, one file each. At the toolbar's left, as in Calendar, ‹ Today ›
   go back and forth a day and back to today (Go ▸ Previous Day ⌘[, Next Day ⌘], Today ⌘T), and the date beside
@@ -298,7 +298,7 @@ DayLog        day ("2026-10-24", the wake date), wakeMinute, schedule (the day's
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
               logs of a track can overlap, the shortest stretch on top (see 3.2); at most one log per
-              block per category; painting replaces every layer, joins runs and splits the ones it covers)
+              block per category; logging replaces every layer, joins runs and splits the ones it covers)
 LiveTimer     id, categoryID, countdown (seconds, nil counts up), startedAt; saved as a list beside the settings
               (TimerStore)
 TimerSession  categoryID, start, end (Dates); logs every block of the day it touches
@@ -319,7 +319,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | ✅ done (signed with a team, §2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
-| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, saving done; several activities a block, with Normal and Add tools; timers that log live, counting up or down, in place of menu bar "Now" logging; the unlogged nudge left |
+| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select‑then‑pick logging from a popup, notes, activity library with search and stars, own activities, saving done; several activities a block, with Normal and Add tools; timers that log live, counting up or down, in place of menu bar "Now" logging; the unlogged nudge left |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
@@ -341,5 +341,6 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
+| Logging controls | Popups rather than a palette under the grid: a + (or edit symbol) beside the selection's label opens the activities, a stopwatch in the toolbar starts timers; no pick‑then‑paint brush |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

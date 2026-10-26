@@ -43,6 +43,8 @@ public struct BlockGridView: View {
     /// Called with an activity's run and the activity when one card of a stack is clicked. Without it a click there
     /// selects the whole stack.
     var onSelectLayer: ((Range<Int>, String) -> Void)?
+    /// Shown beside the selection's label while it isn't being dragged: a button for what to do with it.
+    var selectionAccessory: AnyView?
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
@@ -78,7 +80,7 @@ public struct BlockGridView: View {
         brush: Brush? = nil, isAdding: Bool = false, selection: Range<Int>? = nil, selectedLayer: String? = nil,
         onDrag: ((Range<Int>) -> Void)? = nil, onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>, String?) -> Void)? = nil,
         onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil,
-        onSelectLayer: ((Range<Int>, String) -> Void)? = nil
+        onSelectLayer: ((Range<Int>, String) -> Void)? = nil, selectionAccessory: AnyView? = nil
     ) {
         self.snapshot = snapshot
         self.theme = theme
@@ -96,6 +98,7 @@ public struct BlockGridView: View {
         self.onResize = onResize
         self.onMove = onMove
         self.onSelectLayer = onSelectLayer
+        self.selectionAccessory = selectionAccessory
     }
 
     /// The space the label may reach across, when a view around the grid names it; without one it stays inside the
@@ -156,15 +159,20 @@ public struct BlockGridView: View {
                                 }
                             }
                         if let range = labeled {
-                            BlockInfo(
-                                snapshot: snapshot, theme: theme, range: range, layer: labeledLayer,
-                                brush: resizing != nil || moving != nil ? resizableCategory.map(Brush.category) : brush)
-                                .fixedSize()
-                                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { infoWidth = $0 }
-                                .position(infoPosition(
-                                    for: range, layout: layout,
-                                    bounds: proxy.bounds(of: Self.labelSpace) ?? CGRect(origin: .zero, size: proxy.size)))
-                                .allowsHitTesting(false)
+                            HStack(spacing: 6) {
+                                BlockInfo(
+                                    snapshot: snapshot, theme: theme, range: range, layer: labeledLayer,
+                                    brush: resizing != nil || moving != nil ? resizableCategory.map(Brush.category) : brush)
+                                    .allowsHitTesting(false)
+                                if let selectionAccessory, range == selection, drag == nil, resizing == nil, moving == nil {
+                                    selectionAccessory
+                                }
+                            }
+                            .fixedSize()
+                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { infoWidth = $0 }
+                            .position(infoPosition(
+                                for: range, layout: layout,
+                                bounds: proxy.bounds(of: Self.labelSpace) ?? CGRect(origin: .zero, size: proxy.size)))
                         }
                     }
                 }
@@ -380,8 +388,8 @@ public struct BlockGridView: View {
     }
 
     /// Just above the first block it's about, on the top row too, where it floats over what's above the grid.
-    /// Across, it follows the pointer, but stays still over a selection, where it was made; it's kept inside `bounds`,
-    /// in the grid's own coordinates.
+    /// Across, it follows the pointer, but stays still over a selection, where it was made, so its button can be
+    /// reached; it's kept inside `bounds`, in the grid's own coordinates.
     private func infoPosition(for range: Range<Int>, layout: GridLayout, bounds: CGRect) -> CGPoint {
         let first = layout.frame(range.lowerBound)
         let isStill = range == selection && drag == nil && resizing == nil && moving == nil

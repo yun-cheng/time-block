@@ -88,7 +88,7 @@ struct ActivitySettings: View {
             Button {
                 editingGroup = editingGroup == group.id ? nil : group.id
             } label: {
-                Image(systemName: "pencil").foregroundStyle(.secondary)
+                Image(systemName: "square.and.pencil").foregroundStyle(.secondary)
             }
             .buttonStyle(.borderless)
             .help("Edit Group")

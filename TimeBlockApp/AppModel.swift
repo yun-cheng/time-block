@@ -36,9 +36,6 @@ final class AppModel {
     /// Whether the main window shows the settings inspector.
     var showsSettings = false
 
-    /// The brush each view paints with, so switching views keeps your pick. None means just looking.
-    var brushes: [Track: Brush] = [:]
-
     /// Whether activities replace what blocks hold or are added to it.
     var tool: Tool = .normal
 
@@ -143,11 +140,6 @@ final class AppModel {
     }
 
     func showToday() { show(dayLog.day) }
-
-    var brush: Brush? {
-        get { brushes[settings.track] }
-        set { brushes[settings.track] = newValue }
-    }
 
     /// The main window's undo manager. Block edits are registered with it, so Edit ▸ Undo takes them back.
     @ObservationIgnored weak var undoManager: UndoManager?
@@ -339,12 +331,9 @@ final class AppModel {
     }
 
     /// Removes an activity (or posture) from the palette, search and Settings' library; blocks logged with it keep
-    /// it. Stops painting with it.
+    /// it.
     func removeActivity(_ id: String) {
         settings.remove(id)
-        for (track, brush) in brushes where brush.categoryID == id {
-            brushes[track] = nil
-        }
     }
 
     /// Removes a group of your own, once nothing is in it (but activities you removed, which fall back to Life).
