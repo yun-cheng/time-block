@@ -6,6 +6,10 @@ import TimeBlockUI
 struct TimeBlockApp: App {
     @State private var model = AppModel()
 
+    init() {
+        ClickAway.install()
+    }
+
     var body: some Scene {
         Window("Time Block", id: "main") {
             MainWindow(model: model)

@@ -92,6 +92,7 @@ PLAN.md.
 - **Times** (wake up, bedtime, a shift's target, a routine's start): type one, step it with ↑↓ (5 minutes on the
   minutes, an hour on the hours), or pick one from the ⌄ list, every 15 minutes. A typed time rounds to the nearest
   5 minutes once you're done with it.
+- **Done typing:** click anywhere outside a field (a time, a search, a note) to finish typing in it.
 
 ## Layout
 
