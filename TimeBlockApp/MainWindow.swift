@@ -9,13 +9,16 @@ struct MainWindow: View {
     /// What Undo and Redo would do now ("Undo Move Blocks"), nil when there's nothing to. Undo managers can't be
     /// observed, so this follows their notifications.
     @State private var undoTitles = UndoTitles()
+    /// Whether a menu is open, such as the grid's right-click menu. The day stops animating meanwhile: every frame
+    /// would build the menu again, and its icons would flash.
+    @State private var isMenuOpen = false
 
     var body: some View {
         GeometryReader { window in
             // The app's scroll bar drawn in SwiftUI: AppKit's would sit under the inspector, showing through it.
             AppScrollView(lane: 10) {
                 // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
-                TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
+                TimelineView(.animation(minimumInterval: 1.0 / 15, paused: isMenuOpen)) { context in
                     DayView(
                         snapshot: model.shownSnapshot(at: context.date),
                         time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
@@ -31,6 +34,12 @@ struct MainWindow: View {
             }
         }
         .frame(minWidth: 400, minHeight: 600)
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didBeginTrackingNotification)) { _ in
+            isMenuOpen = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
+            isMenuOpen = false
+        }
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 DayPicker(model: model)
