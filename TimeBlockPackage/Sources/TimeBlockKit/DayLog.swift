@@ -143,7 +143,7 @@ public struct DayLog: Codable, Hashable, Sendable {
             let inside = log.range.clamped(to: range)
             return BlockLog(
                 startIndex: inside.lowerBound, length: inside.count, categoryID: log.categoryID,
-                note: note?.isEmpty == false ? note : nil, source: log.source)
+                note: note?.isEmpty == false ? note : nil, source: log.source, templateID: log.templateID)
         }
         logs = Self.joined(kept + noted)
     }
@@ -209,25 +209,37 @@ public struct DayLog: Codable, Hashable, Sendable {
             kept.length = index - log.startIndex
             return kept
         }
-        let byID = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let weekday = weekday(calendar: calendar)
-        for template in templates where template.isEnabled && weekday.map(template.weekdays.contains) == true {
-            guard let category = byID[template.categoryID], !category.isRetired else { continue }
-            let taken = Set(logs.filter { byID[$0.categoryID]?.track == category.track }.flatMap(\.range))
-            let range = template.range(in: schedule)
-            var start: Int?
-            for block in max(index, range.lowerBound)..<max(index, range.upperBound) + 1 {
-                let isFree = block < range.upperBound && !taken.contains(block)
-                if isFree, start == nil { start = block }
-                if !isFree, let from = start {
-                    logs.append(BlockLog(
-                        startIndex: from, length: block - from, categoryID: category.id, source: .template))
-                    start = nil
-                }
-            }
+        for template in templates where comesBack(template, calendar: calendar) {
+            preLog(template, in: template.range(in: schedule), from: index, categories: categories)
         }
         logs = Self.joined(logs)
         isPlanned = true
+    }
+
+    private func comesBack(_ template: Template, calendar: Calendar) -> Bool {
+        template.isEnabled && weekday(calendar: calendar).map(template.weekdays.contains) == true
+    }
+
+    /// Pre-logs `template` in the blocks of `range` from `index` on that are still free in its category's track.
+    private mutating func preLog(
+        _ template: Template, in range: Range<Int>, from index: Int, categories: [BlockCategory]
+    ) {
+        guard let category = categories.first(where: { $0.id == template.categoryID }), !category.isRetired else {
+            return
+        }
+        let trackOf = Dictionary(categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
+        let taken = Set(logs.filter { trackOf[$0.categoryID] == category.track }.flatMap(\.range))
+        var start: Int?
+        for block in max(index, range.lowerBound)..<max(index, range.upperBound) + 1 {
+            let isFree = block < range.upperBound && !taken.contains(block)
+            if isFree, start == nil { start = block }
+            if !isFree, let from = start {
+                logs.append(BlockLog(
+                    startIndex: from, length: block - from, categoryID: category.id, source: .template,
+                    templateID: template.id))
+                start = nil
+            }
+        }
     }
 
     /// Counts block indexes from `schedule`'s wake time from now on, and keeps it as the day's schedule.
@@ -264,7 +276,7 @@ public struct DayLog: Codable, Hashable, Sendable {
             if log.range.upperBound > range.upperBound {
                 kept.append(BlockLog(
                     startIndex: range.upperBound, length: log.range.upperBound - range.upperBound,
-                    categoryID: log.categoryID, note: log.note, source: log.source))
+                    categoryID: log.categoryID, note: log.note, source: log.source, templateID: log.templateID))
             }
         }
         return (kept, cut)
@@ -279,12 +291,13 @@ public struct DayLog: Codable, Hashable, Sendable {
             while let i = joined.firstIndex(where: {
                 ($0.range.upperBound == log.startIndex || log.range.upperBound == $0.startIndex)
                     && $0.categoryID == log.categoryID && $0.source == log.source && $0.note == log.note
+                    && $0.templateID == log.templateID
             }) {
                 let other = joined.remove(at: i)
                 log = BlockLog(
                     id: other.startIndex < log.startIndex ? other.id : log.id,
                     startIndex: min(other.startIndex, log.startIndex), length: other.length + log.length,
-                    categoryID: log.categoryID, note: log.note, source: log.source)
+                    categoryID: log.categoryID, note: log.note, source: log.source, templateID: log.templateID)
             }
             joined.append(log)
         }

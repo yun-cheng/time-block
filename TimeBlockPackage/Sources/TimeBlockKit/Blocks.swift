@@ -167,10 +167,12 @@ public struct BlockLog: Identifiable, Codable, Hashable, Sendable {
     public var categoryID: String
     public var note: String?
     public var source: Source
+    /// The template that pre-logged it, so laying that one out again finds its own blocks.
+    public var templateID: String?
 
     public init(
         id: UUID = UUID(), startIndex: Int, length: Int, categoryID: String,
-        note: String? = nil, source: Source = .manual
+        note: String? = nil, source: Source = .manual, templateID: String? = nil
     ) {
         self.id = id
         self.startIndex = startIndex
@@ -178,6 +180,7 @@ public struct BlockLog: Identifiable, Codable, Hashable, Sendable {
         self.categoryID = categoryID
         self.note = note
         self.source = source
+        self.templateID = templateID
     }
 
     public var range: Range<Int> { startIndex..<(startIndex + length) }

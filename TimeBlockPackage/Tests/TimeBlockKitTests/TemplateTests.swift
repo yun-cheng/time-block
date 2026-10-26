@@ -63,6 +63,14 @@ struct TemplateTests {
         #expect(summary(log) == ["lunch 60..<62 template", "lunch 63..<69 template"])
     }
 
+    @Test func preLoggedBlocksKnowTheirTemplate() {
+        // Two lunches back to back stay two, each its own template's.
+        let late = Template(id: "late-lunch", categoryID: "lunch", startMinute: 12 * 60 + 30, length: 6)
+        let log = monday { $0.plan([lunch, late], schedule: schedule, calendar: calendar) }
+        #expect(log.logs.sorted { $0.startIndex < $1.startIndex }.map(\.templateID) == ["lunch", "late-lunch"])
+        #expect(log.logs.map(\.range).sorted { $0.lowerBound < $1.lowerBound } == [60..<66, 66..<72])
+    }
+
     @Test func templatesStayInsideTheWakingDay() {
         let late = Template(id: "late", categoryID: "reading", startMinute: 22 * 60 + 45, length: 6)
         let early = Template(id: "early", categoryID: "coffee", startMinute: 6 * 60 + 30, length: 12)
