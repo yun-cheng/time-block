@@ -62,6 +62,16 @@ final class AppModel {
         didSet { UserDefaults.standard.set(countdownMinutes ?? 0, forKey: "countdownMinutes") }
     }
 
+    /// The countdown lengths to pick in a click, in minutes, shortest first: 30 and 60 to start, and any starred.
+    var countdownPresets: [Int] {
+        didSet { UserDefaults.standard.set(countdownPresets, forKey: "countdownPresets") }
+    }
+
+    /// What a countdown is set to each time the timer dialog opens, in minutes.
+    var countdownDefault: Int {
+        didSet { UserDefaults.standard.set(countdownDefault, forKey: "countdownDefault") }
+    }
+
     /// Ticks often enough for the menu bar count to flip on time at each 5-minute boundary.
     private(set) var now = Date()
     @ObservationIgnored private var timer: Timer?
@@ -78,6 +88,10 @@ final class AppModel {
         timers = TimerStore.load()
         let minutes = UserDefaults.standard.integer(forKey: "countdownMinutes")
         countdownMinutes = minutes > 0 ? minutes : nil
+        countdownPresets = UserDefaults.standard.array(forKey: "countdownPresets") as? [Int]
+            ?? CountdownLength.standardPresets
+        let length = UserDefaults.standard.integer(forKey: "countdownDefault")
+        countdownDefault = length > 0 ? length : CountdownLength.standard
         planDayIfNeeded()
         keepTodaysSchedule()
         // The widget may have drawn the day before it could see what's saved, as on the first signed launch.

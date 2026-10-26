@@ -87,3 +87,24 @@ public enum TimerStore {
         AppGroup.defaults.set(data, forKey: key)
     }
 }
+
+/// A countdown's length, in minutes, as shown: "30 min", "1 h", "1 h 30 min".
+public enum CountdownLength {
+    /// What countdowns start at until another default is set.
+    public static let standard = 30
+    /// The lengths to pick in a click until others are starred.
+    public static let standardPresets = [30, 60]
+    /// The longest a countdown can be set to.
+    public static let longest = 24 * 60
+
+    /// The blocks a countdown of `minutes` takes, any part of one counting, as a timer logs them: 21 minutes is 5.
+    public static func blocks(_ minutes: Int) -> Int {
+        (minutes + Schedule.blockMinutes - 1) / Schedule.blockMinutes
+    }
+
+    public static func text(_ minutes: Int) -> String {
+        let (hours, rest) = (minutes / 60, minutes % 60)
+        if hours == 0 { return "\(rest) min" }
+        return rest == 0 ? "\(hours) h" : "\(hours) h \(rest) min"
+    }
+}

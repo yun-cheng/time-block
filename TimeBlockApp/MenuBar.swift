@@ -109,6 +109,6 @@ extension AppModel {
     var timerControls: TimerControls {
         TimerControls(
             timers: timers, countdown: Binding { self.countdownMinutes } set: { self.countdownMinutes = $0 },
-            start: startTimer, stop: stopTimer, delete: deleteTimer)
+            presets: countdownPresets, start: startTimer, stop: stopTimer, delete: deleteTimer)
     }
 }

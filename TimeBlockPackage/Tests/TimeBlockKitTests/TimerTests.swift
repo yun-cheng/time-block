@@ -95,6 +95,18 @@ struct TimerTests {
             == [TimerSession(categoryID: "coding", start: at("10:03"), end: at("10:16"))])
     }
 
+    @Test func aCountdownTakesEveryBlockItTouches() {
+        #expect(CountdownLength.blocks(20) == 4)
+        #expect(CountdownLength.blocks(21) == 5)
+        #expect(CountdownLength.blocks(1) == 1)
+    }
+
+    @Test func countdownLengthsShowInHoursAndMinutes() {
+        #expect(CountdownLength.text(30) == "30 min")
+        #expect(CountdownLength.text(60) == "1 h")
+        #expect(CountdownLength.text(90) == "1 h 30 min")
+    }
+
     @Test func daysSavedBeforeTimersStillLoad() throws {
         let json = #"{"day":"2026-10-24","wakeMinute":420,"logs":[]}"#
         let log = try JSONDecoder().decode(DayLog.self, from: Data(json.utf8))

@@ -6,6 +6,8 @@ public struct TimerControls {
     public var timers: [LiveTimer]
     /// What new timers count down from, in minutes, or nil to count up.
     public var countdown: Binding<Int?>
+    /// The countdown lengths to pick from, in minutes.
+    public var presets: [Int]
     /// Starts a timer of an activity, unless it has one going.
     public var start: (String) -> Void
     /// Stops a timer, logging what it ran.
@@ -14,18 +16,16 @@ public struct TimerControls {
     public var delete: (UUID) -> Void
 
     public init(
-        timers: [LiveTimer], countdown: Binding<Int?>, start: @escaping (String) -> Void,
-        stop: @escaping (UUID) -> Void, delete: @escaping (UUID) -> Void
+        timers: [LiveTimer], countdown: Binding<Int?>, presets: [Int] = CountdownLength.standardPresets,
+        start: @escaping (String) -> Void, stop: @escaping (UUID) -> Void, delete: @escaping (UUID) -> Void
     ) {
         self.timers = timers
         self.countdown = countdown
+        self.presets = presets
         self.start = start
         self.stop = stop
         self.delete = delete
     }
-
-    /// The countdowns to pick from, in minutes; 25 is a Pomodoro.
-    static let countdowns = [5, 10, 15, 20, 25, 30, 45, 50, 60, 90]
 }
 
 /// The timers going, each with its activity, its time (counting up, or down and then on past zero, in the accent
@@ -137,7 +137,7 @@ public struct TimerStarter: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(theme.secondaryText)
                 Spacer()
-                CountdownPicker(countdown: controls.countdown)
+                CountdownPicker(countdown: controls.countdown, presets: controls.presets)
             }
             CategoryPalette(
                 categories: snapshot.trackCategories, favorites: snapshot.favorites,
@@ -150,13 +150,15 @@ public struct TimerStarter: View {
 /// How new timers count: up from zero, or down from a length and on past it.
 struct CountdownPicker: View {
     let countdown: Binding<Int?>
+    let presets: [Int]
 
     var body: some View {
         Picker("Counts", selection: countdown) {
             Label("Count up", systemImage: "stopwatch").tag(Int?.none)
             Divider()
-            ForEach(TimerControls.countdowns, id: \.self) { minutes in
-                Label("Count down \(minutes) min", systemImage: "timer").tag(Int?.some(minutes))
+            // The presets, and a length set in the window that isn't one.
+            ForEach(Set(presets + [countdown.wrappedValue].compactMap { $0 }).sorted(), id: \.self) { minutes in
+                Label("Count down \(CountdownLength.text(minutes))", systemImage: "timer").tag(Int?.some(minutes))
             }
         }
         .labelsHidden()
