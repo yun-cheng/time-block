@@ -94,6 +94,16 @@ struct LayerTests {
         #expect(snapshot.longestRun(of: "work") == 12)
     }
 
+    @Test func totalsAsLargeKeepTheDaysOrder() {
+        // A tie whose order changed between drawings made the day's bar flicker.
+        let snapshot = snapshot(log {
+            $0.set(0..<2, to: "walk", in: .activity, schedule: $1)
+            $0.set(2..<4, to: "coding", in: .activity, schedule: $1)
+            $0.set(4..<6, to: "lunch", in: .activity, schedule: $1)
+        })
+        #expect(snapshot.legendTotals.map(\.name) == ["Health", "Work", "Life"])
+    }
+
     @Test func movingTakesEveryLayerAlong() {
         let cells = snapshot(log {
             $0.set(0..<4, to: "work", in: .activity, schedule: $1)

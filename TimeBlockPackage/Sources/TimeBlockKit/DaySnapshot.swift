@@ -52,24 +52,32 @@ public struct DaySnapshot: Sendable {
         currentCell?.categoryID.flatMap { categories[$0] }
     }
 
-    /// Past waking blocks summed up by group (or by category in tracks without groups), most first. A block holding
-    /// several activities counts in full for each of their groups, so the totals can add up to more than the day.
-    /// Blocks past bedtime are counted apart, in `pastOvertimeCount`.
+    /// Past waking blocks summed up by group (or by category in tracks without groups), most first, and of those as
+    /// many, the one the day had first. A block holding several activities counts in full for each of their groups,
+    /// so the totals can add up to more than the day. Blocks past bedtime are counted apart, in `pastOvertimeCount`.
     public var legendTotals: [LegendItem] {
-        var counts: [String: (name: String, color: RGB, blocks: Int)] = [:]
+        var items: [LegendItem] = []
+        var positions: [String: Int] = [:]
         for cell in cells where cell.phase == .past && !cell.isOvertime {
             var counted = Set<String>()
             for category in cell.categoryIDs.compactMap({ categories[$0] }) {
                 let key = category.group?.id ?? category.id
                 guard counted.insert(key).inserted else { continue }
-                let name = category.group?.name ?? category.name
-                let color = category.group?.color ?? category.color
-                counts[key, default: (name, color, 0)].blocks += 1
+                if let position = positions[key] {
+                    let item = items[position]
+                    items[position] = LegendItem(id: key, name: item.name, color: item.color, blocks: item.blocks + 1)
+                } else {
+                    positions[key] = items.count
+                    items.append(LegendItem(
+                        id: key, name: category.group?.name ?? category.name,
+                        color: category.group?.color ?? category.color, blocks: 1))
+                }
             }
         }
-        return counts
-            .map { LegendItem(id: $0.key, name: $0.value.name, color: $0.value.color, blocks: $0.value.blocks) }
-            .sorted { $0.blocks > $1.blocks }
+        // A stable sort, so ties keep the day's order rather than swapping from one drawing to the next.
+        return items.enumerated()
+            .sorted { $0.element.blocks != $1.element.blocks ? $0.element.blocks > $1.element.blocks : $0.offset < $1.offset }
+            .map(\.element)
     }
 
     /// The unbroken run of blocks around `index` holding the same activities and notes. Unlogged blocks run together
