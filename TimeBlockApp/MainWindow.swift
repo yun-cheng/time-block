@@ -159,17 +159,21 @@ extension MainWindow {
             day: { AnyView(DayPicker(model: model, theme: $0)) },
             track: { AnyView(TrackSwitch(track: $model.settings.track, theme: $0)) },
             timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) },
-            // Settings need the whole window.
+            // Settings need the whole window, and Undo and Redo go with them.
             corner: model.isPinned ? nil : { theme in
                 AnyView(
-                    Button {
-                        model.showsSettings.toggle()
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
+                    HStack(spacing: 0) {
+                        undoButtons
+                        Button {
+                            model.showsSettings.toggle()
+                        } label: {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                        .buttonStyle(DayButtonStyle(theme: theme, isOn: model.showsSettings))
+                        .help(model.showsSettings ? "Hide Settings" : "Show Settings")
                     }
                     .labelStyle(.iconOnly)
-                    .buttonStyle(DayButtonStyle(theme: theme, isOn: model.showsSettings))
-                    .help(model.showsSettings ? "Hide Settings" : "Show Settings")
+                    .buttonStyle(DayButtonStyle(theme: theme))
                     .padding(.trailing, -6))
             })
     }
@@ -192,6 +196,20 @@ extension MainWindow {
             guard !Task.isCancelled, !isUndoToastHovered else { return }
             withAnimation(.snappy) { showsUndoToast = false }
         }
+    }
+
+    /// Undo and Redo, greyed out with nothing to undo or redo, their tooltips naming the change.
+    @ViewBuilder private var undoButtons: some View {
+        Button(action: undo) {
+            Label("Undo", systemImage: "arrow.uturn.backward")
+        }
+        .help(undoTitles.undo ?? "Undo")
+        .disabled(undoTitles.undo == nil)
+        Button(action: redo) {
+            Label("Redo", systemImage: "arrow.uturn.forward")
+        }
+        .help(undoTitles.redo ?? "Redo")
+        .disabled(undoTitles.redo == nil)
     }
 
     /// Keeps the window over other apps', compact, or brings the whole day back.

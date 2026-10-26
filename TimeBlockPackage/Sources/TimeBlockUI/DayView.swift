@@ -121,8 +121,8 @@ public struct DayEditor {
 }
 
 /// The window's own controls, each put where it belongs in the day and drawn in its theme: the day shown at the top,
-/// the view over the stats it counts, starting a timer beside what's on now, and the window's own (settings) in the
-/// top corner.
+/// the view over the stats it counts, starting a timer beside what's on now, and the window's own (undo, redo,
+/// settings) in the top corner.
 public struct DayControls {
     /// Goes back and forth between days, at the top left.
     public var day: ((MoodTheme) -> AnyView)?

@@ -63,9 +63,9 @@ nudge for unlogged time; see the milestones in PLAN.md.
 - **Add one more:** pick **Add** in the two tools at the top of the activities (or hold ⌘), and the pointer gets a
   green plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
   the rest. Once it has added, the tool goes back to **Normal**, which replaces.
-- **Undo and redo:** ⌘Z takes back the last change to your blocks, whatever made it, and ⇧⌘Z puts it back. After
-  each change, Undo shows at the bottom of the window for a few seconds (Redo after an undo), and stays while you
-  point at it.
+- **Undo and redo:** ⌘Z takes back the last change to your blocks, whatever made it, and ⇧⌘Z puts it back, as do the
+  arrows beside Settings. After each change, Undo also shows at the bottom of the window for a few seconds (Redo after
+  an undo), and stays while you point at it.
 - **Find any activity:** the activities shown are your starred ones, by group. Type in the search field above them
   to find any of the ~170 built in, whatever group is shown (`meal` finds Breakfast, Lunch, Dinner…); Return picks
   the top match. Click a group in the list beside them to see all of its activities; Starred goes back. Right‑click a

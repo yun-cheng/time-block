@@ -105,13 +105,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   the view and on the day it changed in, with the selection it had. The stack is cleared when templates or the
   schedule change (putting old logs back would undo the new plan too).
 - **Undo offered after each change:** a capsule at the bottom of the window names it (Undo Move Blocks) for a few
-  seconds, or Redo after an undo, with the other as an icon when there's one; it stays while pointed at. There are
-  no standing Undo and Redo buttons: ⌘Z and Edit do that.
+  seconds, or Redo after an undo, with the other as an icon when there's one; it stays while pointed at. Undo and Redo
+  also stand beside Settings in the day's top corner, greyed out with nothing to undo or redo, their tooltips naming
+  the change.
 - **The window's buttons sit in the day, each where it belongs,** not in a toolbar, which folded what didn't fit into
   a » menu, nor in a row of their own: ‹ the date › and the time on the day's top line, the view switch over the stats
-  it counts, Start Timer beside what's on now, and Settings as an icon in the top corner. They're drawn in the day's
-  colors, plain text that lights up under the pointer. Only Keep on Top is in the slim title bar, where it stays put
-  in the compact window too.
+  it counts, Start Timer beside what's on now, and Undo, Redo and Settings as icons in the top corner. They're drawn
+  in the day's colors, plain text that lights up under the pointer. Only Keep on Top is in the slim title bar, where
+  it stays put in the compact window too.
 - **One column as wide as the blocks:** the counter, stats, timers, story bar and legend take the grid's width (its
   hour labels in), so their edges line up with it however wide the window is; the extra room is left either side.
 - **Nothing moves going between days** but what changed: another day's share logged is the counter's size, the header
