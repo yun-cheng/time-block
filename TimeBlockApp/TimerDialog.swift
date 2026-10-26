@@ -23,7 +23,7 @@ struct TimerDialog: View {
     var body: some View {
         Dialog(
             width: 460, fill: theme.backgroundBottom, lift: 0.08, stroke: theme.text.opacity(0.28),
-            margin: isCompact ? 10 : 32, isOpen: $isOpen
+            margin: isCompact ? 10 : 22, isOpen: $isOpen
         ) {
             // Scrolling only in a window too short for all of it.
             ViewThatFits(in: .vertical) {

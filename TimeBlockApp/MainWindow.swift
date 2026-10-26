@@ -112,9 +112,8 @@ extension MainWindow {
             // The app's scroll bar drawn in SwiftUI, like the settings'.
             AppScrollView(lane: 10) {
                 day
-                    // Fill the window, but scroll when it is too short for the whole day.
-                    .frame(minHeight: window.size.height - 20)
-                    .padding(10)
+                    // Fill the window, edge to edge, but scroll when it is too short for the whole day.
+                    .frame(minHeight: window.size.height)
             }
         }
         .overlay(alignment: .bottom) {
@@ -139,8 +138,8 @@ extension MainWindow {
         .frame(width: dayWidth)
     }
 
-    /// The whole day's width, around its padding in the window.
-    private var dayWidth: CGFloat { DayView.width(of: model.snapshot) + 20 }
+    /// The whole day's width, which fills the window.
+    private var dayWidth: CGFloat { DayView.width(of: model.snapshot) }
 
     private static let settingsWidth: CGFloat = 320
 

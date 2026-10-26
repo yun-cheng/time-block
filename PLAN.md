@@ -121,8 +121,9 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   count goes under its length when the two don't fit in a row. It's drawn a little lighter than the day, with a clear
   edge, to stand off it.
 - **The window as wide as the day, the settings beside it:** the window keeps to the day's width (and the settings',
-  when they show), so only its height can be changed; it follows the grid when its gaps change. The settings always sit
-  to the right of the day, past the window's edge while they're hidden: showing them only widens the window over them,
+  when they show), so only its height can be changed; it follows the grid when its gaps change. The day fills it edge
+  to edge, its colors reaching the window's edges, not a rounded card on the window's grey. The settings always sit to
+  the right of the day, past the window's edge while they're hidden: showing them only widens the window over them,
   and hiding them narrows it again, in one animation, so nothing else moves. (They were a dialog over the day for a
   while, then SwiftUI's inspector, which slid in and out and left the day jumping to the middle of the window as it
   narrowed.)

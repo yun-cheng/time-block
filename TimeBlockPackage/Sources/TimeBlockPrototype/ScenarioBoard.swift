@@ -35,6 +35,8 @@ struct ScenarioBoard: View {
                     .frame(width: 440)
                     .frame(minHeight: 660)
                     .fixedSize(horizontal: false, vertical: true)
+                    // Set off from the board like the window.
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
     }

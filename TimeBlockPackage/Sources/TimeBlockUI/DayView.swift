@@ -315,7 +315,6 @@ public struct DayView: View {
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .modifier(DayFrame(editor: editor, theme: theme, time: time))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     /// The counter on one line, with Start Timer, then the blocks smaller: the day at a glance, beside other work.

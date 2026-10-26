@@ -12,7 +12,7 @@ struct Dialog<Content: View>: View {
     var stroke: Color
     /// The least room left around it, to the window's edges: by default the day's own, so it lines up with the day's
     /// column.
-    var margin: CGFloat = 32
+    var margin: CGFloat = 22
     @Binding var isOpen: Bool
     @ViewBuilder let content: Content
 
