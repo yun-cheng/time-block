@@ -90,9 +90,9 @@ struct NowLogger: View {
                     .foregroundStyle(.secondary)
                 CategoryPalette(
                     categories: snapshot.trackCategories, favorites: snapshot.favorites,
-                    selected: snapshot.currentCell?.categoryID.map(Brush.category), theme: theme, showsClear: false,
-                    choose: { if let id = $0.categoryID { model.logNow(id) } },
-                    toggleFavorite: model.toggleFavorite)
+                    selected: Set(snapshot.currentCell?.categoryIDs.map(Brush.category) ?? []), theme: theme,
+                    showsClear: false, choose: { if let id = $0.categoryID { model.logNow(id) } },
+                    toggle: model.toggleNow, isAdding: model.tool == .add, toggleFavorite: model.toggleFavorite)
                 if !gap.isEmpty {
                     Toggle(isOn: $model.fillsGap) {
                         Text("Also fill \(durationText(blocks: gap.count)) unlogged since \(clock(schedule.clockMinute(ofBlock: gap.lowerBound)))")

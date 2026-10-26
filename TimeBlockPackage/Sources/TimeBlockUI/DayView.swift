@@ -4,10 +4,13 @@ import TimeBlockKit
 /// Lets the day view log blocks, either way round: select blocks, then click a category; or pick a
 /// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
 /// its category can be changed again; a brush is put down after one drag, so the next click can't
-/// log by accident. Selected blocks that are logged can be given a note or dragged somewhere else, and a selection
-/// of one activity can be dragged longer or shorter by its ends. Delete clears a selection.
+/// log by accident. With the Add tool picked, or ⌘ held, a category is added to what the blocks hold instead, or
+/// comes off where they all hold it. Selected blocks that are logged can be given a note or dragged somewhere else, and
+/// a selection of one activity can be dragged longer or shorter by its ends. Delete clears a selection.
 public struct DayEditor {
     public var brush: Binding<Brush?>
+    /// Whether categories replace what blocks hold or are added to it.
+    public var tool: Binding<Tool>
     public var selection: Binding<Range<Int>?>
     public var paint: (Range<Int>, Brush) -> Void
     /// Writes a note on the logged blocks of a range, or takes it off with nil.
@@ -18,24 +21,40 @@ public struct DayEditor {
     public var resize: ((Range<Int>, Range<Int>) -> Void)?
     /// Moves what a range holds some blocks along, clearing the blocks it leaves.
     public var move: ((Range<Int>, Int) -> Void)?
+    /// Adds a category to what a range holds, or takes it off when every block holds it. Without it there's
+    /// no adding.
+    public var toggle: ((Range<Int>, String) -> Void)?
 
     public init(
-        brush: Binding<Brush?>, selection: Binding<Range<Int>?>, paint: @escaping (Range<Int>, Brush) -> Void,
+        brush: Binding<Brush?>, tool: Binding<Tool> = .constant(.normal), selection: Binding<Range<Int>?>,
+        paint: @escaping (Range<Int>, Brush) -> Void, toggle: ((Range<Int>, String) -> Void)? = nil,
         annotate: ((Range<Int>, String?) -> Void)? = nil, toggleFavorite: ((String) -> Void)? = nil,
         resize: ((Range<Int>, Range<Int>) -> Void)? = nil, move: ((Range<Int>, Int) -> Void)? = nil
     ) {
         self.brush = brush
+        self.tool = tool
         self.selection = selection
         self.paint = paint
+        self.toggle = toggle
         self.annotate = annotate
         self.toggleFavorite = toggleFavorite
         self.resize = resize
         self.move = move
     }
 
-    /// The grid picked out `range`: log it with the brush, or else select it.
-    func dragged(_ range: Range<Int>) {
-        if let brush = brush.wrappedValue {
+    /// Whether categories are added to what blocks hold: with the Add tool, or while ⌘ is held.
+    func isAdding(isCommandDown: Bool) -> Bool {
+        toggle != nil && (tool.wrappedValue == .add || isCommandDown)
+    }
+
+    /// What dragging across the grid does now: the brush picked up, adding instead while adding.
+    func activeBrush(isCommandDown: Bool) -> Brush? {
+        isAdding(isCommandDown: isCommandDown) ? brush.wrappedValue?.layered : brush.wrappedValue
+    }
+
+    /// The grid picked out `range`: log it with `brush`, the one picked up as it is now, or else select it.
+    func dragged(_ range: Range<Int>, with brush: Brush?) {
+        if let brush {
             log(range, brush)
         } else {
             selection.wrappedValue = range
@@ -48,6 +67,17 @@ public struct DayEditor {
         if let range = selection.wrappedValue {
             paint(range, choice)
         } else {
+            brush.wrappedValue = brush.wrappedValue == choice ? nil : choice
+        }
+    }
+
+    /// A chip was clicked while adding: add it to the selection's activities or take it off, or else pick it up as a
+    /// brush that does that (or put it down).
+    func toggled(_ categoryID: String) {
+        if let range = selection.wrappedValue {
+            toggle?(range, categoryID)
+        } else {
+            let choice = Brush.layer(categoryID)
             brush.wrappedValue = brush.wrappedValue == choice ? nil : choice
         }
     }
@@ -79,7 +109,11 @@ public struct DayEditor {
     }
 
     private func log(_ range: Range<Int>, _ choice: Brush) {
-        paint(range, choice)
+        if case .layer(let id) = choice {
+            toggle?(range, id)
+        } else {
+            paint(range, choice)
+        }
         brush.wrappedValue = nil
         selection.wrappedValue = nil
     }
@@ -94,6 +128,8 @@ public struct DayView: View {
     @Environment(\.colorScheme) private var colorScheme
     /// The grid takes the keyboard when blocks are selected, for Delete.
     @FocusState private var isGridFocused: Bool
+    /// Holding ⌘ adds, as the Add tool does.
+    @State private var isCommandDown = false
 
     public init(snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil) {
         self.snapshot = snapshot
@@ -132,6 +168,7 @@ public struct DayView: View {
     public var body: some View {
         let theme = MoodTheme(mood: snapshot.mood, colorScheme: colorScheme)
         let status = snapshot.status
+        let brush = editor?.activeBrush(isCommandDown: isCommandDown)
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .bottom) {
                 if let date = otherDate {
@@ -170,8 +207,9 @@ public struct DayView: View {
                     .foregroundStyle(theme.accent)
             }
             BlockGridView(
-                snapshot: snapshot, theme: theme, time: time, blockSize: 20, brush: editor?.brush.wrappedValue,
-                selection: editor?.selection.wrappedValue, onDrag: editor.map { editor in { editor.dragged($0) } },
+                snapshot: snapshot, theme: theme, time: time, blockSize: 20, brush: brush,
+                isAdding: editor?.isAdding(isCommandDown: isCommandDown) ?? false,
+                selection: editor?.selection.wrappedValue, onDrag: editor.map { editor in { editor.dragged($0, with: brush) } },
                 onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0) } },
                 onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } },
                 onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } })
@@ -190,9 +228,11 @@ public struct DayView: View {
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
             if let editor {
                 Divider().overlay(theme.secondaryText.opacity(0.3))
+                ToolPicker(tool: editor.tool.wrappedValue, theme: theme) { editor.tool.wrappedValue = $0 }
                 CategoryPalette(
                     categories: snapshot.trackCategories, favorites: snapshot.favorites,
                     selected: paletteChoice(editor), theme: theme, choose: editor.chose,
+                    toggle: editor.toggle.map { _ in editor.toggled }, isAdding: editor.tool.wrappedValue == .add,
                     toggleFavorite: editor.toggleFavorite)
                     // Clicks between the chips shouldn't drop the selection.
                     .contentShape(Rectangle())
@@ -215,14 +255,16 @@ public struct DayView: View {
         .onTapGesture { editor?.deselect() }
         .background(MoodBackground(theme: theme, time: time))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .tracksCommandKey($isCommandDown)
     }
 
-    /// The chip to show as picked: the category the selected blocks share, or else the brush.
-    private func paletteChoice(_ editor: DayEditor) -> Brush? {
-        guard let range = editor.selection.wrappedValue else { return editor.brush.wrappedValue }
-        let categories = Set(snapshot.cells[range.clamped(to: snapshot.cells.indices)].map(\.categoryID))
-        guard categories.count == 1, let category = categories.first ?? nil else { return nil }
-        return .category(category)
+    /// The chips to show as picked: the categories every selected block holds, or else the brush.
+    private func paletteChoice(_ editor: DayEditor) -> Set<Brush> {
+        guard let range = editor.selection.wrappedValue else { return Set([editor.brush.wrappedValue].compactMap { $0 }) }
+        let cells = snapshot.cells[range.clamped(to: snapshot.cells.indices)]
+        guard let first = cells.first else { return [] }
+        let shared = cells.dropFirst().reduce(Set(first.categoryIDs)) { $0.intersection($1.categoryIDs) }
+        return Set(shared.map(Brush.category))
     }
 
     /// Edits the note of the selected blocks that are logged; there is none to edit while none are.
@@ -247,10 +289,11 @@ public struct DayView: View {
             let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
             return "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound))) selected"
         }
-        guard let brush = editor.brush.wrappedValue else { return nil }
+        guard let brush = editor.activeBrush(isCommandDown: isCommandDown) else { return nil }
         guard let name = brush.categoryID.flatMap({ snapshot.categories[$0] })?.name else {
             return "Drag across blocks to clear them"
         }
+        if case .layer = brush { return "Drag across blocks to add \(name)" }
         return "Drag across blocks to log \(name)"
     }
 

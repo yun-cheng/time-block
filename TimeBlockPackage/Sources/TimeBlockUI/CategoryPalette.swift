@@ -1,14 +1,28 @@
+#if canImport(AppKit)
+import AppKit
+#endif
 import SwiftUI
 import TimeBlockKit
 
 /// What dragging across the grid does.
 public enum Brush: Hashable, Sendable {
+    /// Logs the category alone, in place of what the blocks held.
     case category(String)
+    /// Adds the category to what the blocks hold, or takes it off when they all hold it already.
+    case layer(String)
     case clear
 
     /// The category to log, or nil for clearing.
     public var categoryID: String? {
-        if case .category(let id) = self { id } else { nil }
+        switch self {
+        case .category(let id), .layer(let id): id
+        case .clear: nil
+        }
+    }
+
+    /// The same category added instead, as holding ⌘ makes it.
+    public var layered: Brush {
+        if case .category(let id) = self { .layer(id) } else { self }
     }
 }
 
@@ -72,22 +86,30 @@ public struct CategoryChip: View {
 /// Picks what to log: a search field over every category in the track, the starred ones (then Clear) while it
 /// is empty, and the matches while typing. Return takes the best match. Right-clicking a chip stars or unstars it.
 /// Clicking a group shows every category in it, starred or not, and narrows search to it; clicking it again goes
-/// back.
+/// back. While adding (`isAdding`, or ⌘ held), clicking a chip toggles it rather than choosing it, when there's a way
+/// to, and the add pointer over the chips says so.
 public struct CategoryPalette: View {
     let categories: [BlockCategory]
     let favorites: [BlockCategory]
-    let selected: Brush?
+    /// The chips lit: what the blocks hold, or the brush.
+    let selected: Set<Brush>
     let theme: MoodTheme
     let showsClear: Bool
     let choose: (Brush) -> Void
+    /// Adds a category to what's chosen already, or takes it off. Without it a click always chooses.
+    let toggle: ((String) -> Void)?
+    /// Whether clicks add, as with ⌘ held.
+    let isAdding: Bool
     let toggleFavorite: ((String) -> Void)?
     @State private var query = ""
     @State private var groupID: String?
+    @State private var isCommandDown = false
 
     /// `categories` are what search looks through; `favorites` are shown until something is typed.
     public init(
-        categories: [BlockCategory], favorites: [BlockCategory], selected: Brush?, theme: MoodTheme,
-        showsClear: Bool = true, choose: @escaping (Brush) -> Void, toggleFavorite: ((String) -> Void)? = nil
+        categories: [BlockCategory], favorites: [BlockCategory], selected: Set<Brush>, theme: MoodTheme,
+        showsClear: Bool = true, choose: @escaping (Brush) -> Void, toggle: ((String) -> Void)? = nil,
+        isAdding: Bool = false, toggleFavorite: ((String) -> Void)? = nil
     ) {
         self.categories = categories
         self.favorites = favorites
@@ -95,6 +117,8 @@ public struct CategoryPalette: View {
         self.theme = theme
         self.showsClear = showsClear
         self.choose = choose
+        self.toggle = toggle
+        self.isAdding = isAdding
         self.toggleFavorite = toggleFavorite
     }
 
@@ -111,17 +135,15 @@ public struct CategoryPalette: View {
         groups.first { $0.id == groupID }
     }
 
-    /// Matches while searching; otherwise the picked group's categories, or the favorites plus the picked category
-    /// when it isn't one.
+    /// Matches while searching; otherwise the picked group's categories, or the favorites plus the lit categories
+    /// that aren't.
     private var shown: [BlockCategory] {
         let group = group
         let pool = group.map { group in categories.filter { $0.group?.id == group.id } } ?? categories
         if isSearching { return Array(ActivitySearch.results(for: query, in: pool).prefix(30)) }
         if group != nil { return pool }
-        guard let id = selected?.categoryID, !favorites.contains(where: { $0.id == id }),
-              let picked = categories.first(where: { $0.id == id })
-        else { return favorites }
-        return favorites + [picked]
+        let lit = Set(selected.compactMap(\.categoryID))
+        return favorites + categories.filter { lit.contains($0.id) && !favorites.contains($0) }
     }
 
     public var body: some View {
@@ -134,9 +156,15 @@ public struct CategoryPalette: View {
             }
             FlowLayout(spacing: 8) {
                 ForEach(shown) { category in
-                    CategoryChip(category: category, theme: theme, isSelected: selected == .category(category.id)) {
+                    CategoryChip(
+                        category: category, theme: theme,
+                        isSelected: selected.contains(.category(category.id)) || selected.contains(.layer(category.id))
+                    ) {
                         pick(.category(category.id))
                     }
+                    #if canImport(AppKit)
+                    .modifier(HoverCursor(cursor: (isAdding || isCommandDown) && toggle != nil ? .dragCopy : nil))
+                    #endif
                     .contextMenu {
                         if let toggleFavorite {
                             let isFavorite = favorites.contains { $0.id == category.id }
@@ -147,7 +175,7 @@ public struct CategoryPalette: View {
                     }
                 }
                 if showsClear, !isSearching {
-                    CategoryChip(name: "Clear", symbol: "eraser", color: theme.text, theme: theme, isSelected: selected == .clear) {
+                    CategoryChip(name: "Clear", symbol: "eraser", color: theme.text, theme: theme, isSelected: selected.contains(.clear)) {
                         pick(.clear)
                     }
                 }
@@ -160,6 +188,7 @@ public struct CategoryPalette: View {
                     .foregroundStyle(theme.secondaryText)
             }
         }
+        .tracksCommandKey($isCommandDown)
     }
 
     private func searchField(firstMatch: BlockCategory?) -> some View {
@@ -245,7 +274,19 @@ public struct CategoryPalette: View {
 
     private func pick(_ choice: Brush) {
         query = ""
-        choose(choice)
+        if let toggle, let id = choice.categoryID, isAdding || Self.isCommandDown {
+            toggle(id)
+        } else {
+            choose(choice)
+        }
+    }
+
+    private static var isCommandDown: Bool {
+        #if canImport(AppKit)
+        NSEvent.modifierFlags.contains(.command)
+        #else
+        false
+        #endif
     }
 }
 

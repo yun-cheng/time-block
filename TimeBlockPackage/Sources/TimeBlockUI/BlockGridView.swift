@@ -18,6 +18,8 @@ public struct BlockGridView: View {
     var blockSize: CGFloat?
     /// What dragging across blocks logs, previewed on the block under the pointer. With none, a drag selects.
     var brush: Brush?
+    /// Whether activities are added to what blocks hold, shown by the add pointer over the blocks.
+    var isAdding: Bool
     /// Blocks picked out to log next, outlined until something is done with them.
     var selection: Range<Int>?
     /// Called with the blocks dragged across. Without it the grid doesn't respond to the pointer at all.
@@ -56,7 +58,7 @@ public struct BlockGridView: View {
     public init(
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
         showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
-        brush: Brush? = nil, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
+        brush: Brush? = nil, isAdding: Bool = false, selection: Range<Int>? = nil, onDrag: ((Range<Int>) -> Void)? = nil,
         onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>) -> Void)? = nil,
         onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil
     ) {
@@ -67,6 +69,7 @@ public struct BlockGridView: View {
         self.time = time
         self.blockSize = blockSize
         self.brush = brush
+        self.isAdding = isAdding
         self.selection = selection
         self.onDrag = onDrag
         self.onDeselect = onDeselect
@@ -144,10 +147,11 @@ public struct BlockGridView: View {
 
     #if canImport(AppKit)
     /// Resize arrows over a knob and while dragging one; an open hand over a selection that can be moved, closed while
-    /// moving it.
+    /// moving it; and the add pointer over the blocks while adding.
     private var cursor: NSCursor? {
         if moving != nil { return .closedHand }
         if resizing != nil || isOverHandle { return .resizeLeftRight }
+        if isAdding, hovered != nil || drag != nil { return .dragCopy }
         if let hovered, isMovable, selection?.contains(hovered) == true { return .openHand }
         return nil
     }
@@ -208,6 +212,13 @@ public struct BlockGridView: View {
         } else if let resizing, let selection, let category = resizableCategory {
             for index in selection { preview[index] = [] }
             for index in resizing.range { preview[index] = [BlockCell.Layer(categoryID: category)] }
+        } else if case .layer(let id) = brush, let edited {
+            // Added, or taken off when every block holds it already.
+            let cells = edited.filter(snapshot.cells.indices.contains).map { snapshot.cells[$0] }
+            let isHeld = cells.allSatisfy { $0.categoryIDs.contains(id) }
+            for cell in cells {
+                preview[cell.index] = cell.layers.filter { $0.categoryID != id } + (isHeld ? [] : [BlockCell.Layer(categoryID: id)])
+            }
         } else if let brush, let edited {
             for index in edited { preview[index] = brush.categoryID.map { [BlockCell.Layer(categoryID: $0)] } ?? [] }
         }
@@ -595,7 +606,12 @@ private struct BlockInfo: View {
                     .italic()
                     .foregroundStyle(theme.text)
             }
-            if let brush, shared?.categoryIDs != (brush.categoryID.map { [$0] } ?? []) {
+            if case .layer = brush {
+                Image(systemName: "plus").foregroundStyle(theme.secondaryText)
+                if let category = brush?.categoryID.flatMap({ snapshot.categories[$0] }) {
+                    Label(category.name, systemImage: category.symbol).foregroundStyle(theme.color(of: category))
+                }
+            } else if let brush, shared?.categoryIDs != (brush.categoryID.map { [$0] } ?? []) {
                 Image(systemName: "arrow.right").foregroundStyle(theme.secondaryText)
                 if let category = brush.categoryID.flatMap({ snapshot.categories[$0] }) {
                     Label(category.name, systemImage: category.symbol).foregroundStyle(theme.color(of: category))

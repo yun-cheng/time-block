@@ -99,7 +99,11 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   schedule change (putting old logs back would undo the new plan too).
 - **Undo and Redo buttons:** in the toolbar beside Settings, all three over the day even while Settings is open.
   They're greyed out with nothing to undo or redo, and their tooltips name the change.
-- **Several at once:** a block can hold more than one activity in a view (Commute and Podcast).
+- **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
+  activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
+  arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
+  the selection holds, or takes it off when every selected block holds it, and a brush picked up adds the same way.
+  Holding ⌘ adds too, while it's held. Every activity all the selected blocks hold is lit.
   - **Drawn as a stack:** cards of one size, the one in front at the bottom-right, each under it a step up and to
     the left (three at most drawn). In front is what breaks into the rest: the activity whose unbroken stretch is
     shortest (the toilet in a morning of work, a podcast on a commute, dinner on an evening of TV), then the one
@@ -109,7 +113,7 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     activity counts its full time in the totals, so they can add up to more than the day. A run of one activity
     alone has handles.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
-  the brush is put down afterwards.
+  the brush is put down afterwards. While adding (Add, or ⌘) it adds the activity instead.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
 - Menu bar: shows the counter; click → "Now: [starred activities, search]" logs the current block (and optionally back‑fills unlogged blocks since the last log).
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
@@ -288,7 +292,7 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M0 | **Visual prototype** | SwiftUI preview of the grid in normal + horror states; we agree on the look | ✅ done |
 | M1 | **Mac app + read‑only widget** | widget shows live grid & counter, updates every 5 min; schedule set in app | ✅ done (signed with a team, §2) |
 | — | **Views: Activity / Body** (§3.6a) | switch views in window, menu bar and per widget | ✅ done |
-| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; the unlogged nudge left |
+| M2 | **Logging + activities** | paint blocks in app, log from menu bar, colors in widget; logs per view | 🟡 select/paint logging, notes, activity library with search and stars, own activities, menu bar "Now" logging and saving done; several activities a block, with Normal and Add tools; the unlogged nudge left |
 | M3 | **Pre‑log templates** | recurring meals/coffee appear as hollow future blocks | ✅ done (Settings ▸ Routine) |
 | M4 | **Horror mode** | negative counter + escalation levels in widget and app | 🟡 visuals done in M0; notifications and "tomorrow's debt" left |
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
@@ -308,6 +312,6 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Platforms | Mac first; iPhone and Watch in M8 |
 | Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
-| Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards |
+| Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

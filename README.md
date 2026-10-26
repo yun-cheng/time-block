@@ -53,10 +53,14 @@ PLAN.md.
   they'll end up as until you let go.
 - **Right-click to clear:** right-click a logged block and pick Clear Blocks to empty its whole stretch, or the
   selection when the block is in it. Delete empties a selection too.
+- **Add one more:** pick **Add** in the two tools above the activities (or hold ⌘), and the pointer gets a green
+  plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
+  the rest, and painting adds the same way. **Normal** goes back to replacing. In the menu bar, Add or ⌘‑click adds
+  to the block in progress.
 - **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
   made it, and ⇧⌘Z or Redo puts it back.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
-  drag, so a stray click never logs anything.
+  drag, so a stray click never logs anything. With Add (or ⌘) it's added instead.
 - **Find any activity:** the chips are your starred activities, by group. Type in the search field above them to
   find any of the ~170 built in (`meal` finds Breakfast, Lunch, Dinner…); Return picks the top match. Click a group
   tab under it to see all of that group's activities; Starred (or the group again) goes back. Right‑click a chip to

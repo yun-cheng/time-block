@@ -38,6 +38,9 @@ final class AppModel {
     /// The brush each view paints with, so switching views keeps your pick. None means just looking.
     var brushes: [Track: Brush] = [:]
 
+    /// Whether activities replace what blocks hold or are added to it.
+    var tool: Tool = .normal
+
     /// Blocks selected in the window, waiting for a category.
     var selection: Range<Int>?
 
@@ -138,6 +141,19 @@ final class AppModel {
         }
     }
 
+    /// Adds an activity to what `range` holds in the day shown, or takes it off when every block holds it.
+    func toggle(_ range: Range<Int>, _ categoryID: String) {
+        toggle(range, categoryID, on: shownDay)
+    }
+
+    private func toggle(_ range: Range<Int>, _ categoryID: String, on day: String) {
+        guard let log = log(of: day) else { return }
+        let isHeld = log.holds(categoryID, throughout: range, schedule: schedule(of: log))
+        edit(isHeld ? "Remove Activity" : "Add Activity", on: day) {
+            $0.toggle(categoryID, in: range, schedule: $1, categories: settings.categories)
+        }
+    }
+
     /// Moves the ends of the run of one activity at `range` in the current view to `newRange`.
     func resize(_ range: Range<Int>, to newRange: Range<Int>) {
         edit("Resize Blocks", on: shownDay) {
@@ -227,6 +243,14 @@ final class AppModel {
         guard let current = snapshot.status.currentIndex else { return }
         let start = fillsGap ? snapshot.unloggedRun(before: current).lowerBound : current
         set(start..<(current + 1), to: categoryID, on: dayLog.day)
+    }
+
+    /// Adds an activity to the block in progress, alongside what it holds, or takes it off.
+    func toggleNow(_ categoryID: String) {
+        now = Date()
+        loadDayIfNeeded()
+        guard let current = snapshot.status.currentIndex else { return }
+        toggle(current..<(current + 1), categoryID, on: dayLog.day)
     }
 
     /// Stars a category, adding it to the palette, or unstars it.
