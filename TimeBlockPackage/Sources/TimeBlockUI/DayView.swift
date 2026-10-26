@@ -130,6 +130,10 @@ public struct DayView: View {
     var timers: TimerControls?
     /// The moment shown, which timers count to.
     var date: Date
+    /// Just the counter, the blocks and the timers going, small, for a window kept over other apps.
+    var isCompact: Bool
+    /// What goes at the end of the compact layout's top line, such as a button that brings the whole day back.
+    var compactAccessory: AnyView?
     @Environment(\.colorScheme) private var colorScheme
     /// The grid takes the keyboard when blocks are selected, for Delete, and Return to open the activities.
     @FocusState private var isGridFocused: Bool
@@ -138,13 +142,15 @@ public struct DayView: View {
 
     public init(
         snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil, timers: TimerControls? = nil,
-        date: Date = .now
+        date: Date = .now, isCompact: Bool = false, compactAccessory: AnyView? = nil
     ) {
         self.snapshot = snapshot
         self.time = time
         self.editor = editor
         self.timers = timers
         self.date = date
+        self.isCompact = isCompact
+        self.compactAccessory = compactAccessory
     }
 
     private var clockLabel: String {
@@ -177,8 +183,16 @@ public struct DayView: View {
 
     public var body: some View {
         let theme = MoodTheme(mood: snapshot.mood, colorScheme: colorScheme)
+        if isCompact {
+            compactBody(theme: theme)
+        } else {
+            fullBody(theme: theme)
+        }
+    }
+
+    private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
-        VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .bottom) {
                 if let date = otherDate {
                     otherDayHeader(date, theme: theme)
@@ -215,50 +229,81 @@ public struct DayView: View {
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(theme.accent)
             }
-            BlockGridView(
-                snapshot: snapshot, theme: theme, time: time, blockSize: 20,
-                selection: editor?.selection.wrappedValue, selectedLayer: editor?.layer.wrappedValue,
-                onDrag: editor.map { editor in { editor.dragged($0) } },
-                onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0, layer: $1) } },
-                onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } },
-                onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } },
-                onSelectLayer: editor.map { editor in { editor.selectLayer($0, $1) } },
-                selectionAccessory: editor.map { editor in AnyView(activitiesButton(editor, theme: theme)) })
-                .frame(maxWidth: .infinity)
-                .focusable(editor != nil, interactions: .edit)
-                .focusEffectDisabled()
-                .focused($isGridFocused)
-                .onDeleteCommand { editor?.clearSelection() }
-                .onKeyPress(.return) {
-                    guard editor?.selection.wrappedValue != nil else { return .ignored }
-                    showsActivities = true
-                    return .handled
-                }
-                .onChange(of: editor?.selection.wrappedValue) { _, range in
-                    if range != nil { isGridFocused = true } else { showsActivities = false }
-                }
+            grid(theme: theme, blockSize: 20)
             if !status.isOver && !status.isAhead {
                 NowChip(snapshot: snapshot, theme: theme)
-                if let timers, !timers.timers.isEmpty {
-                    TimerList(controls: timers, categories: snapshot.categories, theme: theme, date: date)
-                        // Clicks around the buttons shouldn't drop the selection.
-                        .contentShape(Rectangle())
-                        .onTapGesture {}
-                }
+                timerList(theme: theme)
             }
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
         }
-        // The grid's label can reach across the whole day, not just the grid.
-        .coordinateSpace(BlockGridView.labelSpace)
         .padding(22)
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        // A click anywhere off the blocks drops the selection.
-        .contentShape(Rectangle())
-        .onTapGesture { editor?.deselect() }
-        .background(MoodBackground(theme: theme, time: time))
+        .modifier(DayFrame(editor: editor, theme: theme, time: time))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// The counter on one line, then the blocks smaller: the day at a glance, beside other work.
+    private func compactBody(theme: MoodTheme) -> some View {
+        let status = snapshot.status
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let date = otherDate {
+                    Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(theme.text)
+                } else {
+                    CounterView(value: status.blocksLeft, theme: theme, size: 26, total: status.schedule.awakeBlocks, time: time)
+                    Label(clockLabel, systemImage: snapshot.track.symbol)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(theme.secondaryText)
+                }
+                Spacer(minLength: 8)
+                compactAccessory
+            }
+            grid(theme: theme, blockSize: 15)
+            if !status.isOver && !status.isAhead {
+                timerList(theme: theme)
+            }
+        }
+        .padding(12)
+        .modifier(DayFrame(editor: editor, theme: theme, time: time))
+    }
+
+    @ViewBuilder
+    private func timerList(theme: MoodTheme) -> some View {
+        if let timers, !timers.timers.isEmpty {
+            TimerList(controls: timers, categories: snapshot.categories, theme: theme, date: date)
+                // Clicks around the buttons shouldn't drop the selection.
+                .contentShape(Rectangle())
+                .onTapGesture {}
+        }
+    }
+
+    private func grid(theme: MoodTheme, blockSize: CGFloat) -> some View {
+        BlockGridView(
+            snapshot: snapshot, theme: theme, time: time, blockSize: blockSize,
+            selection: editor?.selection.wrappedValue, selectedLayer: editor?.layer.wrappedValue,
+            onDrag: editor.map { editor in { editor.dragged($0) } },
+            onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0, layer: $1) } },
+            onResize: editor.flatMap { editor in editor.resize.map { _ in { editor.resized($0, to: $1) } } },
+            onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } },
+            onSelectLayer: editor.map { editor in { editor.selectLayer($0, $1) } },
+            selectionAccessory: editor.map { editor in AnyView(activitiesButton(editor, theme: theme)) })
+            .frame(maxWidth: .infinity)
+            .focusable(editor != nil, interactions: .edit)
+            .focusEffectDisabled()
+            .focused($isGridFocused)
+            .onDeleteCommand { editor?.clearSelection() }
+            .onKeyPress(.return) {
+                guard editor?.selection.wrappedValue != nil else { return .ignored }
+                showsActivities = true
+                return .handled
+            }
+            .onChange(of: editor?.selection.wrappedValue) { _, range in
+                if range != nil { isGridFocused = true } else { showsActivities = false }
+            }
     }
 
     /// The button beside the selection's label, which opens the activities for it: a + for empty blocks, the edit
@@ -397,5 +442,22 @@ private struct NoteField: View {
         // Leaving a mixed field empty keeps the notes it had.
         guard trimmed != (note ?? ""), !(isMixed && trimmed.isEmpty) else { return }
         save(trimmed.isEmpty ? nil : trimmed)
+    }
+}
+
+/// What the whole day, full or compact, does around its blocks.
+private struct DayFrame: ViewModifier {
+    let editor: DayEditor?
+    let theme: MoodTheme
+    let time: Double
+
+    func body(content: Content) -> some View {
+        content
+            // The grid's label can reach across the whole day, not just the grid.
+            .coordinateSpace(BlockGridView.labelSpace)
+            // A click anywhere off the blocks drops the selection.
+            .contentShape(Rectangle())
+            .onTapGesture { editor?.deselect() }
+            .background(MoodBackground(theme: theme, time: time))
     }
 }
