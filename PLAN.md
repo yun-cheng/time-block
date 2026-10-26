@@ -279,7 +279,9 @@ Escalates the further past bedtime you are:
   stretch.
 - **Notifications** (Settings ▸ Notifications, both on to start): "Time to wind down" as it starts (none without a
   wind-down), "It's bedtime", then "30 minutes past bedtime" and "2 hours past bedtime … You are borrowing from
-  tomorrow." as the day turns to dread and nightmare.
+  tomorrow." as the day turns to dread and nightmare. Before bedtime (none to 2 hours, none to start) brings the
+  bedtime one that far ahead instead, "Bedtime in 15 minutes"; when that's as winding down starts, winding down says
+  it alone.
 - Widget gets the static version (widgets can't run continuous animations); the app/menu bar gets animated effects.
 - Tomorrow's grid can show the debt: "You start 30 blocks in the red."
 
@@ -346,7 +348,7 @@ blocks between days, searching activities and notes across days, and calendar ev
 Category      id, name, track(.activity|.body), group? (activity only; sets the color), color, symbol, keywords
               (built-ins live in code; AppSettings keeps favorites, customCategories, customGroups,
               editedCategories/editedGroups over the built-ins, removedCategories ids, templates, sleepShift, and
-              notifiesWindDown and notifiesBedtime; a category saves its group by id)
+              notifiesWindDown, notifiesBedtime and bedtimeNoticeMinutes; a category saves its group by id)
 DayLog        day ("2026-10-24", the wake date), wakeMinute, schedule (the day's own; nil in days saved before it
               was kept, which fall back to the settings), logs, isPlanned (templates laid out), sessions (timer
               stretches to the second): one JSON file per day

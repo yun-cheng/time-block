@@ -82,9 +82,27 @@ struct ReminderTests {
         #expect(summary(none.reminders(for: monday(), after: at(9), calendar: calendar)).first == "23:0 It's bedtime")
     }
 
+    @Test func bedtimeCanNotifyAhead() {
+        var settings = settings([], bedtime: true)
+        settings.bedtimeNoticeMinutes = 15
+        let reminders = settings.reminders(for: monday(), after: at(9), calendar: calendar)
+        #expect(summary(reminders) == [
+            "22:45 Bedtime in 15 minutes", "23:30 30 minutes past bedtime", "1:0 2 hours past bedtime",
+        ])
+        settings.bedtimeNoticeMinutes = 90
+        #expect(summary(settings.reminders(for: monday(), after: at(9), calendar: calendar)).first
+            == "21:30 Bedtime in 1h 30m")
+        // As winding down starts, winding down says it.
+        settings.bedtimeNoticeMinutes = 30
+        settings.notifiesWindDown = true
+        #expect(summary(settings.reminders(for: monday(), after: at(9), calendar: calendar)).prefix(2)
+            == ["22:30 Time to wind down", "23:30 30 minutes past bedtime"])
+    }
+
     @Test func notificationSettingsRoundTrip() throws {
         var settings = AppSettings.standard
         settings.notifiesBedtime = false
+        settings.bedtimeNoticeMinutes = 20
         settings.templates = [lunch]
         let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(settings))
         #expect(decoded == settings)
@@ -94,7 +112,7 @@ struct ReminderTests {
              "templates": [{"id": "t", "categoryID": "lunch", "startMinute": 720, "length": 6,
                             "weekdays": [2], "isEnabled": true}]}
             """.utf8))
-        #expect(old.notifiesWindDown && old.notifiesBedtime)
+        #expect(old.notifiesWindDown && old.notifiesBedtime && old.bedtimeNoticeMinutes == 0)
         #expect(old.templates.first?.notifies == false)
     }
 }

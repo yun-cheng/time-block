@@ -32,6 +32,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var notifiesWindDown: Bool
     /// Whether notifications say when it's bedtime, and as it gets later past it.
     public var notifiesBedtime: Bool
+    /// Minutes before bedtime that the bedtime notification comes, in steps of 5, or 0 for at bedtime.
+    public var bedtimeNoticeMinutes: Int
 
     public init(
         schedule: Schedule, track: Track = .activity, favorites: [String] = BlockCategory.defaultFavorites,
@@ -39,7 +41,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         editedCategories: [BlockCategory] = [], editedGroups: [CategoryGroup] = [], removedCategories: [String] = [],
         templates: [Template] = [], sleepShift: SleepShift? = nil, grid: GridMarks = .standard,
         windDownMinutes: Int = DayStatus.standardWindDownBlocks * Schedule.blockMinutes,
-        notifiesWindDown: Bool = true, notifiesBedtime: Bool = true
+        notifiesWindDown: Bool = true, notifiesBedtime: Bool = true, bedtimeNoticeMinutes: Int = 0
     ) {
         self.schedule = schedule
         self.track = track
@@ -55,6 +57,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         self.windDownMinutes = windDownMinutes
         self.notifiesWindDown = notifiesWindDown
         self.notifiesBedtime = notifiesBedtime
+        self.bedtimeNoticeMinutes = bedtimeNoticeMinutes
     }
 
     /// See `windDownMinutes`.
@@ -190,6 +193,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
             ?? DayStatus.standardWindDownBlocks * Schedule.blockMinutes
         notifiesWindDown = try container.decodeIfPresent(Bool.self, forKey: .notifiesWindDown) ?? true
         notifiesBedtime = try container.decodeIfPresent(Bool.self, forKey: .notifiesBedtime) ?? true
+        bedtimeNoticeMinutes = try container.decodeIfPresent(Int.self, forKey: .bedtimeNoticeMinutes) ?? 0
         // Activities save only their group's id; put the groups themselves back. Edits that match the original
         // aren't edits.
         editedGroups.removeAll { CategoryGroup.builtIn.contains($0) }
@@ -205,7 +209,8 @@ public struct AppSettings: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schedule, track, favorites, customCategories, customGroups, editedCategories, editedGroups,
-             removedCategories, templates, sleepShift, grid, windDownMinutes, notifiesWindDown, notifiesBedtime
+             removedCategories, templates, sleepShift, grid, windDownMinutes, notifiesWindDown, notifiesBedtime,
+             bedtimeNoticeMinutes
         case legacyCategories = "categories"
     }
 
@@ -225,6 +230,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         try container.encode(windDownMinutes, forKey: .windDownMinutes)
         try container.encode(notifiesWindDown, forKey: .notifiesWindDown)
         try container.encode(notifiesBedtime, forKey: .notifiesBedtime)
+        try container.encode(bedtimeNoticeMinutes, forKey: .bedtimeNoticeMinutes)
     }
 
     /// The day at `date`, drawn from `log` (which should be that day's, see `Schedule.dayID`), with what `timers` have

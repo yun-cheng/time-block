@@ -38,7 +38,14 @@ struct SettingsView: View {
                     .disabled(model.settings.windDownMinutes == 0)
                     .help("When winding down starts")
                 Toggle("Bedtime", isOn: $model.settings.notifiesBedtime)
-                    .help("At bedtime, then 30 minutes and 2 hours past it. Each routine has its own Notify.")
+                    .help("Before or at bedtime, then 30 minutes and 2 hours past it. Each routine has its own Notify.")
+                LabeledContent("Before bedtime") {
+                    // At bedtime to 2 hours before.
+                    DurationPicker(
+                        title: "Before bedtime", minutes: $model.settings.bedtimeNoticeMinutes, range: 0...(2 * 60))
+                }
+                .disabled(!model.settings.notifiesBedtime)
+                .help("How long before bedtime its notification comes, or at bedtime with none")
             } header: {
                 Text("Notifications")
             }

@@ -56,8 +56,17 @@ extension AppSettings {
                 start, "wind-down", "Time to wind down", "Bedtime is at \(clock(bed)). Get ready for sleep."))
         }
         if notifiesBedtime {
-            reminders.append((
-                bed, "bedtime", "It's bedtime", "\(clock(bed)). Every block from now on is taken from sleep."))
+            let ahead = bedtimeNoticeMinutes / Schedule.blockMinutes
+            let notice = max(0, bed - ahead)
+            if ahead == 0 {
+                reminders.append((
+                    bed, "bedtime", "It's bedtime", "\(clock(bed)). Every block from now on is taken from sleep."))
+            } else if !(notifiesWindDown && windDownBlocks > 0 && notice == max(0, bed - windDownBlocks)) {
+                // Coming as winding down starts, that says it already.
+                reminders.append((
+                    notice, "bedtime", "Bedtime in \(Self.duration(minutes: (bed - notice) * Schedule.blockMinutes))",
+                    "At \(clock(bed)). Time to finish up and get ready for sleep."))
+            }
             for minutes in Reminder.pastBedtimeMinutes {
                 let block = bed + minutes / Schedule.blockMinutes
                 let past = minutes < 60 ? "\(minutes) minutes" : "\(minutes / 60) hours"
@@ -85,6 +94,16 @@ extension AppSettings {
                 let minute = timelineMinute % (24 * 60)
                 return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: $0)
             }
+    }
+
+    /// "45 minutes", "1 hour", "1h 30m".
+    private static func duration(minutes: Int) -> String {
+        switch (minutes / 60, minutes % 60) {
+        case (0, let m): "\(m) minutes"
+        case (1, 0): "1 hour"
+        case (let h, 0): "\(h) hours"
+        case (let h, let m): "\(h)h \(m)m"
+        }
     }
 
     private static func clock(_ minute: Int) -> String {

@@ -23,8 +23,9 @@ whole UI slowly turns into a horror show.
   timer's length (none to 2 hours, 30 minutes to start). Those last blocks are tinted amber, and when they start the
   whole day turns warm.
 - **Notifications:** you're told when winding down starts, at bedtime, and again 30 minutes and 2 hours past it, as
-  the day turns to dread and then nightmare; turn either off under Notifications in Settings. Routines notify one by
-  one (see Routine), and a countdown at zero.
+  the day turns to dread and then nightmare; turn either off under Notifications in Settings, and set Before bedtime
+  to be told that long ahead instead ("Bedtime in 15 minutes"). Routines notify one by one (see Routine), and a
+  countdown at zero.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, amber is time to
   wind down, red is taken from sleep.
