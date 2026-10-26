@@ -39,6 +39,23 @@ struct DayButtonStyle: ButtonStyle {
     }
 }
 
+/// Opens the timer dialog, and shows it's open.
+struct StartTimerButton: View {
+    let theme: MoodTheme
+    @Binding var isOpen: Bool
+
+    var body: some View {
+        Button {
+            isOpen.toggle()
+        } label: {
+            Label("Start Timer", systemImage: "stopwatch")
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .buttonStyle(DayButtonStyle(theme: theme, isOn: isOpen))
+        .help("Start a timer that logs an activity as it goes")
+    }
+}
+
 /// Goes back and forth between days, as in Calendar: ‹ and › either side of the date shown, which picks one from a
 /// calendar, and Today to come back.
 struct DayPicker: View {

@@ -99,9 +99,10 @@ nudge for unlogged time; see the milestones in PLAN.md.
 - **Times** (wake up, bedtime, a shift's target, a routine's start): type one, step it with ↑↓ (5 minutes on the
   minutes, an hour on the hours), or pick one from the ⌄ list, every 15 minutes. A typed time rounds to the nearest
   5 minutes once you're done with it.
-- **Keep on top:** click the pin in the day's top corner (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over your
-  other windows, on every Space: the counter, the blocks at a smaller size and the timers going, and you can still log
-  in it. Click the pin beside the counter to bring the whole day back.
+- **Keep on top:** click the pin in the day's top corner (or Window ▸ Keep on Top, ⌥⌘P) to float a compact day over
+  your other windows, on every Space: the counter, the blocks at a smaller size and the timers, and you can still log
+  in it and start a timer (the stopwatch beside the pin), its dialog drawn smaller to fit. Click the pin beside the
+  counter to bring the whole day back.
 - **Done typing:** click anywhere outside a field (a time, a search, a note) to finish typing in it.
 
 ## Layout

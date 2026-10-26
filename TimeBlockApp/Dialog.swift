@@ -10,11 +10,11 @@ struct Dialog<Content: View>: View {
     /// How much lighter than `fill` it's drawn, raised off a day of the same color, as dark mode raises its sheets.
     var lift = 0.0
     var stroke: Color
+    /// The least room left around it, to the window's edges: by default the day's own, so it lines up with the day's
+    /// column.
+    var margin: CGFloat = 32
     @Binding var isOpen: Bool
     @ViewBuilder let content: Content
-
-    /// The least room left around it, to the window's edges: the day's own, so it lines up with the day's column.
-    private static var margin: CGFloat { 32 }
 
     var body: some View {
         ZStack {
@@ -32,7 +32,7 @@ struct Dialog<Content: View>: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(stroke))
                 .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
-                .padding(Self.margin)
+                .padding(margin)
         }
     }
 }

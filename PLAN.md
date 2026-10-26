@@ -157,13 +157,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   times are kept with the day (`sessions`), and hovering its blocks shows them (`⏱ 10:03–10:31`). Timers are saved
   beside the settings, so they carry on through a quit, and the widget draws their blocks too. In the menu bar panel the
   timers sit over a palette that starts one (no chip is lit: the list shows what's going); in the window Start Timer,
-  beside what's on now, opens one dialog over the day: Count Down or Count Up on top, both named, the one picked filled
-  in, then the countdown, its length typed or picked in hours and minutes, set on blocks like the day's (a row an hour
-  up to 3 hours, or past that an hour to a big block over a row of minutes, up to 24) or picked from starred lengths (30
-  min and 1 h to start), starting at a default, 30 min to start; counting up, the length hides. Then an Activity row
-  whose button opens the activities, over Cancel and Start. Start starts it and closes the dialog, and the timers going
-  are listed under the grid, below the current activity. An earlier version took two steps, with system tabs and then a
-  switch for up and down, which felt heavy or unclear. Timers replaced the menu bar's one‑click "Now" logging.
+  beside what's on now, opens one dialog over the day (the compact day has it too): Count Down or Count Up on top, both
+  named, the one picked filled in, then the countdown, its length typed or picked in hours and minutes, set on blocks
+  like the day's (a row an hour up to 3 hours, or past that an hour to a big block over a row of minutes, up to 24) or
+  picked from starred lengths (30 min and 1 h to start), starting at a default, 30 min to start; counting up, the length
+  hides. Then an Activity row whose button opens the activities, over Cancel and Start. Start starts it and closes the
+  dialog, and the timers going are listed under the grid, below the current activity. An earlier version took two steps,
+  with system tabs and then a switch for up and down, which felt heavy or unclear. Timers replaced the menu bar's
+  one‑click "Now" logging.
 - Optional note per block range ("Wrote PLAN.md"): written on the selected logged blocks, shown on hover. A noted
   stretch is its own run; giving a whole run another activity keeps its note.
 - **Little text on screen:** the popup names the selected times ("08:00–08:30"), and nothing else explains itself.
@@ -184,8 +185,10 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     day ahead it showed has come).
 - **Keep on top:** the pin in the day's top corner (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps'
   windows, on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
-  instead of 20, and the timers going. The buttons, stats, story bar, legend and settings are left out; logging works as
-  in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old height.
+  instead of 20, and the timers, with Start Timer as just its stopwatch beside the pin. The other buttons, stats, story
+  bar, legend and settings are left out; logging works as in the whole day. The timer dialog fits in the compact day:
+  closer to its edges and tighter inside, Count Down and Count Up losing their icons and the Activity row wrapping when
+  there's no room. The pin beside the counter (or Settings) brings the whole day back at its old height.
   - The compact window keeps a plain title bar, to drag it by and close it. The app sizes the window to the
     compact day itself, keeping its top left corner, since SwiftUI doesn't shrink it. A full‑screen window leaves
     full screen first.

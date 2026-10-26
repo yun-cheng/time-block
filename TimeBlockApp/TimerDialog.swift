@@ -6,9 +6,11 @@ import TimeBlockUI
 /// Starts a timer from a dialog in the middle of the window, over the day dimmed: whether it counts down, a
 /// countdown's length, and the activity to time, picked from a popup. The length is typed, picked or set with blocks,
 /// and can be starred to pick in a click or made what countdowns start at; counting up, there's no length to set. Start starts it, and the dialog closes then, or on Cancel, Escape or a click off it.
+/// Compact, it fits a day as small as the window kept on top's: closer to its edges, and tighter inside.
 struct TimerDialog: View {
     @Bindable var model: AppModel
     let theme: MoodTheme
+    var isCompact = false
     @Binding var isOpen: Bool
     /// The countdown's length, kept while counting up so counting down goes back to it.
     @State private var length = CountdownLength.standard
@@ -20,12 +22,13 @@ struct TimerDialog: View {
 
     var body: some View {
         Dialog(
-            width: 460, fill: theme.backgroundBottom, lift: 0.08, stroke: theme.text.opacity(0.28), isOpen: $isOpen
+            width: 460, fill: theme.backgroundBottom, lift: 0.08, stroke: theme.text.opacity(0.28),
+            margin: isCompact ? 10 : 32, isOpen: $isOpen
         ) {
             // Scrolling only in a window too short for all of it.
             ViewThatFits(in: .vertical) {
-                content.padding(18)
-                ScrollView { content.padding(18) }
+                content.padding(padding)
+                ScrollView { content.padding(padding) }
             }
         }
         .onAppear {
@@ -36,16 +39,21 @@ struct TimerDialog: View {
         }
     }
 
+    private var padding: CGFloat { isCompact ? 12 : 18 }
+    /// Room on the left to line up with the blocks, their row labels out in it; compact, there's none to spare.
+    private var blocksInset: CGFloat { isCompact ? 0 : CountdownBlocks.labelWidth }
+
     private var content: some View {
         let snapshot = model.snapshot
         let isGoing = chosen.map { id in model.timers.contains { $0.categoryID == id } } ?? false
         let minutes = model.countdownMinutes
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Spacer()
-                countPicker(isCountingDown: minutes != nil)
-                Spacer()
+        return VStack(alignment: .leading, spacing: isCompact ? 10 : 14) {
+            // Their icons go first when there's no room for them.
+            ViewThatFits(in: .horizontal) {
+                countPicker(isCountingDown: minutes != nil, showsIcons: true)
+                countPicker(isCountingDown: minutes != nil, showsIcons: false)
             }
+            .frame(maxWidth: .infinity)
             if let minutes {
                 lengthFields(minutes)
                 blocks(minutes)
@@ -56,17 +64,7 @@ struct TimerDialog: View {
                     .foregroundStyle(theme.secondaryText)
             }
             Divider()
-            HStack(spacing: 10) {
-                Text("Activity")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(theme.secondaryText)
-                activityButton(snapshot)
-                if isGoing {
-                    Text("Has a timer going")
-                        .font(.system(size: 11))
-                        .foregroundStyle(theme.secondaryText)
-                }
-            }
+            activityRow(snapshot, isGoing: isGoing)
             HStack {
                 Spacer()
                 Button("Cancel") { isOpen = false }
@@ -81,18 +79,40 @@ struct TimerDialog: View {
                 .help(chosen == nil ? "Choose an activity to time first" : "")
             }
         }
-        // Lined up with the blocks, their row labels out to the left.
-        .padding(.leading, CountdownBlocks.labelWidth)
+        .padding(.leading, blocksInset)
+    }
+
+    /// The activity picked, and whether it has a timer going, under it when there's no room beside.
+    private func activityRow(_ snapshot: DaySnapshot, isGoing: Bool) -> some View {
+        let going = Text("Has a timer going")
+            .font(.system(size: 11))
+            .foregroundStyle(theme.secondaryText)
+        let picked = HStack(spacing: 10) {
+            Text("Activity")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(theme.secondaryText)
+            activityButton(snapshot)
+        }
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                picked
+                if isGoing { going }
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                picked
+                if isGoing { going }
+            }
+        }
     }
 
     /// Counting down or up, both named, the one picked filled in, like the tools over the activities.
-    private func countPicker(isCountingDown: Bool) -> some View {
+    private func countPicker(isCountingDown: Bool, showsIcons: Bool) -> some View {
         HStack(spacing: 2) {
-            countOption("Count Down", systemImage: "timer", isPicked: isCountingDown,
+            countOption("Count Down", systemImage: "timer", isPicked: isCountingDown, showsIcon: showsIcons,
                         help: "Count down from a length, and on past zero, until you stop it") {
                 model.countdownMinutes = length
             }
-            countOption("Count Up", systemImage: "stopwatch", isPicked: !isCountingDown,
+            countOption("Count Up", systemImage: "stopwatch", isPicked: !isCountingDown, showsIcon: showsIcons,
                         help: "Count up from zero until you stop it") {
                 model.countdownMinutes = nil
             }
@@ -102,16 +122,23 @@ struct TimerDialog: View {
     }
 
     private func countOption(
-        _ title: String, systemImage: String, isPicked: Bool, help: String, action: @escaping () -> Void
+        _ title: String, systemImage: String, isPicked: Bool, showsIcon: Bool, help: String,
+        action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(isPicked ? theme.backgroundBottom : theme.secondaryText)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(RoundedRectangle(cornerRadius: 6).fill(isPicked ? theme.text : .clear))
-                .contentShape(RoundedRectangle(cornerRadius: 6))
+            Group {
+                if showsIcon {
+                    Label(title, systemImage: systemImage)
+                } else {
+                    Text(title)
+                }
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(isPicked ? theme.backgroundBottom : theme.secondaryText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .background(RoundedRectangle(cornerRadius: 6).fill(isPicked ? theme.text : .clear))
+            .contentShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
         .help(help)
@@ -189,7 +216,7 @@ struct TimerDialog: View {
         return VStack(spacing: 8) {
             CountdownBlocks(
                 minutes: Binding { minutes } set: { setLength($0) }, showsHours: showsHours || isLong, theme: theme)
-                .padding(.leading, -CountdownBlocks.labelWidth)
+                .padding(.leading, -blocksInset)
             // Past three hours only hours fit, so there's nothing fewer to show.
             if !isLong {
                 Button {

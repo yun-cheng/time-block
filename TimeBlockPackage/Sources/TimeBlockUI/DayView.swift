@@ -154,7 +154,7 @@ public struct DayView: View {
     var timers: TimerControls?
     /// The moment shown, which timers count to.
     var date: Date
-    /// Just the counter, the blocks and the timers going, small, for a window kept over other apps.
+    /// Just the counter, the blocks and the timers, small, for a window kept over other apps.
     var isCompact: Bool
     var controls: DayControls
     @Environment(\.colorScheme) private var colorScheme
@@ -241,6 +241,10 @@ public struct DayView: View {
         BlockGridView.contentWidth(of: snapshot, blockSize: blockSize) + 2 * padding
     }
 
+    /// The compact day's blocks, and the room around them.
+    private static let compactBlockSize: CGFloat = 15
+    private static let compactPadding: CGFloat = 12
+
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
         let blockSize = Self.blockSize
@@ -309,7 +313,7 @@ public struct DayView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    /// The counter on one line, then the blocks smaller: the day at a glance, beside other work.
+    /// The counter on one line, with Start Timer, then the blocks smaller: the day at a glance, beside other work.
     private func compactBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
         return VStack(alignment: .leading, spacing: 8) {
@@ -325,14 +329,19 @@ public struct DayView: View {
                         .foregroundStyle(theme.secondaryText)
                 }
                 Spacer(minLength: 8)
+                // Just its icon: the line has no room for its name.
+                if !status.isOver && !status.isAhead {
+                    controls.timer?(theme)
+                        .labelStyle(.iconOnly)
+                }
                 controls.corner?(theme)
             }
-            grid(theme: theme, blockSize: 15)
+            grid(theme: theme, blockSize: Self.compactBlockSize)
             if !status.isOver && !status.isAhead {
                 timerList(theme: theme)
             }
         }
-        .padding(12)
+        .padding(Self.compactPadding)
         .modifier(DayFrame(editor: editor, theme: theme, time: time))
     }
 

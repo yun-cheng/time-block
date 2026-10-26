@@ -28,10 +28,16 @@ struct MainWindow: View {
     var body: some View {
         Group {
             if model.isPinned {
-                // No toolbar or settings: just the day, and the window fits it.
+                // No toolbar or settings: just the day, and the window fits it; the timer dialog fits in it.
                 day
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { compactSize = $0 }
+                    // Over the day, which the window keeps fitting.
+                    .overlay {
+                        if showsTimerStarter {
+                            TimerDialog(model: model, theme: theme, isCompact: true, isOpen: $showsTimerStarter)
+                        }
+                    }
             } else {
                 // The settings are always beside the day, past the window's edge while they're hidden: showing or
                 // hiding them only widens or narrows the window, and nothing else moves.
@@ -149,17 +155,7 @@ extension MainWindow {
         DayControls(
             day: { AnyView(DayPicker(model: model, theme: $0)) },
             track: { AnyView(TrackSwitch(track: $model.settings.track, theme: $0)) },
-            timer: { theme in
-                AnyView(
-                    Button {
-                        showsTimerStarter.toggle()
-                    } label: {
-                        Label("Start Timer", systemImage: "stopwatch")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .buttonStyle(DayButtonStyle(theme: theme, isOn: showsTimerStarter))
-                    .help("Start a timer that logs an activity as it goes"))
-            },
+            timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) },
             corner: { theme in
                 AnyView(
                     HStack(spacing: 0) {
