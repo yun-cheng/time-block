@@ -45,6 +45,7 @@ struct MenuBarPanel: View {
                     snapshot: model.snapshot(at: context.date), animates: true, timers: model.timerControls, isCompact: true,
                     controls: DayControls(timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) }))
             }
+            .pausesAnimationWhenHidden()
             .overlay {
                 if showsTimerStarter {
                     TimerDialog(model: model, theme: theme, isCompact: true, isOpen: $showsTimerStarter)

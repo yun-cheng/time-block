@@ -135,7 +135,7 @@ extension MainWindow {
                     resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }),
                 timers: model.timerControls, isCompact: model.isPinned, blockSize: blockSize, controls: controls)
         }
-        .environment(\.pausesAnimation, isMenuOpen)
+        .pausesAnimationWhenHidden(or: isMenuOpen)
     }
 
     /// The offer to undo the last change, at the bottom of the day.
