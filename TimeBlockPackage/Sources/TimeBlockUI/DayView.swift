@@ -144,16 +144,16 @@ public struct DayControls {
     }
 }
 
-/// The main app's day screen. Unlike widgets, it animates.
+/// The main app's day screen. Unlike widgets, it can animate, each moving part on its own clock, so the rest stays
+/// still between the times it's given.
 public struct DayView: View {
     let snapshot: DaySnapshot
-    var time: Double
+    /// Whether the current block pulses and, past bedtime, the horror moves.
+    var animates: Bool
     /// Without one the day is read-only.
     var editor: DayEditor?
     /// Today's timers; without them there are none to start.
     var timers: TimerControls?
-    /// The moment shown, which timers count to.
-    var date: Date
     /// Just the counter, the blocks and the timers, small, for a window kept over other apps.
     var isCompact: Bool
     /// Side of the whole day's blocks, smaller on a screen too narrow for them.
@@ -166,15 +166,14 @@ public struct DayView: View {
     @State private var showsActivities = false
 
     public init(
-        snapshot: DaySnapshot, time: Double = 0, editor: DayEditor? = nil, timers: TimerControls? = nil,
-        date: Date = .now, isCompact: Bool = false, blockSize: CGFloat = DayView.blockSize,
+        snapshot: DaySnapshot, animates: Bool = false, editor: DayEditor? = nil, timers: TimerControls? = nil,
+        isCompact: Bool = false, blockSize: CGFloat = DayView.blockSize,
         controls: DayControls = DayControls()
     ) {
         self.snapshot = snapshot
-        self.time = time
+        self.animates = animates
         self.editor = editor
         self.timers = timers
-        self.date = date
         self.isCompact = isCompact
         self.blockSize = blockSize
         self.controls = controls
@@ -272,9 +271,7 @@ public struct DayView: View {
                         otherDayHeader(theme: theme)
                     } else {
                         VStack(alignment: .leading, spacing: 0) {
-                            CounterView(
-                                value: status.blocksLeft, theme: theme, size: Self.counterSize,
-                                total: status.schedule.awakeBlocks, time: time)
+                            counter(theme: theme, size: Self.counterSize)
                             Text(MoodCopy.caption(snapshot.mood))
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(theme.secondaryText)
@@ -324,7 +321,7 @@ public struct DayView: View {
         .padding(Self.padding)
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .modifier(DayFrame(editor: editor, theme: theme, time: time))
+        .modifier(DayFrame(editor: editor, theme: theme, animates: animates))
     }
 
     /// The counter on one line, with Start Timer, then the blocks smaller: the day at a glance, beside other work.
@@ -337,7 +334,7 @@ public struct DayView: View {
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(theme.text)
                 } else {
-                    CounterView(value: status.blocksLeft, theme: theme, size: 26, total: status.schedule.awakeBlocks, time: time)
+                    counter(theme: theme, size: 26)
                     Label(clockLabel, systemImage: snapshot.track.symbol)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(theme.secondaryText)
@@ -356,13 +353,22 @@ public struct DayView: View {
             }
         }
         .padding(Self.compactPadding)
-        .modifier(DayFrame(editor: editor, theme: theme, time: time))
+        .modifier(DayFrame(editor: editor, theme: theme, animates: animates))
+    }
+
+    /// Today's blocks left, which glitches past bedtime.
+    private func counter(theme: MoodTheme, size: CGFloat) -> some View {
+        AnimationClock(isOn: animates && snapshot.mood >= .dread) { time in
+            CounterView(
+                value: snapshot.status.blocksLeft, theme: theme, size: size, total: snapshot.status.schedule.awakeBlocks,
+                time: time)
+        }
     }
 
     @ViewBuilder
     private func timerList(theme: MoodTheme) -> some View {
         if let timers, !timers.timers.isEmpty {
-            TimerList(controls: timers, categories: snapshot.categories, theme: theme, date: date)
+            TimerList(controls: timers, categories: snapshot.categories, theme: theme)
                 // Clicks around the buttons shouldn't drop the selection.
                 .contentShape(Rectangle())
                 .onTapGesture {}
@@ -371,7 +377,7 @@ public struct DayView: View {
 
     private func grid(theme: MoodTheme, blockSize: CGFloat) -> some View {
         BlockGridView(
-            snapshot: snapshot, theme: theme, time: time, blockSize: blockSize,
+            snapshot: snapshot, theme: theme, animates: animates, blockSize: blockSize,
             selection: editor?.selection.wrappedValue, selectedLayer: editor?.layer.wrappedValue,
             onDrag: editor.map { editor in { editor.dragged($0) } },
             onDeselect: editor?.deselect, onClear: editor.map { editor in { editor.clear($0, layer: $1) } },
@@ -547,7 +553,7 @@ private struct NoteField: View {
 private struct DayFrame: ViewModifier {
     let editor: DayEditor?
     let theme: MoodTheme
-    let time: Double
+    let animates: Bool
 
     func body(content: Content) -> some View {
         content
@@ -556,6 +562,9 @@ private struct DayFrame: ViewModifier {
             // A click anywhere off the blocks drops the selection.
             .contentShape(Rectangle())
             .onTapGesture { editor?.deselect() }
-            .background(MoodBackground(theme: theme, time: time))
+            .background {
+                // It flickers past bedtime.
+                AnimationClock(isOn: animates && theme.mood >= .dread) { MoodBackground(theme: theme, time: $0) }
+            }
     }
 }

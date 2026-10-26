@@ -36,11 +36,8 @@ struct PrototypeView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
             Divider()
             ScrollView([.horizontal, .vertical]) {
-                TimelineView(.animation(paused: !animate)) { context in
-                    let time = animate ? context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000) : 0
-                    ScenarioBoard(snapshot: snapshot, time: time)
-                }
-                .padding(28)
+                ScenarioBoard(snapshot: snapshot, animates: animate)
+                    .padding(28)
             }
         }
         .preferredColorScheme(appearance.scheme)

@@ -9,8 +9,8 @@ struct MainWindow: View {
     /// What Undo and Redo would do now ("Undo Move Blocks"), nil when there's nothing to. Undo managers can't be
     /// observed, so this follows their notifications.
     @State private var undoTitles = UndoTitles()
-    /// Whether a menu is open, such as the grid's right-click menu. The day stops animating meanwhile: every frame
-    /// would build the menu again, and its icons would flash.
+    /// Whether a menu is open, such as the grid's right-click menu. The day stops animating meanwhile: a frame of the
+    /// grid would build the menu again, and its icons would flash.
     @State private var isMenuOpen = false
     @State private var showsTimerStarter = false
     /// Whether the window has room for the settings beside the day, which follows them showing once it has widened or
@@ -124,19 +124,18 @@ struct MainWindow: View {
 
 extension MainWindow {
     private func day(blockSize: CGFloat = DayView.blockSize) -> some View {
-        // 15 fps is plenty for the pulse and horror effects, and keeps an open window cheap.
-        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: isMenuOpen)) { context in
+        // The day moves on a minute at a time; what animates in it has clocks of its own.
+        TimelineView(.everyMinute) { context in
             DayView(
-                snapshot: model.shownSnapshot(at: context.date),
-                time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
+                snapshot: model.shownSnapshot(at: context.date), animates: true,
                 editor: DayEditor(
                     tool: $model.tool, selection: $model.selection, layer: $model.selectedLayer,
                     paint: { model.set($0, to: $1.categoryID, layer: $2) }, toggle: { model.toggle($0, $1) },
                     annotate: { model.setNote($1, for: $0, layer: $2) }, toggleFavorite: model.toggleFavorite,
                     resize: { model.resize($0, to: $1, layer: $2) }, move: { model.move($0, by: $1, layer: $2) }),
-                timers: model.timerControls, date: context.date,
-                isCompact: model.isPinned, blockSize: blockSize, controls: controls)
+                timers: model.timerControls, isCompact: model.isPinned, blockSize: blockSize, controls: controls)
         }
+        .environment(\.pausesAnimation, isMenuOpen)
     }
 
     /// The offer to undo the last change, at the bottom of the day.

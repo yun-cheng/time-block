@@ -20,7 +20,7 @@ struct Scenario: Identifiable, Sendable {
 /// Every surface side by side for one moment of the day.
 struct ScenarioBoard: View {
     let snapshot: DaySnapshot
-    var time: Double = 0
+    var animates = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 32) {
@@ -29,9 +29,9 @@ struct ScenarioBoard: View {
                 labeled("Medium widget") { WidgetMock(.medium, snapshot: snapshot) }
             }
             labeled("Large widget") { WidgetMock(.large, snapshot: snapshot) }
-            labeled(time > 0 ? "App (animated)" : "App") {
+            labeled(animates ? "App (animated)" : "App") {
                 // Blocks keep their size, so a long night makes the app taller rather than smaller.
-                DayView(snapshot: snapshot, time: time)
+                DayView(snapshot: snapshot, animates: animates)
                     .frame(width: 440)
                     .frame(minHeight: 660)
                     .fixedSize(horizontal: false, vertical: true)

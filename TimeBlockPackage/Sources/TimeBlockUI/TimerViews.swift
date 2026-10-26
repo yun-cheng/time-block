@@ -29,26 +29,26 @@ public struct TimerControls {
 }
 
 /// The timers going, each with its activity, its time (counting up, or down and then on past zero, in the accent
-/// color) and buttons to stop it and to delete it.
+/// color) and buttons to stop it and to delete it. The times go on each second.
 public struct TimerList: View {
     let controls: TimerControls
     let categories: [String: BlockCategory]
     let theme: MoodTheme
-    let date: Date
     /// The timer whose delete is waiting to be confirmed.
     @State private var deleting: LiveTimer?
 
-    public init(controls: TimerControls, categories: [String: BlockCategory], theme: MoodTheme, date: Date) {
+    public init(controls: TimerControls, categories: [String: BlockCategory], theme: MoodTheme) {
         self.controls = controls
         self.categories = categories
         self.theme = theme
-        self.date = date
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(controls.timers) { timer in
-                row(timer)
+        SecondClock { date in
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(controls.timers) { timer in
+                    row(timer, at: date)
+                }
             }
         }
         .alert(
@@ -67,7 +67,7 @@ public struct TimerList: View {
         categories[timer.categoryID]?.name ?? timer.categoryID
     }
 
-    private func row(_ timer: LiveTimer) -> some View {
+    private func row(_ timer: LiveTimer, at date: Date) -> some View {
         let category = categories[timer.categoryID]
         let remaining = timer.remaining(at: date)
         let isOver = (remaining ?? 0) < 0

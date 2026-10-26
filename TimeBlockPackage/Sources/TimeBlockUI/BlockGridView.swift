@@ -12,8 +12,9 @@ public struct BlockGridView: View {
     /// Hour rows to show; nil shows the whole day.
     var rows: Range<Int>?
     var showsHourLabels: Bool
-    /// Animation clock in seconds. 0 draws a still frame, which is all a widget can show.
-    var time: Double
+    /// Whether it animates: the current block pulses and, deep past bedtime, the blocks twitch and drip. Without, it's
+    /// a still frame, which is all a widget can show.
+    var animates: Bool
     /// Side of one block in points; nil scales the grid to fill the space it gets.
     var blockSize: CGFloat?
     /// What dragging across blocks logs, previewed on the block under the pointer. With none, a drag selects.
@@ -76,7 +77,7 @@ public struct BlockGridView: View {
 
     public init(
         snapshot: DaySnapshot, theme: MoodTheme, rows: Range<Int>? = nil,
-        showsHourLabels: Bool = true, time: Double = 0, blockSize: CGFloat? = nil,
+        showsHourLabels: Bool = true, animates: Bool = false, blockSize: CGFloat? = nil,
         brush: Brush? = nil, isAdding: Bool = false, selection: Range<Int>? = nil, selectedLayer: String? = nil,
         onDrag: ((Range<Int>) -> Void)? = nil, onDeselect: (() -> Void)? = nil, onClear: ((Range<Int>, String?) -> Void)? = nil,
         onResize: ((Range<Int>, Range<Int>) -> Void)? = nil, onMove: ((Range<Int>, Int) -> Void)? = nil,
@@ -86,7 +87,7 @@ public struct BlockGridView: View {
         self.theme = theme
         self.rows = rows
         self.showsHourLabels = showsHourLabels
-        self.time = time
+        self.animates = animates
         self.blockSize = blockSize
         self.brush = brush
         self.isAdding = isAdding
@@ -119,8 +120,19 @@ public struct BlockGridView: View {
         return start..<min(total, start + count)
     }
 
+    /// Whether every block moves, deep past bedtime, so the whole grid is drawn again each frame.
+    private var animatesBlocks: Bool { animates && snapshot.mood >= .dread }
+
+    /// Whether the current block's ring pulses on its own, over the rest of the grid, which then stays still: only
+    /// the ring is drawn again each frame.
+    private var pulsesRingApart: Bool {
+        animates && !animatesBlocks && snapshot.cells.contains { $0.phase == .current }
+    }
+
     public var body: some View {
-        Canvas { context, size in draw(in: &context, size: size) }
+        AnimationClock(isOn: animatesBlocks) { time in
+            Canvas { context, size in draw(in: &context, size: size, time: time, drawsRing: !pulsesRingApart) }
+        }
             .frame(
                 width: blockSize.map {
                     Self.contentWidth(of: snapshot, blockSize: $0, showsHourLabels: showsHourLabels) + 2 * margin
@@ -130,6 +142,14 @@ public struct BlockGridView: View {
                         side: $0, rows: resolvedRows, rowsAfterGaps: rowsAfterGaps, hasHeader: hasMinuteLabels)
                         + 2 * margin
                 })
+            .overlay {
+                if pulsesRingApart {
+                    AnimationClock(isOn: true) { time in
+                        Canvas { context, size in drawRing(in: &context, size: size, time: time) }
+                    }
+                    .allowsHitTesting(false)
+                }
+            }
             .overlay {
                 if onDrag != nil {
                     GeometryReader { proxy in
@@ -520,7 +540,9 @@ public struct BlockGridView: View {
         #endif
     }
 
-    private func draw(in context: inout GraphicsContext, size: CGSize) {
+    /// The grid at `time` on the animation clock, 0 for a still frame; without `drawsRing`, the current block's ring is
+    /// left for `drawRing` to draw over it.
+    private func draw(in context: inout GraphicsContext, size: CGSize, time: Double, drawsRing: Bool) {
         let perRow = Schedule.blocksPerHour
         let grid = layout(size: size)
         let rows = grid.rows
@@ -651,12 +673,8 @@ public struct BlockGridView: View {
                 }
             }
 
-            if cell.phase == .current {
-                let pulse = animated ? 0.55 + 0.45 * sin(time * 4) : 1
-                let ring = frame(cell.index).insetBy(dx: -gap * 0.55, dy: -gap * 0.55)
-                context.stroke(
-                    Path(roundedRect: ring, cornerRadius: radius + gap * 0.55),
-                    with: .color(theme.text.opacity(pulse)), lineWidth: max(1, gap * 0.45))
+            if drawsRing, cell.phase == .current {
+                drawRing(around: cell.index, in: &context, layout: grid, time: time)
             }
         }
 
@@ -674,7 +692,7 @@ public struct BlockGridView: View {
         }
 
         if mood >= .dread {
-            drawDrips(in: &context, cells: visible, side: side, radius: radius, animated: animated, frame: frame)
+            drawDrips(in: &context, cells: visible, side: side, radius: radius, time: time, frame: frame)
         }
 
         // Bedtime line, once the day has spilled past it. Steps around a bedtime that isn't on the hour.
@@ -705,10 +723,29 @@ public struct BlockGridView: View {
         }
     }
 
+    /// Just the current block's ring, if its row shows, for a grid that's otherwise still.
+    private func drawRing(in context: inout GraphicsContext, size: CGSize, time: Double) {
+        let grid = layout(size: size)
+        let offset = snapshot.status.schedule.gridOffset
+        guard let cell = snapshot.cells.first(where: { $0.phase == .current }),
+              grid.rows.contains((cell.index + offset) / Schedule.blocksPerHour) else { return }
+        drawRing(around: cell.index, in: &context, layout: grid, time: time)
+    }
+
+    /// The ring around the current block, brightening and dimming as `time` goes on.
+    private func drawRing(around index: Int, in context: inout GraphicsContext, layout grid: GridLayout, time: Double) {
+        let pulse = time > 0 ? 0.55 + 0.45 * sin(time * 4) : 1
+        let ring = grid.frame(index).insetBy(dx: -grid.gap * 0.55, dy: -grid.gap * 0.55)
+        context.stroke(
+            Path(roundedRect: ring, cornerRadius: grid.radius + grid.gap * 0.55),
+            with: .color(theme.text.opacity(pulse)), lineWidth: max(1, grid.gap * 0.45))
+    }
+
     private func drawDrips(
         in context: inout GraphicsContext, cells: [BlockCell], side: CGFloat, radius: CGFloat,
-        animated: Bool, frame: (Int) -> CGRect
+        time: Double, frame: (Int) -> CGRect
     ) {
+        let animated = time > 0
         let nightmare = snapshot.mood == .nightmare
         for cell in cells where cell.phase != .future && noise(cell.index, 7) < (nightmare ? 0.3 : 0.16) {
             guard case .solid(let color) = theme.paint(for: cell, categories: snapshot.categories) else { continue }

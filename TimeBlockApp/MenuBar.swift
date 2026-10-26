@@ -40,11 +40,9 @@ struct MenuBarPanel: View {
         let snapshot = model.snapshot
         let theme = MoodTheme(mood: snapshot.mood, colorScheme: colorScheme)
         VStack(spacing: 0) {
-            TimelineView(.animation(minimumInterval: 1.0 / 15)) { context in
+            TimelineView(.everyMinute) { context in
                 DayView(
-                    snapshot: model.snapshot(at: context.date),
-                    time: context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 10_000),
-                    timers: model.timerControls, date: context.date, isCompact: true,
+                    snapshot: model.snapshot(at: context.date), animates: true, timers: model.timerControls, isCompact: true,
                     controls: DayControls(timer: { AnyView(StartTimerButton(theme: $0, isOpen: $showsTimerStarter)) }))
             }
             .overlay {
