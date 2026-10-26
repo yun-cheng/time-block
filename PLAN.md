@@ -99,6 +99,15 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   schedule change (putting old logs back would undo the new plan too).
 - **Undo and Redo buttons:** in the toolbar beside Settings, all three over the day even while Settings is open.
   They're greyed out with nothing to undo or redo, and their tooltips name the change.
+- **Several at once:** a block can hold more than one activity in a view (Commute and Podcast).
+  - **Drawn as a stack:** cards of one size, the one in front at the bottom-right, each under it a step up and to
+    the left (three at most drawn). In front is what breaks into the rest: the activity whose unbroken stretch is
+    shortest (the toilet in a morning of work, a podcast on a commute, dinner on an evening of TV), then the one
+    starting later, then the one logged last. A stretch is measured whole, so two activities keep one order in
+    every block they share.
+  - Blocks holding the same activities make a run, and the hover label names them all (`Lunch + Social`). Each
+    activity counts its full time in the totals, so they can add up to more than the day. A run of one activity
+    alone has handles.
 - **Pick, then paint:** with nothing selected, a chip becomes a one‑shot brush: drag across blocks to log them, and
   the brush is put down afterwards.
 - Painting splits the runs it covers and joins neighbours of the same activity; each view (track) is edited apart.
@@ -260,7 +269,7 @@ DayLog        day ("2026-10-24", the wake date), wakeMinute, schedule (the day's
               was kept, which fall back to the settings), logs, isPlanned (templates laid out): one JSON file per day
 BlockLog      id, startIndex, length, categoryID, note, source(.manual|.template|.calendar)
               (indexes count from DayLog.wakeMinute and move with wake time; track comes from the category;
-              logs of a track can overlap, the shortest stretch on top (see DayGrid.cells); at most one log per
+              logs of a track can overlap, the shortest stretch on top (see 3.2); at most one log per
               block per category; painting replaces every layer, joins runs and splits the ones it covers)
 Template      id, categoryID, startMinute (clock), length (blocks), weekdays (Calendar weekdays, 1 = Sunday), isEnabled
 Schedule      wakeMinute, bedMinute, dayRolloverMinute
@@ -299,5 +308,6 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Platforms | Mac first; iPhone and Watch in M8 |
 | Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
+| Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

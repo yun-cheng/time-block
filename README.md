@@ -23,6 +23,10 @@ whole UI slowly turns into a horror show.
 - **Colors tell the story:** log detailed activities (Breakfast, Email, Gym…); each belongs to a group (Work,
   Learn, Health, People, Life, Transit, Leisure, Drift) and takes its color. Grey is unlogged, amber is time to
   wind down, red is taken from sleep.
+- **Several at once:** a block can hold more than one activity, such as *Commute* and *Podcast*. They stack as
+  cards: what breaks into the rest is in front at the bottom-right (the shortest stretch, such as a trip to the
+  toilet in a morning of work), the ones under it peek out at the top-left, and each counts its full time in the
+  totals.
 - **Views:** switch between Activity and Body (lying, sitting, standing, walking, exercising). Each view is its
   own track of logs, so a block can be *Meeting* and *Standing* at once.
 

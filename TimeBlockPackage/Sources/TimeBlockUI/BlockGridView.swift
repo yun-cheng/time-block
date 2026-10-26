@@ -171,6 +171,18 @@ public struct BlockGridView: View {
         resizing?.range ?? moved ?? dragged ?? hoveredRange ?? selection
     }
 
+    /// Where each drawn layer of a block goes, bottom first: cards of one size, the top one at the bottom-right and each
+    /// under it a step up and to the left.
+    static func cards(in rect: CGRect, count: Int) -> [CGRect] {
+        guard count > 1 else { return [rect] }
+        let step = rect.width * 0.26 / CGFloat(count - 1)
+        let size = rect.width - step * CGFloat(count - 1)
+        return (0..<count).map { level in
+            let along = step * CGFloat(level)
+            return CGRect(x: rect.minX + along, y: rect.minY + along, width: size, height: size)
+        }
+    }
+
     /// Whether dragging inside the selection moves it: it holds something logged, and there's no brush.
     private var isMovable: Bool {
         guard onMove != nil, brush == nil, let selection else { return false }
@@ -185,17 +197,19 @@ public struct BlockGridView: View {
         return dragged ?? hovered.map { $0..<($0 + 1) }
     }
 
-    /// What each block an edit being dragged would change ends up holding: the activity, or nil once it's emptied.
-    private var preview: [Int: String?] {
-        var preview: [Int: String?] = [:]
+    /// What each block an edit being dragged would change ends up holding: its activities, or none once it's emptied.
+    private var preview: [Int: [BlockCell.Layer]] {
+        var preview: [Int: [BlockCell.Layer]] = [:]
         if let moving, let moved, let selection {
-            for index in selection { preview.updateValue(nil, forKey: index) }
-            for index in moved { preview.updateValue(snapshot.cells[index - moving.offset].categoryID, forKey: index) }
+            for index in selection { preview[index] = [] }
+            for index in moved where snapshot.cells.indices.contains(index - moving.offset) {
+                preview[index] = snapshot.cells[index - moving.offset].layers
+            }
         } else if let resizing, let selection, let category = resizableCategory {
-            for index in selection { preview.updateValue(nil, forKey: index) }
-            for index in resizing.range { preview.updateValue(category, forKey: index) }
+            for index in selection { preview[index] = [] }
+            for index in resizing.range { preview[index] = [BlockCell.Layer(categoryID: category)] }
         } else if let brush, let edited {
-            for index in edited { preview.updateValue(brush.categoryID, forKey: index) }
+            for index in edited { preview[index] = brush.categoryID.map { [BlockCell.Layer(categoryID: $0)] } ?? [] }
         }
         return preview.filter { snapshot.cells.indices.contains($0.key) }
     }
@@ -206,12 +220,12 @@ public struct BlockGridView: View {
         return selection.lowerBound + moving.offset..<selection.upperBound + moving.offset
     }
 
-    /// The activity the selection holds throughout, when it's logged as one, so its ends can be dragged.
+    /// The activity the selection holds throughout, when it's logged as that alone, so its ends can be dragged.
     private var resizableCategory: String? {
         guard onResize != nil, brush == nil, let selection, snapshot.cells.indices.contains(selection.lowerBound),
               snapshot.cells.indices.contains(selection.upperBound - 1),
               let category = snapshot.cells[selection.lowerBound].categoryID,
-              snapshot.cells[selection].allSatisfy({ $0.categoryID == category })
+              snapshot.cells[selection].allSatisfy({ $0.categoryIDs == [category] })
         else { return nil }
         return category
     }
@@ -415,24 +429,47 @@ public struct BlockGridView: View {
                 .rotated(by: angle, around: CGPoint(x: rect.midX, y: rect.midY))
 
             // A block an edit is being dragged over shows what it would end up as.
-            let shown = preview[cell.index].map(cell.logged(as:)) ?? cell
-            switch theme.paint(for: shown, categories: snapshot.categories) {
-            case .solid(let color):
-                if mood == .nightmare && cell.phase == .past && noise(cell.index, 5) < 0.1 {
-                    // Dead block: only the outline is left.
-                    context.stroke(path, with: .color(color.opacity(0.6)), lineWidth: max(1, side * 0.08))
-                } else {
-                    context.fill(path, with: .color(color))
+            let shown = preview[cell.index].map(cell.holding) ?? cell
+            // Several activities at once are stacked as cards (see `cards`), three at most drawn.
+            let depth = min(shown.layers.count, 3)
+            let stack = shown.layers.isEmpty
+                ? [shown] : (shown.layers.count - depth + 1...shown.layers.count).map { shown.holding(Array(shown.layers.prefix($0))) }
+            let cards = Self.cards(in: rect, count: stack.count)
+            let center = CGPoint(x: rect.midX, y: rect.midY)
+            let cardRadius = min(radius, (cards.first?.width ?? side) * 0.3)
+            for (level, layer) in stack.enumerated() {
+                let card = cards[level]
+                let cardPath = Path(roundedRect: card, cornerRadius: depth > 1 ? cardRadius : radius).rotated(by: angle, around: center)
+                if level > 0 {
+                    // A sliver of the grid between a card and the ones under it, so two of one color still read as two.
+                    var knockout = context
+                    knockout.blendMode = .clear
+                    let edge = max(1, side * 0.07)
+                    knockout.fill(
+                        Path(roundedRect: CGRect(x: card.minX - edge, y: card.minY - edge, width: card.width + edge, height: card.height + edge),
+                             cornerRadius: cardRadius)
+                            .rotated(by: angle, around: center),
+                        with: .color(.black))
                 }
-            case .planned(let color, let dashed):
-                let line = max(1, side * 0.1)
-                context.fill(path, with: .color(color.opacity(0.18)))
-                context.stroke(
-                    Path(roundedRect: rect.insetBy(dx: line / 2, dy: line / 2), cornerRadius: radius),
-                    with: .color(color.opacity(0.9)),
-                    style: StrokeStyle(lineWidth: line, dash: dashed ? [line * 1.6, line * 1.2] : []))
-            case .empty(let color):
-                context.fill(path, with: .color(color))
+                switch theme.paint(for: layer, categories: snapshot.categories) {
+                case .solid(let color):
+                    if mood == .nightmare && cell.phase == .past && noise(cell.index, 5) < 0.1 {
+                        // Dead block: only the outline is left.
+                        context.stroke(cardPath, with: .color(color.opacity(0.6)), lineWidth: max(1, side * 0.08))
+                    } else {
+                        context.fill(cardPath, with: .color(color))
+                    }
+                case .planned(let color, let dashed):
+                    let line = max(1, side * 0.1)
+                    context.fill(cardPath, with: .color(color.opacity(0.18)))
+                    context.stroke(
+                        Path(roundedRect: card.insetBy(dx: line / 2, dy: line / 2), cornerRadius: depth > 1 ? cardRadius : radius)
+                            .rotated(by: angle, around: center),
+                        with: .color(color.opacity(0.9)),
+                        style: StrokeStyle(lineWidth: line, dash: dashed ? [line * 1.6, line * 1.2] : []))
+                case .empty(let color):
+                    context.fill(cardPath, with: .color(color))
+                }
             }
 
             if onDrag != nil {
@@ -540,7 +577,7 @@ private struct BlockInfo: View {
         let schedule = snapshot.status.schedule
         let cells = snapshot.cells[range.clamped(to: snapshot.cells.indices)]
         // Named when every block holds the same thing.
-        let shared = cells.first.flatMap { first in cells.allSatisfy { $0.categoryID == first.categoryID } ? first : nil }
+        let shared = cells.first.flatMap { first in cells.allSatisfy { $0.categoryIDs == first.categoryIDs } ? first : nil }
         HStack(spacing: 5) {
             let start = clock(schedule.clockMinute(ofBlock: range.lowerBound))
             Text(range.count == 1 ? start : "\(start)–\(clock(schedule.clockMinute(ofBlock: range.upperBound)))")
@@ -558,7 +595,7 @@ private struct BlockInfo: View {
                     .italic()
                     .foregroundStyle(theme.text)
             }
-            if let brush, shared?.categoryID != brush.categoryID || shared == nil {
+            if let brush, shared?.categoryIDs != (brush.categoryID.map { [$0] } ?? []) {
                 Image(systemName: "arrow.right").foregroundStyle(theme.secondaryText)
                 if let category = brush.categoryID.flatMap({ snapshot.categories[$0] }) {
                     Label(category.name, systemImage: category.symbol).foregroundStyle(theme.color(of: category))
@@ -574,10 +611,18 @@ private struct BlockInfo: View {
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(theme.text.opacity(0.15)))
     }
 
+    /// What a block holds: its activities, bottom first, or else what kind of empty it is.
     @ViewBuilder private func content(of cell: BlockCell) -> some View {
-        if let category = cell.categoryID.flatMap({ snapshot.categories[$0] }) {
-            Label(cell.phase == .future ? "\(category.name) (planned)" : category.name, systemImage: category.symbol)
-                .foregroundStyle(theme.color(of: category))
+        if !cell.layers.isEmpty {
+            let categories = cell.categoryIDs.compactMap { snapshot.categories[$0] }
+            ForEach(Array(categories.enumerated()), id: \.offset) { position, category in
+                if position > 0 {
+                    Text("+").foregroundStyle(theme.secondaryText)
+                }
+                let isLast = position == categories.count - 1
+                Label(cell.phase == .future && isLast ? "\(category.name) (planned)" : category.name, systemImage: category.symbol)
+                    .foregroundStyle(theme.color(of: category))
+            }
         } else if cell.isOvertime {
             Text("Past bedtime").foregroundStyle(theme.accent)
         } else {
