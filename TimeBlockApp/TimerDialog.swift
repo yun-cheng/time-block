@@ -18,24 +18,14 @@ struct TimerDialog: View {
     @State private var chosen: String?
     @State private var showsActivities = false
 
-    /// About the dialog's height at its tallest, to place its top so it's centered then; it grows down from there, so
-    /// the blocks stay put under the pointer as rows of hours show.
-    private static let tallest: CGFloat = 560
-
     var body: some View {
-        ZStack(alignment: .top) {
-            Color.black.opacity(0.3)
-                .contentShape(Rectangle())
-                .onTapGesture { isOpen = false }
-            GeometryReader { window in
-                content
-                    .padding(18)
-                    .frame(width: 460)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(theme.backgroundBottom))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(theme.text.opacity(0.12)))
-                    .shadow(color: .black.opacity(0.35), radius: 24, y: 8)
-                    .padding(.top, max(20, (window.size.height - Self.tallest) / 2))
-                    .frame(maxWidth: .infinity)
+        Dialog(
+            width: 460, fill: theme.backgroundBottom, lift: 0.08, stroke: theme.text.opacity(0.28), isOpen: $isOpen
+        ) {
+            // Scrolling only in a window too short for all of it.
+            ViewThatFits(in: .vertical) {
+                content.padding(18)
+                ScrollView { content.padding(18) }
             }
         }
         .onAppear {
@@ -177,6 +167,7 @@ struct TimerDialog: View {
             Text("\(CountdownLength.blocks(minutes)) blocks")
                 .font(.system(size: 11))
                 .foregroundStyle(theme.secondaryText)
+                .fixedSize()
                 .padding(.leading, 4)
             Spacer()
         }
@@ -312,6 +303,8 @@ private struct LengthField: View {
             .help("Choose \(title.lowercased())")
             .accessibilityLabel("Choose \(title.lowercased())")
         }
+        // Whole, the room around the row going first: a row sharing its width out would cut the unit off.
+        .fixedSize()
         .onAppear { text = "\(value)" }
         .onChange(of: value) {
             if !isEditing { text = "\(value)" }
