@@ -123,8 +123,7 @@ public struct BlockGridView: View {
         Canvas { context, size in draw(in: &context, size: size) }
             .frame(
                 width: blockSize.map {
-                    GridLayout.width(side: $0, labelWidth: labelWidth, blocksPerGroup: snapshot.grid.blocksPerGroup)
-                        + 2 * margin
+                    Self.contentWidth(of: snapshot, blockSize: $0, showsHourLabels: showsHourLabels) + 2 * margin
                 },
                 height: blockSize.map {
                     GridLayout.height(
@@ -399,7 +398,14 @@ public struct BlockGridView: View {
     }
 
     private var resolvedRows: Range<Int> { rows ?? 0..<Self.rowCount(for: snapshot) }
-    private var labelWidth: CGFloat { showsHourLabels ? 24 : 0 }
+    private var labelWidth: CGFloat { Self.labelWidth(showsHourLabels) }
+    private static func labelWidth(_ showsHourLabels: Bool) -> CGFloat { showsHourLabels ? 24 : 0 }
+
+    /// How wide a grid of `blockSize` blocks is, its hour labels in and the room around it out, for what's laid out
+    /// with it to line up with its edges.
+    static func contentWidth(of snapshot: DaySnapshot, blockSize: CGFloat, showsHourLabels: Bool = true) -> CGFloat {
+        GridLayout.width(side: blockSize, labelWidth: labelWidth(showsHourLabels), blocksPerGroup: snapshot.grid.blocksPerGroup)
+    }
     private var hasMinuteLabels: Bool { showsHourLabels && !snapshot.grid.labeledMinutes.isEmpty }
     private var rowsAfterGaps: Set<Int> {
         snapshot.grid.rowsAfterGaps(schedule: snapshot.status.schedule, rowCount: Self.rowCount(for: snapshot))

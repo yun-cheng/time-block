@@ -230,6 +230,7 @@ public struct DayView: View {
 
     private func fullBody(theme: MoodTheme) -> some View {
         let status = snapshot.status
+        let blockSize: CGFloat = 20
         return VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 topLine(theme: theme)
@@ -273,7 +274,7 @@ public struct DayView: View {
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
                     .foregroundStyle(theme.accent)
             }
-            grid(theme: theme, blockSize: 20)
+            grid(theme: theme, blockSize: blockSize)
             if !status.isOver && !status.isAhead {
                 HStack {
                     NowChip(snapshot: snapshot, theme: theme)
@@ -285,6 +286,8 @@ public struct DayView: View {
             StoryBar(snapshot: snapshot, theme: theme)
             Legend(snapshot: snapshot, theme: theme, limit: 4, fontSize: 11)
         }
+        // One column as wide as the blocks, so the counter, stats, timers and legend line up with them.
+        .frame(width: BlockGridView.contentWidth(of: snapshot, blockSize: blockSize))
         .padding(22)
         // Extra space goes below the day rather than into bigger blocks.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -339,7 +342,9 @@ public struct DayView: View {
             onMove: editor.flatMap { editor in editor.move.map { _ in { editor.moved($0, by: $1) } } },
             onSelectLayer: editor.map { editor in { editor.selectLayer($0, $1) } },
             selectionAccessory: editor.map { editor in AnyView(activitiesButton(editor, theme: theme)) })
-            .frame(maxWidth: .infinity)
+            // Laid out as wide as its blocks and labels; what reaches past them, like the current block's ring, draws
+            // into the space around.
+            .frame(width: BlockGridView.contentWidth(of: snapshot, blockSize: blockSize))
             .focusable(editor != nil, interactions: .edit)
             .focusEffectDisabled()
             .focused($isGridFocused)

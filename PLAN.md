@@ -112,6 +112,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
   stats it counts, Start Timer beside what's on now, and the window's own (Keep on Top, Settings) as icons in the top
   corner. They're drawn in the day's colors, plain text that lights up under the pointer. Under them, a plain title
   bar.
+- **One column as wide as the blocks:** the counter, stats, timers, story bar and legend take the grid's width (its
+  hour labels in), so their edges line up with it however wide the window is; the extra room is left either side.
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
