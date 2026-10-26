@@ -99,6 +99,8 @@ struct SettingsView: View {
 /// Opens the main window with its settings inspector showing.
 @MainActor
 func showSettings(_ model: AppModel, openWindow: OpenWindowAction) {
+    // Settings need the whole window.
+    model.isPinned = false
     model.showsSettings = true
     openWindow(id: "main")
     NSApp.activate()

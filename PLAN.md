@@ -163,6 +163,14 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     today's blocks still to come.
   - The menu bar and widgets stay on today, and the window moves on to the new day when it showed today (or the
     day ahead it showed has come).
+- **Keep on top:** the pin in the toolbar (Window ▸ Keep on Top, ⌥⌘P) floats the window over other apps' windows,
+  on every Space, and shrinks it to fit a compact day: the counter and clock on one line, the blocks at 15 pt
+  instead of 20, and the timers going. The toolbar, stats, story bar, legend and settings are left out; logging
+  works as in the whole day. The pin beside the counter (or Settings) brings the whole day back at its old size.
+  - The compact window keeps a plain title bar, to drag it by and close it. Its toolbar is left out rather than
+    hidden: a hidden toolbar still keeps its room, an empty strip over the day. The app sizes the window to the
+    compact day itself, keeping its top left corner, since SwiftUI doesn't shrink it. A full‑screen window leaves
+    full screen first.
 
 ### 3.2a Smart suggestions for unlogged blocks
 Past blocks you didn't log stay **grey**, but carry a *hint* so back‑filling is one tap ("Confirm: 08:10–08:40 Commute?").

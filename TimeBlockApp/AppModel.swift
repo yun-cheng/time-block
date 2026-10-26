@@ -36,6 +36,11 @@ final class AppModel {
     /// Whether the main window shows the settings inspector.
     var showsSettings = false
 
+    /// Whether the main window stays above other apps' windows, shrunk to the counter and the blocks.
+    var isPinned = UserDefaults.standard.bool(forKey: "isPinned") {
+        didSet { UserDefaults.standard.set(isPinned, forKey: "isPinned") }
+    }
+
     /// Whether activities replace what blocks hold or are added to it.
     var tool: Tool = .normal
 
