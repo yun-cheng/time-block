@@ -103,7 +103,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
 - **Several at once:** a block can hold more than one activity in a view (Commute and Podcast). Two tools above the
   activities, as in a photo editor, say what clicking one does, and the pointer shows which is on: **Normal** (the
   arrow) replaces what the blocks hold; **Add** (the add pointer, an arrow with a green plus) adds it to what
-  the selection holds, or takes it off when every selected block holds it, and a brush picked up adds the same way.
+  the selection holds, or takes it off when every selected block holds it, and a brush picked up adds the same way;
+  either way it goes back to Normal after one add.
   Holding ⌘ adds too, while it's held. Every activity all the selected blocks hold is lit.
   - **Drawn as a stack:** cards of one size, the one in front at the bottom-right, each under it a step up and to
     the left (three at most drawn). In front is what breaks into the rest: the activity whose unbroken stretch is
@@ -321,6 +322,6 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Platforms | Mac first; iPhone and Watch in M8 |
 | Time inputs | A field you type into or step with ↑↓ (5 min on the minutes), plus a ⌄ list every 15 min; no stepper arrows, which were too small to hit. Typed times round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
-| Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer |
+| Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
 | Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

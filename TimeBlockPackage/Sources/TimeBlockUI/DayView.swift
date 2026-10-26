@@ -5,7 +5,7 @@ import TimeBlockKit
 /// category as a brush, then drag across blocks. A selection stays until you click off the blocks, so
 /// its category can be changed again; a brush is put down after one drag, so the next click can't
 /// log by accident. With the Add tool picked, or ⌘ held, a category is added to what the blocks hold instead, or
-/// comes off where they all hold it. Clicking one card of blocks holding several activities selects just that activity
+/// comes off where they all hold it; the Add tool goes back to Normal once it has. Clicking one card of blocks holding several activities selects just that activity
 /// (`layer`), and what's done to the selection is done to it alone. Selected blocks that are logged can be given a note
 /// or dragged somewhere else, and a selection of one activity can be dragged longer or shorter by its ends. Delete
 /// clears a selection.
@@ -99,6 +99,7 @@ public struct DayEditor {
             toggle?(range, categoryID)
             // The activity picked out is held throughout, so it was just taken off.
             if layer.wrappedValue == categoryID { layer.wrappedValue = nil }
+            doneAdding()
         } else {
             let choice = Brush.layer(categoryID)
             brush.wrappedValue = brush.wrappedValue == choice ? nil : choice
@@ -138,6 +139,11 @@ public struct DayEditor {
         annotate?(range, note, layer(for: range))
     }
 
+    /// Adding is one go: the Add tool goes back to Normal once it has added (or taken off).
+    private func doneAdding() {
+        if tool.wrappedValue == .add { tool.wrappedValue = .normal }
+    }
+
     private func select(_ range: Range<Int>?, layer categoryID: String? = nil) {
         selection.wrappedValue = range
         layer.wrappedValue = categoryID
@@ -146,6 +152,7 @@ public struct DayEditor {
     private func log(_ range: Range<Int>, _ choice: Brush) {
         if case .layer(let id) = choice {
             toggle?(range, id)
+            doneAdding()
         } else {
             paint(range, choice, nil)
         }

@@ -60,8 +60,8 @@ PLAN.md.
   the blocks hold.
 - **Add one more:** pick **Add** in the two tools above the activities (or hold ⌘), and the pointer gets a green
   plus. Clicking an activity then adds it to what the selected blocks hold, or takes a lit one off and leaves
-  the rest, and painting adds the same way. **Normal** goes back to replacing. In the menu bar, Add or ⌘‑click adds
-  to the block in progress.
+  the rest, and painting adds the same way. Once it has added, the tool goes back to **Normal**, which replaces.
+  In the menu bar, Add or ⌘‑click adds to the block in progress.
 - **Undo and redo:** ⌘Z, or the Undo button in the toolbar, takes back the last change to your blocks, whatever
   made it, and ⇧⌘Z or Redo puts it back.
 - **Pick, then paint:** with nothing selected, click an activity and drag across blocks. It is put down after one
