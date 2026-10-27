@@ -61,6 +61,20 @@ struct DayLogTests {
         #expect(store.load(day: "2026-10-25", wakeMinute: 420).logs.isEmpty)
     }
 
+    @Test func aDayThatCantBeReadIsKeptAside() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = LogStore(directory: directory)
+        try Data("not a day".utf8).write(to: directory.appending(path: "2026-10-24.json"))
+        #expect(store.load(day: "2026-10-24", wakeMinute: 420).logs.isEmpty)
+        // Saving the empty day leaves what couldn't be read where it was moved, out of the days.
+        try store.save(DayLog(day: "2026-10-24", wakeMinute: 420))
+        let files = try FileManager.default.contentsOfDirectory(atPath: directory.path())
+        #expect(files.contains { $0.hasPrefix("2026-10-24.") && $0.hasSuffix(".unreadable") })
+        #expect(store.savedDays() == ["2026-10-24"])
+    }
+
     @Test func savedDaysAreListedOldestFirst() throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

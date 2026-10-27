@@ -403,5 +403,5 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
 | Logging controls | Popups rather than a palette under the grid: a + (or edit symbol) beside the selection's label opens the activities, Start Timer beside what's on now starts timers; no pick‑then‑paint brush |
 | Animation | The day is drawn again once a minute, and only what moves animates: the current block's pulse in Core Animation, and past bedtime each horror effect on a 15 fps clock of its own. All of it holds still while the window can't be seen or a menu is open. One 15 fps clock around the whole day kept an open window near 40% CPU |
-| Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; revisit for CloudKit in M8 |
+| Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; a file that can't be read is set aside as `<day>.<time>.unreadable` rather than written over; revisit for CloudKit in M8 |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |

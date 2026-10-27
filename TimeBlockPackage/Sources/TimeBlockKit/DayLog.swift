@@ -403,11 +403,16 @@ public struct LogStore: Sendable {
         }
     }
 
-    /// The saved logs for `day`, or an empty day.
+    /// The saved logs for `day`, or an empty day. A file that can't be read is moved aside first, out of the days
+    /// (which are ".json"), so saving the empty day doesn't write over it.
     public func load(day: String, wakeMinute: Int) -> DayLog {
-        guard let data = try? Data(contentsOf: url(for: day)),
-              let log = try? JSONDecoder().decode(DayLog.self, from: data)
-        else { return DayLog(day: day, wakeMinute: wakeMinute) }
+        let url = url(for: day)
+        guard let data = try? Data(contentsOf: url) else { return DayLog(day: day, wakeMinute: wakeMinute) }
+        guard let log = try? JSONDecoder().decode(DayLog.self, from: data) else {
+            try? FileManager.default.moveItem(
+                at: url, to: directory.appending(path: "\(day).\(Int(Date().timeIntervalSince1970)).unreadable"))
+            return DayLog(day: day, wakeMinute: wakeMinute)
+        }
         return log
     }
 
