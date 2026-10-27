@@ -30,7 +30,7 @@ extension AppSettings {
         let schedule = schedule(on: log.day, calendar: calendar)
         log.rebase(to: schedule)
         let names = Dictionary(categories.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
-        let clock = { (block: Int) in Self.clock(schedule.clockMinute(ofBlock: block)) }
+        let clock = { (block: Int) in Schedule.clockText(schedule.clockMinute(ofBlock: block)) }
         var reminders: [(block: Int, id: String, title: String, body: String)] = []
 
         for template in templates where template.notifies {
@@ -94,9 +94,5 @@ extension AppSettings {
         case (let h, 0): "\(h) hours"
         case (let h, let m): "\(h)h \(m)m"
         }
-    }
-
-    private static func clock(_ minute: Int) -> String {
-        String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
     }
 }

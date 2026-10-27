@@ -74,6 +74,11 @@ public struct Schedule: Hashable, Codable, Sendable {
         return Int((Double(offset) / Double(Schedule.blockMinutes)).rounded(.down))
     }
 
+    /// A minute of the day, or of the day's timeline past midnight, as a clock time: "07:30", "01:00".
+    public static func clockText(_ minute: Int) -> String {
+        String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
+    }
+
     /// Clock minute (0..<1440) at which a block starts.
     public func clockMinute(ofBlock index: Int) -> Int {
         (wakeMinute + index * Schedule.blockMinutes) % (24 * 60)

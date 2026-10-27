@@ -180,8 +180,7 @@ public struct DayView: View {
     }
 
     private var clockLabel: String {
-        let minute = snapshot.status.nowMinute % (24 * 60)
-        return String(format: "%02d:%02d", minute / 60, minute % 60)
+        Schedule.clockText(snapshot.status.nowMinute)
     }
 
     /// The day shown, when it isn't today.
@@ -489,8 +488,8 @@ public struct DayView: View {
     private func hint(for editor: DayEditor) -> String? {
         guard let range = editor.selection.wrappedValue else { return nil }
         let schedule = snapshot.status.schedule
-        let clock = { (minute: Int) in String(format: "%02d:%02d", minute / 60, minute % 60) }
-        let times = "\(clock(schedule.clockMinute(ofBlock: range.lowerBound)))–\(clock(schedule.clockMinute(ofBlock: range.upperBound)))"
+        let clock = { (block: Int) in Schedule.clockText(schedule.clockMinute(ofBlock: block)) }
+        let times = "\(clock(range.lowerBound))–\(clock(range.upperBound))"
         let name = editor.layer.wrappedValue.flatMap { snapshot.categories[$0] }.map { " \($0.name)" } ?? ""
         return "\(times)\(name)"
     }

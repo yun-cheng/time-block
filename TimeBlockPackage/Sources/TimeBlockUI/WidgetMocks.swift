@@ -250,7 +250,11 @@ struct StoryBar: View {
 
 /// "1h 25m" for 17 blocks.
 public func durationText(blocks: Int) -> String {
-    let minutes = blocks * Schedule.blockMinutes
+    durationText(minutes: blocks * Schedule.blockMinutes)
+}
+
+/// "45m", "1h", "1h 30m".
+public func durationText(minutes: Int) -> String {
     let (h, m) = (minutes / 60, minutes % 60)
     if h == 0 { return "\(m)m" }
     return m == 0 ? "\(h)h" : "\(h)h \(m)m"

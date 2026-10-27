@@ -102,13 +102,9 @@ struct SleepShiftSettings: View {
     }
 }
 
-private func clock(_ minute: Int) -> String {
-    String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
-}
-
 /// "07:00–23:00".
 private func times(_ schedule: Schedule) -> String {
-    "\(clock(schedule.wakeMinute))–\(clock(schedule.bedMinute))"
+    "\(Schedule.clockText(schedule.wakeMinute))–\(Schedule.clockText(schedule.bedMinute))"
 }
 
 /// Sets up a shift, or changes the one under way from tonight on: the bedtime or wake time to get to, how big and
@@ -178,7 +174,9 @@ private struct SleepShiftEditor: View {
             Toggle(isOn: $keepsSleep) {
                 Text(end == .bed ? "Wake time moves too" : "Bedtime moves too")
                 let other = end == .bed ? (from.wakeMinute, target.wakeMinute) : (from.bedMinute, target.bedMinute)
-                Text(keepsSleep ? "To \(clock(other.1)), so you sleep as long" : "Stays at \(clock(other.0))")
+                Text(keepsSleep
+                    ? "To \(Schedule.clockText(other.1)), so you sleep as long"
+                    : "Stays at \(Schedule.clockText(other.0))")
             }
             Picker("Step", selection: $stepMinutes) {
                 ForEach([10, 15, 20, 30, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
@@ -241,7 +239,7 @@ private struct SleepShiftEditor: View {
         }
         let moved = (1...count).map { step in
             let schedule = shift.schedule(afterSteps: step, target: target)
-            return clock(end == .bed ? schedule.bedMinute : schedule.wakeMinute)
+            return Schedule.clockText(end == .bed ? schedule.bedMinute : schedule.wakeMinute)
         }
         let shown = moved.count > 6 ? moved.prefix(5) + ["…", moved[moved.count - 1]] : moved[...]
         let steps = "\(count) \(count == 1 ? "step" : "steps"): \(shown.joined(separator: ", "))"

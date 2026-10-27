@@ -798,8 +798,8 @@ private struct BlockInfo: View {
         } ?? cells.first.flatMap { first in cells.allSatisfy { $0.categoryIDs == first.categoryIDs } ? first : nil }
         let notes = Set(cells.map { cell in layer.map { cell.layer($0)?.note } ?? cell.note })
         HStack(spacing: 5) {
-            let start = clock(schedule.clockMinute(ofBlock: range.lowerBound))
-            Text(range.count == 1 ? start : "\(start)–\(clock(schedule.clockMinute(ofBlock: range.upperBound)))")
+            let start = Schedule.clockText(schedule.clockMinute(ofBlock: range.lowerBound))
+            Text(range.count == 1 ? start : "\(start)–\(Schedule.clockText(schedule.clockMinute(ofBlock: range.upperBound)))")
                 .monospacedDigit()
                 .foregroundStyle(theme.text)
             if let shared {
@@ -863,10 +863,6 @@ private struct BlockInfo: View {
             Text(cell.phase == .future ? cell.isWindDown ? "Wind down" : "Nothing planned" : "Unlogged")
                 .foregroundStyle(theme.secondaryText)
         }
-    }
-
-    private func clock(_ minute: Int) -> String {
-        String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
     }
 
     /// A timer's exact time, "10:03".

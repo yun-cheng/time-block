@@ -103,9 +103,9 @@ struct TemplateSettings: View {
             ? today.ends(of: template).map { template.startMinute(in: schedule, following: $0) }
             : [template.startMinute(in: schedule)]
         let times = starts.isEmpty ? nil : starts.map {
-            "\(clock($0))–\(clock($0 + template.length * Schedule.blockMinutes))"
+            "\(Schedule.clockText($0))–\(Schedule.clockText($0 + template.length * Schedule.blockMinutes))"
         }.joined(separator: ", ")
-        let offset = TemplateEditor.duration(minutes: template.offset)
+        let offset = durationText(minutes: template.offset)
         let anchor: String? = switch template.anchor {
         case .clock: nil
         case .wake: "\(offset) after waking"
@@ -116,10 +116,6 @@ struct TemplateSettings: View {
                 .compactMap { $0 }.joined(separator: " ")
         }
         return [times, anchor, days(template.weekdays)].compactMap { $0 }.joined(separator: " · ")
-    }
-
-    private static func clock(_ minute: Int) -> String {
-        String(format: "%02d:%02d", minute / 60 % 24, minute % 60)
     }
 
     /// "Every day", "Weekdays", "Weekends", "Every day but Sun", or the days themselves: "Mon, Wed, Fri".
@@ -301,12 +297,4 @@ private struct TemplateEditor: View {
         }
     }
 
-    /// "45m", "1h", "1h 30m".
-    static func duration(minutes: Int) -> String {
-        switch (minutes / 60, minutes % 60) {
-        case (0, let m): "\(m)m"
-        case (let h, 0): "\(h)h"
-        case (let h, let m): "\(h)h \(m)m"
-        }
-    }
 }
