@@ -20,10 +20,8 @@ public struct TimerSession: Codable, Hashable, Sendable {
     /// The blocks of `day` it ran during, any part of each, counted from `schedule`'s wake time; at least the block it
     /// started in. Empty when it ran on other days, or only before wake time.
     public func blocks(on day: String, schedule: Schedule, calendar: Calendar = .current) -> Range<Int> {
-        guard let noon = DayID.date(day, calendar: calendar) else { return 0..<0 }
-        let midnight = calendar.startOfDay(for: noon)
-        guard let wake = calendar.date(byAdding: .minute, value: schedule.wakeMinute, to: midnight),
-              let dayEnd = calendar.date(byAdding: .minute, value: 24 * 60 + schedule.rolloverMinute, to: midnight)
+        guard let wake = DayID.date(of: schedule.wakeMinute, on: day, calendar: calendar),
+              let dayEnd = DayID.date(of: 24 * 60 + schedule.rolloverMinute, on: day, calendar: calendar)
         else { return 0..<0 }
         let seconds = Double(Schedule.blockMinutes * 60)
         let first = Int((start.timeIntervalSince(wake) / seconds).rounded(.down))

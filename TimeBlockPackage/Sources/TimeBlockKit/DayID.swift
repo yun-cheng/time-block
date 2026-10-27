@@ -9,6 +9,17 @@ public enum DayID {
         return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12))
     }
 
+    /// The moment a minute of `day`'s timeline comes (see `Schedule.timelineMinute`), which counts on past midnight.
+    /// Read off the clock, so it's right on days the clocks change.
+    public static func date(of timelineMinute: Int, on day: String, calendar: Calendar = .current) -> Date? {
+        date(day, calendar: calendar)
+            .flatMap { calendar.date(byAdding: .day, value: timelineMinute / (24 * 60), to: $0) }
+            .flatMap {
+                let minute = timelineMinute % (24 * 60)
+                return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: $0)
+            }
+    }
+
     public static func string(from date: Date, calendar: Calendar = .current) -> String {
         let ymd = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", ymd.year ?? 0, ymd.month ?? 0, ymd.day ?? 0)

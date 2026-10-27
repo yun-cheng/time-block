@@ -35,6 +35,16 @@ struct TimerTests {
             == block("10:00")..<block("10:35"))
     }
 
+    @Test func aStretchKeepsItsClockTimesOnDaysTheClocksChange() {
+        // The clocks went forward an hour at 01:00 on 2026-03-29.
+        let clock = { (hour: Int, minute: Int) in
+            calendar.date(from: DateComponents(year: 2026, month: 3, day: 29, hour: hour, minute: minute))!
+        }
+        let session = TimerSession(categoryID: "coding", start: clock(10, 0), end: clock(10, 30))
+        #expect(session.blocks(on: "2026-03-29", schedule: schedule, calendar: calendar)
+            == block("10:00")..<block("10:30"))
+    }
+
     @Test func aStretchEndingOnABoundaryStopsThere() {
         #expect(session("10:00", "10:30").blocks(on: day, schedule: schedule, calendar: calendar)
             == block("10:00")..<block("10:30"))

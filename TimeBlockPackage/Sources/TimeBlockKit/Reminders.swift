@@ -77,23 +77,13 @@ extension AppSettings {
         }
 
         return reminders.compactMap { reminder in
-            guard let at = Self.date(of: schedule.wakeMinute + reminder.block * Schedule.blockMinutes, on: log.day,
-                                     calendar: calendar), at > date else { return nil }
+            guard let at = DayID.date(of: schedule.wakeMinute + reminder.block * Schedule.blockMinutes, on: log.day,
+                                      calendar: calendar), at > date else { return nil }
             return Reminder(
                 id: "\(Reminder.idPrefix)\(log.day)-\(reminder.id)", date: at, title: reminder.title,
                 body: reminder.body)
         }
         .sorted { $0.date < $1.date }
-    }
-
-    /// The moment a minute of `day`'s timeline comes, which counts on past midnight.
-    private static func date(of timelineMinute: Int, on day: String, calendar: Calendar) -> Date? {
-        DayID.date(day, calendar: calendar)
-            .flatMap { calendar.date(byAdding: .day, value: timelineMinute / (24 * 60), to: $0) }
-            .flatMap {
-                let minute = timelineMinute % (24 * 60)
-                return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: $0)
-            }
     }
 
     /// "45 minutes", "1 hour", "1h 30m".
