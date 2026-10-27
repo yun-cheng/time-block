@@ -37,9 +37,10 @@ struct SecondClock<Content: View>: View {
     private struct Seconds: TimelineSchedule {
         var isPaused: Bool
 
+        /// Made one at a time as they're asked for: a `map` here can resolve to the eager one, which never ends.
         func entries(from start: Date, mode: TimelineScheduleMode) -> some Sequence<Date> {
-            let first = start.timeIntervalSinceReferenceDate.rounded(.down)
-            return (0...).lazy.prefix(isPaused ? 1 : .max).map { Date(timeIntervalSinceReferenceDate: first + Double($0)) }
+            let first = Date(timeIntervalSinceReferenceDate: start.timeIntervalSinceReferenceDate.rounded(.down))
+            return sequence(first: first) { isPaused ? nil : $0.addingTimeInterval(1) }
         }
     }
 }
