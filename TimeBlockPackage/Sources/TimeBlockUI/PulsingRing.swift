@@ -43,6 +43,8 @@ private struct RingLayer {
             pulse.duration = PulsingRing.halfPeriod
             pulse.autoreverses = true
             pulse.repeatCount = .infinity
+            // Kept while the app is in the background, which would otherwise drop it until the ring is next laid out.
+            pulse.isRemovedOnCompletion = false
             pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             // As smooth as the rest of the day's animations, and no more.
             pulse.preferredFrameRateRange = CAFrameRateRange(minimum: 10, maximum: 15, preferred: 15)

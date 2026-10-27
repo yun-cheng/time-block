@@ -82,7 +82,8 @@ final class AppModel {
         didSet { UserDefaults.standard.set(countdownDefault, forKey: "countdownDefault") }
     }
 
-    /// Ticks often enough for the menu bar count to flip on time at each 5-minute boundary.
+    /// Ticks at the start of each minute, when the menu bar count can flip and the day can roll over; no more often,
+    /// since everything showing the day draws it again each time.
     private(set) var now = Date()
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private let store = LogStore.shared
@@ -107,12 +108,17 @@ final class AppModel {
         planReminders()
         // The widget may have drawn the day before it could see what's saved, as on the first signed launch.
         WidgetCenter.shared.reloadAllTimelines()
-        timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        let nextMinute = Calendar.current.dateInterval(of: .minute, for: .now)?.end ?? .now
+        let timer = Timer(fire: nextMinute, interval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.now = Date()
                 self?.loadDayIfNeeded()
             }
         }
+        timer.tolerance = 0.5
+        // Common modes, so it keeps time while a menu is open or a list is scrolled.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     /// Today's schedule, which a sleep shift moves day by day.
