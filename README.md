@@ -42,8 +42,9 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
 corner, or ⌘,), menu bar extra, notifications, and a WidgetKit widget in three sizes. Logs are saved one file per day.
-The app and widget build for iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow, with
-the settings beside it on an iPad and in a sheet on a phone. An Android app is under way: its core, TimeBlockKit in
+The app and widget run on iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow, with
+the settings beside it on an iPad and in a sheet on a phone. Logging, editing, timers and settings have been tried in
+the iPhone simulator. An Android app is under way: its core, TimeBlockKit in
 Kotlin, passes the same tests and reads and writes the same JSON; the app itself is next.
 Next up is a nudge for unlogged time; see the milestones in PLAN.md.
 
@@ -165,6 +166,29 @@ swift run --package-path TimeBlockPackage TimeBlockPrototype
 ```bash
 swift run --package-path TimeBlockPackage TimeBlockPrototype --render renders
 ```
+
+### iPhone and iPad
+
+Install the iOS simulator runtime once (about 8.5 GB), then boot an iPhone, build for it, install and launch:
+
+```bash
+xcodebuild -downloadPlatform iOS
+```
+
+```bash
+xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
+```
+
+```bash
+xcodebuild -project TimeBlock.xcodeproj -scheme TimeBlock -derivedDataPath .build/xcode -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build && xcrun simctl install booted .build/xcode/Build/Products/Debug-iphonesimulator/TimeBlock.app && xcrun simctl launch booted dev.timeblock.TimeBlock
+```
+
+In the simulator, iOS 26's switches can miss a quick click and feel slow to flip; hold the click a moment. They're
+fine on a device.
+
+In the settings, a row can hold more than one control, as an editor does. An iOS form gives a row's taps to its
+buttons and pickers whatever was tapped, so the form makes its buttons borderless, which take only their own taps, and
+a picker sharing a row is a `RowPicker`, a menu on iOS. Keep to both when adding to a row.
 
 ### Android
 

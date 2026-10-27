@@ -454,7 +454,7 @@ matters more. Either way the Watch gets its days through the iPhone.
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
-| M8 | **iPhone + Apple Watch** | watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget build for iPhone and iPad; the Watch, location and motion left |
+| M8 | **iPhone + Apple Watch** | watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget run on iPhone and iPad, tried in the iPhone simulator; the Watch, location and motion left |
 | M9 | **Android** (§2) | the Android app logs a day as the iPhone app does, with its widget and notifications; `fixtures/` pass in Swift and Kotlin | 🟡 the Kotlin core done, passing the Swift tests and both apps' fixtures; the app, notifications and widget left |
 | M10 | **Sync** (§4) | Mac, iPhone, iPad, Watch and Android show the same days, settings and timers; edits made offline on two devices merge block by block | |
 
