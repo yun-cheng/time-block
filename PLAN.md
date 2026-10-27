@@ -40,7 +40,7 @@ TimeBlock.xcodeproj        depends on TimeBlockPackage; source folders sync auto
 ├── TimeBlockWidget/       WidgetKit extension (small / medium / large), view picked per widget
 └── Config/                entitlements, widget Info.plist
 
-Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complications + Smart Stack widget
+Later: watchOS app + complications + Smart Stack widget; Android in a Gradle project of its own (below)
 ```
 
 - App + widget share data through an **App Group** container (settings and day logs live there).
@@ -48,7 +48,8 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
     profile needed on macOS). The code reads the group's name from the build's entitlements. A build with no team runs
     without it: logs stay in the app's own container, and the widget shows the default 07:00–23:00 schedule with no logs.
   - The first signed launch copies settings and logs an unsigned build saved into the group.
-- Cross‑device sync (Mac ↔ iPhone ↔ Watch) via **CloudKit** — requires a paid Apple Developer account.
+- Cross‑device sync (Mac ↔ iPhone ↔ Watch ↔ Android) in M10, on a backend that works off Apple devices too:
+  CloudKit is out once Android is in (§4, Sync).
 - Widget refresh: precompute a **timeline entry every 5 minutes** for the rest of the day (entries don't count against WidgetKit's reload budget). App calls `WidgetCenter.reloadAllTimelines()` whenever a log changes.
 
 ### Platform constraints to design around
@@ -56,6 +57,37 @@ Later: iOS app (the Watch's companion + iPhone widgets), watchOS app + complicat
    - Widget = glanceable view + 1‑tap buttons ("log now as last category", "same as before").
    - Real logging = menu bar popover + main app.
 2. **Apple doesn't allow third‑party watch faces.** "Become an Apple Watch screen" will be: complications on any face, a Smart Stack widget, and a full‑screen watch app. Not a replacement clock face.
+
+### Android (M9)
+Native rather than cross‑platform: Kotlin and Jetpack Compose, in a Gradle project beside the Xcode one. The grid,
+the widget and notifications at exact times are each platform's own anyway, and Compose is close enough to SwiftUI
+for the views to port nearly one for one.
+
+```
+android/                   Gradle project
+├── core                   TimeBlockKit in Kotlin: models, block math, routines, sleep shift, reminders
+├── app                    Compose app: the day, editing, timers, settings
+└── widget                 Glance widget, the grid drawn as a bitmap
+fixtures/                  saved JSON both cores read: swift/ as the Apple apps write it, kotlin/ as Android does
+```
+
+- The logic is ported, not shared: about 2,500 lines with no UI or Apple APIs, so it goes over almost line by line.
+  The Swift SDK for Android could run TimeBlockKit as it is, but calling Swift from Kotlin is still young, and it
+  brings Foundation into the app. The Kotlin core is immutable where the Swift one has `mutating` methods: each edit
+  gives a new `DayLog` or `AppSettings`. The two copies are kept the same by the same tests, ported one for one, and
+  by `fixtures/`: each core reads the days, settings and timers the other writes (dates as Swift writes them, seconds
+  since 2001), which sync needs too.
+- Constraints:
+  1. Widgets can't draw freely, so the grid is drawn into a bitmap. They refresh every 30 minutes at most on their
+     own; updates set for block boundaries keep the count current, at some cost in battery.
+  2. Notifications at exact times (routines, bedtime, countdowns) need the alarms permission from Android 12 on,
+     asked for when one is first turned on.
+  3. A timer is only its start time, so nothing has to run while it goes; an ongoing notification showing it is
+     an extra.
+  4. No menu bar and no window kept on top: an ongoing notification with the counter stands in.
+- Order: the Kotlin core and `fixtures/`, then the day and editing, then timers and notifications, then the
+  widget. Sync comes after (§4, Sync): its records are a layer beside `DayLog`, the same in either language, so the
+  port doesn't wait on them.
 
 ---
 
@@ -372,6 +404,41 @@ CalendarLink  calendarIdentifier, categoryID, isEnabled
 ```
 Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awakeBlocks(on:)`, `remaining(at:)` (can be negative), `AppSettings.schedule(on:)` (applies SleepShift), DST‑safe.
 
+### Sync (M10)
+Sync takes in Android, so it can't be CloudKit. The model above would sync badly:
+- A day is one file: two devices editing it offline would each write over the other's edits.
+- A `BlockLog` gets a new id whenever it's split or joined, so edits can't be matched up run by run.
+- Block indexes count from wake time, so they move when it changes.
+- Settings are one blob: stars, routines and groups need merging item by item.
+- Running timers are kept on the device: one started on the phone doesn't show on the Mac.
+
+Plan: a record per block, the last edit to each block winning.
+- A day's logs sync as one record per block: (day, track, clock minute), holding its layers (activity, source, note,
+  routine) and when and on which device it last changed. Keyed by clock minute, not index, so a new wake time
+  doesn't move them. Edits to different blocks merge cleanly; of two to the same block, the later wins. Each device
+  builds its `DayLog` runs from the blocks, so Swift and Kotlin only have to agree on the records, not on how edits
+  work.
+- The day's own schedule and `isPlanned` sync as fields of the day; timer sessions and running timers as records
+  with ids, so stopping a timer anywhere stops it everywhere.
+- Settings sync field by field, and their lists item by item (each routine, activity edit, group, star and removal),
+  with deletions kept as tombstones.
+- Undo stays on the device.
+- Considered: syncing edits as operations to replay, truest to what was done, but both apps would have to replay
+  them exactly alike; whole days with the last write winning, simplest, but it loses edits made offline on two
+  devices the same day.
+
+Backend, picked once the Android port is in:
+
+| Option | For | Against |
+|---|---|---|
+| Firebase Firestore | Offline cache and sync built into its Apple and Android SDKs; a record per block with the last write winning is how it works already | Google account and lock‑in; check how well it supports the Mac |
+| Supabase | Postgres, row‑level security, open source, can be self‑hosted | No offline sync built in: each app keeps a queue of changes to push, and pulls what changed since it last looked |
+| CloudKit, with its web API from Android | Free with the Apple account | The web API is clumsy from Android, and needs an iCloud sign‑in in a web view |
+| A small server of our own | Full control | The most to build and keep running |
+
+Leaning Firestore, for the least work, since merging offline edits is what it does; Supabase if staying off Google
+matters more. Either way the Watch gets its days through the iPhone.
+
 ---
 
 ## 5. Milestones
@@ -387,7 +454,9 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | M5 | **Sleep‑shift plan** | stepped bedtime schedule drives the grid | ✅ done (Settings ▸ Sleep Shift); jet lag later |
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
-| M8 | **iPhone + Apple Watch** | CloudKit sync, watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget build for iPhone and iPad; sync, the Watch, location and motion left |
+| M8 | **iPhone + Apple Watch** | watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget build for iPhone and iPad; the Watch, location and motion left |
+| M9 | **Android** (§2) | the Android app logs a day as the iPhone app does, with its widget and notifications; `fixtures/` pass in Swift and Kotlin | |
+| M10 | **Sync** (§4) | Mac, iPhone, iPad, Watch and Android show the same days, settings and timers; edits made offline on two devices merge block by block | |
 
 ---
 
@@ -398,12 +467,14 @@ Block math (pure functions, fully unit‑tested): `blockIndex(for: Date)`, `awak
 | Sleep shift | Wake time shifts with bedtime (sleep length stays the same) |
 | Unlogged blocks | Stay grey, with location/activity‑based suggestions for one‑tap logging (§3.2a) |
 | Google Calendar | Read through macOS Calendar with EventKit (add Google in System Settings → Internet Accounts) |
-| Platforms | Mac first; the same app and widget targets build for iPhone and iPad, the day filling the screen; sync and the Watch in M8 |
+| Platforms | Mac first; the same app and widget targets build for iPhone and iPad, the day filling the screen; the Watch in M8, Android in M9, sync in M10 |
 | Time inputs | Times and lengths alike as an hour box and a minutes box, as in the timer dialog, each typed into or opened as a list with the ⌄ inside it, like a combo box; ↑↓ step them (an hour, or 5 min). No stepper arrows, which were too small to hit. Typed minutes round to 5 min once you're done. Phones may get their own control in M8 |
 | Views | Separate log tracks (Activity, Body), not filters over one track |
 | Live logging | Timers fill in every block they touch as they run, stacked over what's there; exact times kept for hover |
 | Several activities at once | Layers of overlapping logs, each counted in full, drawn as stacked cards; an Add tool (or ⌘) adds, shown by the pointer, and goes back to Normal after one add |
 | Logging controls | Popups rather than a palette under the grid: a + (or edit symbol) beside the selection's label opens the activities, Start Timer beside what's on now starts timers; no pick‑then‑paint brush |
 | Animation | The day is drawn again once a minute, and only what moves animates: the current block's pulse in Core Animation, and past bedtime each horror effect on a 15 fps clock of its own. All of it holds still while the window can't be seen or a menu is open. One 15 fps clock around the whole day kept an open window near 40% CPU |
-| Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; a file that can't be read is set aside as `<day>.<time>.unreadable` rather than written over; revisit for CloudKit in M8 |
+| Storage | One JSON file per day (`DayLog`) rather than SwiftData: small, testable, readable; a file that can't be read is set aside as `<day>.<time>.unreadable` rather than written over; sync keeps a record per block beside it (§4, Sync) |
+| Android | Native Kotlin and Compose; TimeBlockKit ported to Kotlin, kept the same by shared JSON fixtures, rather than run through the Swift SDK for Android |
+| Sync | Across Apple devices and Android, so not CloudKit; a record per block, the last edit winning; backend picked after the Android port, leaning Firestore |
 | Signing | Automatic, with a free Apple ID team; App Group `<team ID>.dev.timeblock` |
