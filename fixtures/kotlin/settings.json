@@ -1,0 +1,169 @@
+{
+    "schedule": {
+        "wakeMinute": 450,
+        "bedMinute": 30,
+        "rolloverMinute": 330
+    },
+    "track": "body",
+    "favorites": [
+        "work",
+        "lunch",
+        "custom-piano"
+    ],
+    "customCategories": [
+        {
+            "id": "custom-piano",
+            "name": "Piano",
+            "track": "activity",
+            "group": "group-music",
+            "color": {
+                "r": 0.2196078431372549,
+                "g": 0.7411764705882353,
+                "b": 0.9725490196078431
+            },
+            "symbol": "pianokeys",
+            "keywords": [
+                "keys"
+            ]
+        }
+    ],
+    "customGroups": [
+        {
+            "id": "group-music",
+            "name": "Music",
+            "color": {
+                "r": 0.2196078431372549,
+                "g": 0.7411764705882353,
+                "b": 0.9725490196078431
+            }
+        }
+    ],
+    "editedCategories": [
+        {
+            "id": "lunch",
+            "name": "Midday meal",
+            "track": "activity",
+            "group": "people",
+            "color": {
+                "r": 0.9411764705882353,
+                "g": 0.3137254901960784,
+                "b": 0.5490196078431373
+            },
+            "symbol": "fork.knife",
+            "keywords": [
+                "meal",
+                "eat",
+                "food",
+                "noon"
+            ]
+        }
+    ],
+    "editedGroups": [
+        {
+            "id": "people",
+            "name": "Company",
+            "color": {
+                "r": 0.9411764705882353,
+                "g": 0.3137254901960784,
+                "b": 0.5490196078431373
+            }
+        }
+    ],
+    "removedCategories": [
+        "doomscroll"
+    ],
+    "templates": [
+        {
+            "id": "lunch",
+            "categoryID": "lunch",
+            "anchor": "clock",
+            "startMinute": 750,
+            "offset": 0,
+            "length": 6,
+            "weekdays": [
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "isEnabled": true,
+            "notifies": true
+        },
+        {
+            "id": "breakfast",
+            "categoryID": "breakfast",
+            "anchor": "wake",
+            "startMinute": 720,
+            "offset": 30,
+            "length": 4,
+            "weekdays": [
+                1
+            ],
+            "isEnabled": true,
+            "notifies": false
+        },
+        {
+            "id": "reading",
+            "categoryID": "reading",
+            "anchor": "bed",
+            "startMinute": 720,
+            "offset": 45,
+            "length": 6,
+            "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "isEnabled": false,
+            "notifies": false
+        },
+        {
+            "id": "shower",
+            "categoryID": "shower",
+            "anchor": "after",
+            "afterCategoryID": "gym",
+            "startMinute": 720,
+            "offset": 15,
+            "length": 3,
+            "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+            ],
+            "isEnabled": true,
+            "notifies": false
+        }
+    ],
+    "sleepShift": {
+        "from": {
+            "wakeMinute": 540,
+            "bedMinute": 60,
+            "rolloverMinute": 420
+        },
+        "startDay": "2026-10-24",
+        "stepMinutes": 15,
+        "everyDays": 2,
+        "leads": "wake",
+        "isByFinishDay": true
+    },
+    "grid": {
+        "gapMinutes": 15,
+        "labelMinutes": 30,
+        "hourGaps": "divided",
+        "gapHours": 6,
+        "dayParts": 3
+    },
+    "windDownMinutes": 45,
+    "notifiesWindDown": false,
+    "notifiesBedtime": true,
+    "bedtimeNoticeMinutes": 20
+}

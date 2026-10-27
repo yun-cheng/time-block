@@ -85,7 +85,7 @@ fixtures/                  saved JSON both cores read: swift/ as the Apple apps 
   3. A timer is only its start time, so nothing has to run while it goes; an ongoing notification showing it is
      an extra.
   4. No menu bar and no window kept on top: an ongoing notification with the counter stands in.
-- Order: the Kotlin core and `fixtures/`, then the day and editing, then timers and notifications, then the
+- Order: the Kotlin core and `fixtures/` (done), then the day and editing, then timers and notifications, then the
   widget. Sync comes after (§4, Sync): its records are a layer beside `DayLog`, the same in either language, so the
   port doesn't wait on them.
 
@@ -455,7 +455,7 @@ matters more. Either way the Watch gets its days through the iPhone.
 | M6 | **Calendar import** | events show as pre‑logged blocks | |
 | M7 | **Interactive widget buttons + Mac activity hints** | 1‑tap log from the widget; grey blocks show "Away / Coding / Call" suggestions | |
 | M8 | **iPhone + Apple Watch** | watch app, complications, Smart Stack, location and motion data | 🟡 the app and widget build for iPhone and iPad; the Watch, location and motion left |
-| M9 | **Android** (§2) | the Android app logs a day as the iPhone app does, with its widget and notifications; `fixtures/` pass in Swift and Kotlin | |
+| M9 | **Android** (§2) | the Android app logs a day as the iPhone app does, with its widget and notifications; `fixtures/` pass in Swift and Kotlin | 🟡 the Kotlin core done, passing the Swift tests and both apps' fixtures; the app, notifications and widget left |
 | M10 | **Sync** (§4) | Mac, iPhone, iPad, Watch and Android show the same days, settings and timers; edits made offline on two devices merge block by block | |
 
 ---

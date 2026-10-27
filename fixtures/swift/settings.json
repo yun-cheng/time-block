@@ -1,0 +1,169 @@
+{
+  "bedtimeNoticeMinutes" : 20,
+  "customCategories" : [
+    {
+      "color" : {
+        "b" : 0.9725490196078431,
+        "g" : 0.7411764705882353,
+        "r" : 0.2196078431372549
+      },
+      "group" : "group-music",
+      "id" : "custom-piano",
+      "keywords" : [
+        "keys"
+      ],
+      "name" : "Piano",
+      "symbol" : "pianokeys",
+      "track" : "activity"
+    }
+  ],
+  "customGroups" : [
+    {
+      "color" : {
+        "b" : 0.9725490196078431,
+        "g" : 0.7411764705882353,
+        "r" : 0.2196078431372549
+      },
+      "id" : "group-music",
+      "name" : "Music"
+    }
+  ],
+  "editedCategories" : [
+    {
+      "color" : {
+        "b" : 0.5490196078431373,
+        "g" : 0.3137254901960784,
+        "r" : 0.9411764705882353
+      },
+      "group" : "people",
+      "id" : "lunch",
+      "keywords" : [
+        "meal",
+        "eat",
+        "food",
+        "noon"
+      ],
+      "name" : "Midday meal",
+      "symbol" : "fork.knife",
+      "track" : "activity"
+    }
+  ],
+  "editedGroups" : [
+    {
+      "color" : {
+        "b" : 0.5490196078431373,
+        "g" : 0.3137254901960784,
+        "r" : 0.9411764705882353
+      },
+      "id" : "people",
+      "name" : "Company"
+    }
+  ],
+  "favorites" : [
+    "work",
+    "lunch",
+    "custom-piano"
+  ],
+  "grid" : {
+    "dayParts" : 3,
+    "gapHours" : 6,
+    "gapMinutes" : 15,
+    "hourGaps" : "divided",
+    "labelMinutes" : 30
+  },
+  "notifiesBedtime" : true,
+  "notifiesWindDown" : false,
+  "removedCategories" : [
+    "doomscroll"
+  ],
+  "schedule" : {
+    "bedMinute" : 30,
+    "rolloverMinute" : 330,
+    "wakeMinute" : 450
+  },
+  "sleepShift" : {
+    "everyDays" : 2,
+    "from" : {
+      "bedMinute" : 60,
+      "rolloverMinute" : 420,
+      "wakeMinute" : 540
+    },
+    "isByFinishDay" : true,
+    "leads" : "wake",
+    "startDay" : "2026-10-24",
+    "stepMinutes" : 15
+  },
+  "templates" : [
+    {
+      "anchor" : "clock",
+      "categoryID" : "lunch",
+      "id" : "lunch",
+      "isEnabled" : true,
+      "length" : 6,
+      "notifies" : true,
+      "offset" : 0,
+      "startMinute" : 750,
+      "weekdays" : [
+        2,
+        3,
+        5,
+        4,
+        6
+      ]
+    },
+    {
+      "anchor" : "wake",
+      "categoryID" : "breakfast",
+      "id" : "breakfast",
+      "isEnabled" : true,
+      "length" : 4,
+      "notifies" : false,
+      "offset" : 30,
+      "startMinute" : 720,
+      "weekdays" : [
+        1
+      ]
+    },
+    {
+      "anchor" : "bed",
+      "categoryID" : "reading",
+      "id" : "reading",
+      "isEnabled" : false,
+      "length" : 6,
+      "notifies" : false,
+      "offset" : 45,
+      "startMinute" : 720,
+      "weekdays" : [
+        5,
+        6,
+        3,
+        1,
+        2,
+        7,
+        4
+      ]
+    },
+    {
+      "afterCategoryID" : "gym",
+      "anchor" : "after",
+      "categoryID" : "shower",
+      "id" : "shower",
+      "isEnabled" : true,
+      "length" : 3,
+      "notifies" : false,
+      "offset" : 15,
+      "startMinute" : 720,
+      "weekdays" : [
+        5,
+        6,
+        3,
+        1,
+        2,
+        7,
+        4
+      ]
+    }
+  ],
+  "track" : "body",
+  "windDownMinutes" : 45
+}

@@ -1,0 +1,57 @@
+{
+  "day" : "2026-10-26",
+  "isPlanned" : true,
+  "logs" : [
+    {
+      "categoryID" : "sitting",
+      "id" : "00000000-0000-0000-0000-000000000001",
+      "length" : 24,
+      "source" : "manual",
+      "startIndex" : 0
+    },
+    {
+      "categoryID" : "work",
+      "id" : "00000000-0000-0000-0000-000000000002",
+      "length" : 6,
+      "source" : "manual",
+      "startIndex" : 12
+    },
+    {
+      "categoryID" : "email",
+      "id" : "00000000-0000-0000-0000-000000000003",
+      "length" : 2,
+      "note" : "Inbox zero",
+      "source" : "manual",
+      "startIndex" : 14
+    },
+    {
+      "categoryID" : "meeting",
+      "id" : "00000000-0000-0000-0000-000000000004",
+      "length" : 6,
+      "note" : "Standup",
+      "source" : "calendar",
+      "startIndex" : 36
+    },
+    {
+      "categoryID" : "lunch",
+      "id" : "00000000-0000-0000-0000-000000000005",
+      "length" : 6,
+      "source" : "template",
+      "startIndex" : 60,
+      "templateID" : "lunch"
+    }
+  ],
+  "schedule" : {
+    "bedMinute" : 1380,
+    "rolloverMinute" : 300,
+    "wakeMinute" : 420
+  },
+  "sessions" : [
+    {
+      "categoryID" : "coding",
+      "end" : 783102630.75,
+      "start" : 783100800.25
+    }
+  ],
+  "wakeMinute" : 420
+}

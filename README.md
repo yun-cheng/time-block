@@ -43,7 +43,8 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
 corner, or ⌘,), menu bar extra, notifications, and a WidgetKit widget in three sizes. Logs are saved one file per day.
 The app and widget build for iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow, with
-the settings beside it on an iPad and in a sheet on a phone.
+the settings beside it on an iPad and in a sheet on a phone. An Android app is under way: its core, TimeBlockKit in
+Kotlin, passes the same tests and reads and writes the same JSON; the app itself is next.
 Next up is a nudge for unlogged time; see the milestones in PLAN.md.
 
 ### Logging
@@ -130,6 +131,9 @@ TimeBlock.xcodeproj        app + widget extension for Mac, iPhone and iPad, depe
 TimeBlockApp/              app target sources
 TimeBlockWidget/           widget extension sources
 Config/                    entitlements, widget Info.plist
+android/                   Gradle project for the Android app
+  core/                    TimeBlockKit in Kotlin, with the same tests
+fixtures/                  the JSON both cores read: swift/ as the Apple apps write it, kotlin/ as Android does
 ```
 
 ## Build and run
@@ -161,6 +165,18 @@ swift run --package-path TimeBlockPackage TimeBlockPrototype
 ```bash
 swift run --package-path TimeBlockPackage TimeBlockPrototype --render renders
 ```
+
+### Android
+
+Needs a JDK 17 or later; Android Studio's own will do. Run the Kotlin core's tests:
+
+```bash
+cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :core:test
+```
+
+Both cores' tests read `fixtures/`. After changing what's saved, write each core's fixtures again and check the other
+still reads them: `WRITE_FIXTURES=1 swift test --package-path TimeBlockPackage`, and `./gradlew :core:test
+-PwriteFixtures` in `android/`.
 
 ## Signing
 
