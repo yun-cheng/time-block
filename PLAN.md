@@ -254,8 +254,9 @@ time-logging coaches split a day, with plain names:
   Templates that pre‑log the activity it follows are laid out first.
 - **Notify** (off to start, a switch in the template's editor, and a bell on its row when on): a notification as it
   starts, each time, at the first of its blocks still pre‑logged (`Lunch`, "12:10–12:30, from your routine." when a
-  meeting took its first ten minutes), and none when you logged over all of it. Today's notifications are set again
-  whenever its logs or the settings change.
+  meeting took its first ten minutes), and none when you logged over all of it. Today's and tomorrow's notifications
+  are set again whenever their logs or the settings change, tomorrow's ahead for a day the app doesn't run (an
+  iPhone's app sleeps in the background).
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
 - A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
   change counts even when the app opens after it; the widget lays them out the same way on a day the app hasn't seen

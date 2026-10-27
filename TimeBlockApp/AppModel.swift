@@ -34,7 +34,9 @@ final class AppModel {
     }
 
     /// The day the window shows when it isn't today: a past day, or one still to come.
-    private(set) var otherLog: DayLog?
+    private(set) var otherLog: DayLog? {
+        didSet { if otherLog != oldValue { planReminders() } }
+    }
 
     /// Whether the main window shows the settings inspector.
     var showsSettings = false
@@ -337,9 +339,14 @@ final class AppModel {
         alarms.cancel(id)
     }
 
-    /// Sets the notifications today has coming, in place of the ones set before.
+    /// Sets the notifications today and tomorrow have coming, in place of the ones set before. Tomorrow's are set
+    /// ahead, for a day the app doesn't run, as an iPhone's that sleeps in the background.
     private func planReminders() {
-        alarms.plan(settings.reminders(for: dayLog, after: Date()))
+        let tomorrow = DayID.adding(1, to: dayLog.day).map { day in
+            otherLog.flatMap { $0.day == day ? $0 : nil } ?? load(day)
+        }
+        let days = [dayLog] + (tomorrow.map { [$0] } ?? [])
+        alarms.plan(days.flatMap { settings.reminders(for: $0, after: Date()) })
     }
 
     /// Logs a stretch a timer ran on each day it ran on, unless it was too short to mean it.
