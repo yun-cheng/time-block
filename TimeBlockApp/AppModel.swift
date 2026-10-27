@@ -19,8 +19,9 @@ final class AppModel {
             // A shift that's there already is over, so changing the schedule later doesn't start it again.
             settings.endSleepShiftIfDone(on: dayLog.day)
             SettingsStore.save(settings)
-            // Templates are clock times: moving the wake time moves their blocks too.
-            if settings.templates != oldValue.templates || scheduleChanged {
+            // Templates are clock times: moving the wake time moves their blocks too. Whether one notifies moves none,
+            // and laying them out again would bring back blocks of it cleared, and take away undo.
+            if Self.layouts(of: settings.templates) != Self.layouts(of: oldValue.templates) || scheduleChanged {
                 replan()
             }
             planReminders()
@@ -485,6 +486,15 @@ final class AppModel {
         guard !dayLog.isPlanned else { return }
         dayLog.plan(settings.templates, schedule: schedule, categories: settings.categories)
         save()
+    }
+
+    /// The templates as far as where their blocks go: all of each but whether it notifies.
+    private static func layouts(of templates: [Template]) -> [Template] {
+        templates.map { template in
+            var layout = template
+            layout.notifies = false
+            return layout
+        }
     }
 
     /// Lays changed templates out again over the blocks still to come, today's and those of the days ahead already
