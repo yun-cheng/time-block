@@ -189,27 +189,19 @@ final class AppModel {
     /// Logs `range` in the current view of the day shown as a category, or clears it with nil. With `layer`, only that
     /// activity is replaced or cleared.
     func set(_ range: Range<Int>, to categoryID: String?, layer: String? = nil) {
-        set(range, to: categoryID, layer: layer, on: shownDay)
-    }
-
-    private func set(_ range: Range<Int>, to categoryID: String?, layer: String? = nil, on day: String) {
         let name = layer == nil
             ? categoryID == nil ? "Clear Blocks" : "Log Blocks"
             : categoryID == nil ? "Remove Activity" : "Replace Activity"
-        edit(name, on: day) {
+        edit(name, on: shownDay) {
             $0.set(range, to: categoryID, in: settings.track, schedule: $1, categories: settings.categories, layer: layer)
         }
     }
 
     /// Adds an activity to what `range` holds in the day shown, or takes it off when every block holds it.
     func toggle(_ range: Range<Int>, _ categoryID: String) {
-        toggle(range, categoryID, on: shownDay)
-    }
-
-    private func toggle(_ range: Range<Int>, _ categoryID: String, on day: String) {
-        guard let log = log(of: day) else { return }
+        guard let log = log(of: shownDay) else { return }
         let isHeld = log.holds(categoryID, throughout: range, schedule: schedule(of: log))
-        edit(isHeld ? "Remove Activity" : "Add Activity", on: day) {
+        edit(isHeld ? "Remove Activity" : "Add Activity", on: shownDay) {
             $0.toggle(categoryID, in: range, schedule: $1, categories: settings.categories)
         }
     }

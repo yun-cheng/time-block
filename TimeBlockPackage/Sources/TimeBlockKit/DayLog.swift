@@ -106,17 +106,10 @@ public struct DayLog: Codable, Hashable, Sendable {
         guard !range.isEmpty else { return }
         rebase(to: schedule)
         let held = Set(logs.filter { $0.categoryID == categoryID }.flatMap(\.range))
-        var logs = logs
-        var start: Int?
-        for block in range.lowerBound...range.upperBound {
-            let isFree = block < range.upperBound && !held.contains(block)
-            if isFree, start == nil { start = block }
-            if !isFree, let from = start {
-                logs.append(BlockLog(startIndex: from, length: block - from, categoryID: categoryID))
-                start = nil
-            }
+        let added = Self.runs(in: range) { !held.contains($0) }.map {
+            BlockLog(startIndex: $0.lowerBound, length: $0.count, categoryID: categoryID)
         }
-        self.logs = Self.joined(logs)
+        logs = Self.joined(logs + added)
     }
 
     /// Logs a stretch a timer ran: its activity is added to every block of the day it ran in, any part of it, and its
@@ -286,17 +279,26 @@ public struct DayLog: Codable, Hashable, Sendable {
         }
         let trackOf = Dictionary(categories.map { ($0.id, $0.track) }, uniquingKeysWith: { first, _ in first })
         let taken = Set(logs.filter { trackOf[$0.categoryID] == category.track }.flatMap(\.range))
+        logs += Self.runs(in: range.clamped(to: index..<max(index, range.upperBound))) { !taken.contains($0) }.map {
+            BlockLog(
+                startIndex: $0.lowerBound, length: $0.count, categoryID: category.id, source: .template,
+                templateID: template.id)
+        }
+    }
+
+    /// The unbroken runs of blocks in `range` that `isFree` picks, in order.
+    private static func runs(in range: Range<Int>, where isFree: (Int) -> Bool) -> [Range<Int>] {
+        var runs: [Range<Int>] = []
         var start: Int?
-        for block in max(index, range.lowerBound)..<max(index, range.upperBound) + 1 {
-            let isFree = block < range.upperBound && !taken.contains(block)
-            if isFree, start == nil { start = block }
-            if !isFree, let from = start {
-                logs.append(BlockLog(
-                    startIndex: from, length: block - from, categoryID: category.id, source: .template,
-                    templateID: template.id))
+        for block in range.lowerBound...range.upperBound {
+            if block < range.upperBound, isFree(block) {
+                if start == nil { start = block }
+            } else if let from = start {
+                runs.append(from..<block)
                 start = nil
             }
         }
+        return runs
     }
 
     /// Counts block indexes from `schedule`'s wake time from now on, and keeps it as the day's schedule.
