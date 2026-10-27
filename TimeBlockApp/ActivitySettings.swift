@@ -342,11 +342,7 @@ private struct ActivityEditor: View {
                 }
             }
             if category.group != nil {
-                Picker("Group", selection: groupBinding) {
-                    ForEach(groups) { group in
-                        Text(group.name).tag(group.id)
-                    }
-                }
+                RowPicker(title: "Group", selection: groupBinding, options: groups.map { ($0.name, $0.id) })
             } else {
                 ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
             }

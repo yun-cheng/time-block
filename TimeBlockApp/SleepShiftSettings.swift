@@ -179,12 +179,8 @@ private struct SleepShiftEditor: View {
                     ? "To \(Schedule.clockText(other.1)), so you sleep as long"
                     : "Stays at \(Schedule.clockText(other.0))")
             }
-            Picker("Step", selection: $stepMinutes) {
-                ForEach([10, 15, 20, 30, 45, 60], id: \.self) { Text("\($0) min").tag($0) }
-            }
-            Picker("Every", selection: $everyDays) {
-                ForEach(1...7, id: \.self) { Text($0 == 1 ? "day" : "\($0) days").tag($0) }
-            }
+            RowPicker(title: "Step", selection: $stepMinutes, options: [10, 15, 20, 30, 45, 60].map { ("\($0) min", $0) })
+            RowPicker(title: "Every", selection: $everyDays, options: (1...7).map { ($0 == 1 ? "day" : "\($0) days", $0) })
             Picker("Set", selection: $timing) {
                 Text("Start day").tag(Timing.start)
                 Text("Finish day").tag(Timing.finish)

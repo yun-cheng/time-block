@@ -269,13 +269,10 @@ private struct TemplateEditor: View {
 
     /// What it starts from: a clock time, waking, bed, or the end of an activity, picked under it.
     private var anchorPicker: some View {
-        Picker("Starts", selection: anchorBinding) {
-            Text("At").tag(Template.Anchor.clock)
-            Text("After Waking").tag(Template.Anchor.wake)
-            Text("Before Bed").tag(Template.Anchor.bed)
-            Text("After Activity").tag(Template.Anchor.after)
-        }
-        .labelsHidden()
+        RowPicker(
+            title: "Starts", selection: anchorBinding,
+            options: [("At", .clock), ("After Waking", .wake), ("Before Bed", .bed), ("After Activity", .after)])
+            .labelsHidden()
         .fixedSize()
     }
 

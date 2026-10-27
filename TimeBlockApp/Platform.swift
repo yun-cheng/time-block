@@ -64,3 +64,41 @@ struct ScrollIntoView: UIViewRepresentable {
     }
 }
 #endif
+
+/// A picker sharing its row with other controls. On iOS a form's picker opens from a tap anywhere on its row, so
+/// tapping the row's other labels opened it; there it's a menu holding the choices, which opens only from itself, as
+/// a button takes only its own taps. On the Mac it's the picker.
+struct RowPicker<Value: Hashable>: View {
+    let title: String
+    @Binding var selection: Value
+    /// Each choice's name and value, in order.
+    let options: [(name: String, value: Value)]
+
+    var body: some View {
+        #if os(iOS)
+        LabeledContent(title) {
+            Menu {
+                picker
+            } label: {
+                HStack(spacing: 4) {
+                    Text(options.first { $0.value == selection }?.name ?? "")
+                    Image(systemName: "chevron.up.chevron.down")
+                        .imageScale(.small)
+                }
+                // Gray, as a picker's: the menu's tint would make it the accent's.
+                .foregroundStyle(Color.secondary)
+            }
+        }
+        #else
+        picker
+        #endif
+    }
+
+    private var picker: some View {
+        Picker(title, selection: $selection) {
+            ForEach(options.indices, id: \.self) { index in
+                Text(options[index].name).tag(options[index].value)
+            }
+        }
+    }
+}
