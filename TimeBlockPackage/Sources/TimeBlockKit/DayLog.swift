@@ -342,7 +342,8 @@ public struct DayLog: Codable, Hashable, Sendable {
     }
 
     /// Touching logs of the same category, source and note made one. Their order is kept, since logs that overlap are
-    /// layered in it when all else is even (see `DayGrid.cells`): two that join take the later one's place, as the one logged last.
+    /// layered in it when all else is even (see `DayGrid.cells`): two that join take the later one's place, as the
+    /// one logged last.
     private static func joined(_ logs: [BlockLog]) -> [BlockLog] {
         var joined: [BlockLog] = []
         for log in logs {

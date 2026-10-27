@@ -56,8 +56,9 @@ struct SleepShiftSettings: View {
                     }
                     .help("Keep last night's bedtime tonight and tomorrow's wake time, and take each step a night later")
                 } else {
+                    let next = Self.dayName(shift.nextStepDay(from: today), today: today, on: true)
                     Button("Step Tonight") { model.resumeSleepShift(nextStepOn: today) }
-                        .help("Take the next step tonight instead of \(Self.dayName(shift.nextStepDay(from: today), today: today, on: true))")
+                        .help("Take the next step tonight instead of \(next)")
                 }
                 Spacer()
                 Button("Edit…") { isEditing = true }
@@ -235,7 +236,8 @@ private struct SleepShiftEditor: View {
             let soonest = SleepShift(
                 from: shift.from, startDay: today, stepMinutes: shift.stepMinutes, everyDays: shift.everyDays)
             let finish = SleepShiftSettings.dayName(soonest.finishDay(target: target), today: today, on: true)
-            return "\(count) \(count == 1 ? "step" : "steps") from tonight gets you there \(finish) at the soonest. Take bigger steps or pick a later day."
+            let steps = "\(count) \(count == 1 ? "step" : "steps")"
+            return "\(steps) from tonight gets you there \(finish) at the soonest. Take bigger steps or pick a later day."
         }
         let moved = (1...count).map { step in
             let schedule = shift.schedule(afterSteps: step, target: target)

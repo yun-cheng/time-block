@@ -78,11 +78,11 @@ public struct CategoryChip: View {
     }
 }
 
-/// Picks what to log: a search field over every category in the track, and under it a list of Starred and the
-/// groups beside the chips. The chips are the starred categories (then Clear), or every category in the group
-/// picked, starred or not; while typing they're the matches from every group. Return takes the best match.
-/// Right-clicking a chip stars or unstars it. While adding (`isAdding`, or ⌘ held), clicking a chip toggles it rather than choosing it, when there's a way
-/// to, and the add pointer over the chips says so.
+/// Picks what to log: a search field over every category in the track, and under it a list of Starred and the groups
+/// beside the chips. The chips are the starred categories (then Clear), or every category in the group picked,
+/// starred or not; while typing they're the matches from every group. Return takes the best match. Right-clicking a
+/// chip stars or unstars it. While adding (`isAdding`, or ⌘ held), clicking a chip toggles it rather than choosing
+/// it, when there's a way to, and the add pointer over the chips says so.
 public struct CategoryPalette: View {
     let categories: [BlockCategory]
     let favorites: [BlockCategory]

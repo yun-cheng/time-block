@@ -2,10 +2,10 @@ import SwiftUI
 import TimeBlockKit
 import TimeBlockUI
 
-/// The current view's whole library: star activities for the palette, edit any activity or group (built-in ones
-/// too, with a way back), add your own, or remove activities (listed under Removed to put back). Starred ones
-/// aren't listed apart: the palette shows them, and unstars them too. Editors open in the list rather than a popover: closing a popover hands focus to the first time
-/// picker, which scrolls the settings back to the top.
+/// The current view's whole library: star activities for the palette, edit any activity or group (built-in ones too,
+/// with a way back), add your own, or remove activities (listed under Removed to put back). Starred ones aren't
+/// listed apart: the palette shows them, and unstars them too. Editors open in the list rather than a popover:
+/// closing a popover hands focus to the first time picker, which scrolls the settings back to the top.
 struct ActivitySettings: View {
     @Bindable var model: AppModel
     /// The id of the activity whose editor is open.

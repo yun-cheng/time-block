@@ -4,8 +4,9 @@ import TimeBlockUI
 
 /// Starts a timer from a dialog in the middle of the window, over the day dimmed: whether it counts down, a
 /// countdown's length, and the activity to time, picked from a popup. The length is typed, picked or set with blocks,
-/// and can be starred to pick in a click or made what countdowns start at; counting up, there's no length to set. Start starts it, and the dialog closes then, or on Cancel, Escape or a click off it.
-/// Compact, it fits a day as small as the window kept on top's: closer to its edges, and tighter inside.
+/// and can be starred to pick in a click or made what countdowns start at; counting up, there's no length to set.
+/// Start starts it, and the dialog closes then, or on Cancel, Escape or a click off it. Compact, it fits a day as
+/// small as the window kept on top's: closer to its edges, and tighter inside.
 struct TimerDialog: View {
     @Bindable var model: AppModel
     let theme: MoodTheme

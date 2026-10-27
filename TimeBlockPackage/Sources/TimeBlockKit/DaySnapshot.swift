@@ -140,7 +140,11 @@ public struct DaySnapshot: Sendable {
         let target: (range: Range<Int>, layer: String?) =
             selection.flatMap { $0.contains(index) ? ($0, selectedLayer) : nil } ?? self.target(at: index, card: card)
         let cells = cells[target.range.clamped(to: cells.indices)]
-        let holds = target.layer.map { layer in cells.contains { $0.layer(layer) != nil } } ?? cells.contains { $0.categoryID != nil }
+        let holds = if let layer = target.layer {
+            cells.contains { $0.layer(layer) != nil }
+        } else {
+            cells.contains { $0.categoryID != nil }
+        }
         return holds ? target : nil
     }
 

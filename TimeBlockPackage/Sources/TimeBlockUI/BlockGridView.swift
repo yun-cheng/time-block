@@ -323,7 +323,8 @@ public struct BlockGridView: View {
             for index in selection { preview[index] = snapshot.cells[index].layers.filter { $0.categoryID != category } }
             for index in resizing.range where snapshot.cells.indices.contains(index) {
                 let others = (preview[index] ?? snapshot.cells[index].layers).filter { $0.categoryID != category }
-                preview[index] = others + [snapshot.cells[selection.lowerBound].layer(category) ?? BlockCell.Layer(categoryID: category)]
+                let resized = snapshot.cells[selection.lowerBound].layer(category) ?? BlockCell.Layer(categoryID: category)
+                preview[index] = others + [resized]
             }
         } else if let resizing, let selection, let category = resizableCategory {
             for index in selection { preview[index] = [] }
@@ -333,7 +334,8 @@ public struct BlockGridView: View {
             let cells = edited.filter(snapshot.cells.indices.contains).map { snapshot.cells[$0] }
             let isHeld = cells.allSatisfy { $0.categoryIDs.contains(id) }
             for cell in cells {
-                preview[cell.index] = cell.layers.filter { $0.categoryID != id } + (isHeld ? [] : [BlockCell.Layer(categoryID: id)])
+                let others = cell.layers.filter { $0.categoryID != id }
+                preview[cell.index] = isHeld ? others : others + [BlockCell.Layer(categoryID: id)]
             }
         } else if let brush, let edited {
             for index in edited { preview[index] = brush.categoryID.map { [BlockCell.Layer(categoryID: $0)] } ?? [] }
@@ -520,7 +522,9 @@ public struct BlockGridView: View {
                 } else if dragged.count == 1 {
                     let index = dragged.lowerBound
                     let now = Date()
-                    let isDouble = lastClick.map { $0.index == index && now.timeIntervalSince($0.time) < Self.doubleClickInterval } ?? false
+                    let isDouble = lastClick.map {
+                        $0.index == index && now.timeIntervalSince($0.time) < Self.doubleClickInterval
+                    } ?? false
                     lastClick = isDouble ? nil : (index, now)
                     if isDouble {
                         onDrag?(dragged)
