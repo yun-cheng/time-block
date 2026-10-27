@@ -88,6 +88,11 @@ struct SettingsView: View {
             ActivitySettings(model: model)
         }
         .formStyle(.grouped)
+        #if os(iOS)
+        // A row's buttons each take their own taps, as on the Mac: in their usual style a tap anywhere on the row
+        // goes to its buttons, so Cancel or Done beside another button did the wrong thing or nothing.
+        .buttonStyle(.borderless)
+        #endif
     }
 
     /// Whether a sleep shift has started moving today's times, which it carries on from.
