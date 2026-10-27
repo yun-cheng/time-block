@@ -50,8 +50,7 @@ struct DayProvider: AppIntentTimelineProvider {
         let track = configuration.view.track
         if context.isPreview { return DayEntry(date: .now, snapshot: Self.sample(at: .now, track: track)) }
         let settings = SettingsStore.load()
-        let day = settings.dayID(for: .now)
-        let log = LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+        let log = Self.log(of: settings.dayID(for: .now), settings: settings)
         return DayEntry(date: .now, snapshot: settings.snapshot(at: .now, log: log, track: track, timers: TimerStore.load()))
     }
 
@@ -62,12 +61,21 @@ struct DayProvider: AppIntentTimelineProvider {
         var logs: [String: DayLog] = [:]
         let entries = BlockClock.boundaries(from: .now, count: Self.entryCount).map { date in
             let day = settings.dayID(for: date)
-            let log = logs[day] ?? LogStore.shared.load(day: day, wakeMinute: settings.schedule(on: day).wakeMinute)
+            let log = logs[day] ?? Self.log(of: day, settings: settings)
             logs[day] = log
             return DayEntry(
                 date: date, snapshot: settings.snapshot(at: date, log: log, track: configuration.view.track, timers: timers))
         }
         return Timeline(entries: entries, policy: .atEnd)
+    }
+
+    /// The saved logs of `day`, with its routines laid out as the app lays them out the first time it sees the day,
+    /// which it may not have yet: the day has just come, and the app isn't running.
+    private static func log(of day: String, settings: AppSettings) -> DayLog {
+        let schedule = settings.schedule(on: day)
+        var log = LogStore.shared.load(day: day, wakeMinute: schedule.wakeMinute)
+        if !log.isPlanned { log.plan(settings.templates, schedule: schedule, categories: settings.categories) }
+        return log
     }
 
     private static func sample(at date: Date, track: Track) -> DaySnapshot {

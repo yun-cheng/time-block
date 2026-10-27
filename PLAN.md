@@ -258,7 +258,8 @@ time-logging coaches split a day, with plain names:
   whenever its logs or the settings change.
 - Pre‑logged blocks render hollow in the future, auto‑turn solid when time passes (user can override after the fact).
 - A day's templates are laid out once, the first time the app sees that day (the whole day, so a lunch you didn't
-  change counts even when the app opens after it), as `.template` logs in blocks still free in their track. Logging
+  change counts even when the app opens after it; the widget lays them out the same way on a day the app hasn't seen
+  yet), as `.template` logs in blocks still free in their track. Logging
   over them replaces them. Changing, pausing or removing a template lays them out again over the blocks still to come
   only; what has happened stays. A template after an activity also follows your logging: when a time of that activity
   starts, ends somewhere else or goes, what follows it moves over the blocks still to come (the whole of a day ahead,
