@@ -49,6 +49,8 @@ public struct BlockGridView: View {
 
     /// First and last block of the drag in progress.
     @State private var drag: (start: Int, end: Int)?
+    /// Where the drag in progress started, to tell a new one from one cut off without ending.
+    @State private var dragOrigin: CGPoint?
     @State private var hovered: Int?
     /// The card of a stack the pointer is over, by activity.
     @State private var hoveredLayer: String?
@@ -448,6 +450,14 @@ public struct BlockGridView: View {
     private func paintGesture(size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
+                // A drag cut off never ends, as when a long press opens the menu or a scroll takes over: start afresh
+                // rather than carry on from where it was.
+                if value.startLocation != dragOrigin {
+                    dragOrigin = value.startLocation
+                    drag = nil
+                    moving = nil
+                    resizing = nil
+                }
                 pointerX = value.location.x
                 let layout = layout(size: size)
                 let count = snapshot.cells.count
@@ -487,7 +497,10 @@ public struct BlockGridView: View {
                 drag = (start, end)
             }
             .onEnded { value in
-                defer { drag = nil }
+                defer {
+                    drag = nil
+                    dragOrigin = nil
+                }
                 if let moving {
                     self.moving = nil
                     if let selection, moving.offset != 0 { onMove?(selection, moving.offset) }
