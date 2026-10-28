@@ -1,12 +1,67 @@
 # Time Block
 
-A Mac app and desktop widget that shows your waking day as 5‑minute blocks, so you can *see* time passing,
-log what each block went to, and get pushed to bed on time. After bedtime the counter goes negative and the
-whole UI slowly turns into a horror show.
+A day planner you look at rather than read: your waking day as five‑minute blocks (192 of them from 07:00 to
+23:00), so you can *see* time passing, log what each block went to, and get pushed to bed on time. After bedtime the
+counter goes negative and the whole screen slowly turns into a horror show. It runs on the Mac (a window, the menu bar
+and a desktop widget) and on iPhone and iPad (the app and a Home Screen widget); an Android app is under way.
 
-![Afternoon: 92 of 192 blocks left](docs/images/afternoon.jpg)
-![Three and a half hours past bedtime](docs/images/nightmare.jpg)
-![The Body view: sitting, standing, walking, exercising](docs/images/body-view.jpg)
+![Afternoon: 92 of 192 blocks left, in the small, medium and large widgets and the app](docs/images/afternoon.jpg)
+![Three and a half hours past bedtime: −43, stolen from tomorrow](docs/images/nightmare.jpg)
+![Winding down in the Body view: sitting, standing, walking, lying](docs/images/body-view.jpg)
+
+## What it looks like
+
+The app is one screen, the day, from top to bottom:
+
+- **The day and the time:** ‹ Wed, Oct 28 › with the clock beside it (18:23). The arrows go to other days and the date
+  opens a calendar. In the corner are Undo, Redo and the gear for Settings.
+- **The view:** Activity (what you did) or Body (lying, sitting, standing, walking, exercising), each its own log.
+- **The counter:** blocks left over the day's usable blocks, `56/192`, big. Beside it, the day in numbers: usable,
+  used and logged blocks (blocks over bedtime once you're past it, and your longest sit in the Body view).
+- **The grid:** one row per waking hour, 12 blocks to a row, with a gap at the half hour. Logged blocks take their
+  group's color (Work blue, Life orange, Health green, Transit teal, Leisure yellow, Drift purple...), what's still to
+  come is pale, and the block you're in is ringed. Two things at once, like a commute with a podcast, stack as small
+  cards. The last half hour before bed is tinted amber for winding down.
+- **Under the grid:** what you're doing now (or Unlogged), Start Timer, the timers going with their time left, and a
+  bar of the day's totals by group with the biggest named under it.
+- **The mood:** the whole screen follows the clock. It's calm through the day, turns warm when winding down starts,
+  and after bedtime goes dark red: the counter glitches, blocks drip, and it tells you to go to sleep.
+
+On the Mac the window is as wide as the day, with Settings in a panel that widens it, a pin to keep a compact day
+on top of other windows, and the same compact day in the menu bar. On an iPad Settings sit beside the day; on an
+iPhone they're a sheet over it. The widgets come in three sizes: a ring of the day around the counter, the hours
+around now, and the whole grid.
+
+## A day on iPhone
+
+<table>
+<tr>
+<td width="25%"><img src="docs/images/iphone/1-day.jpg" alt="The day, logged up to five o'clock"></td>
+<td width="25%"><img src="docs/images/iphone/2-select.jpg" alt="Dragging across 17:00 to 17:45 selects it"></td>
+<td width="25%"><img src="docs/images/iphone/3-activities.jpg" alt="The activities, starred ones first"></td>
+<td width="25%"><img src="docs/images/iphone/4-resize.jpg" alt="Exercise, its end dragged out to 18:15"></td>
+</tr>
+<tr>
+<td><b>1.</b> The day so far: a morning commute with a podcast stacked on it, work, lunch, a walk.</td>
+<td><b>2.</b> Drag across blocks to select them. The label shows the time; tap + to log it.</td>
+<td><b>3.</b> Pick an activity. Your starred ones show first; search finds any of ~170.</td>
+<td><b>4.</b> Logged as Exercise. Drag either end's handle to make it longer, and Undo shows below.</td>
+</tr>
+<tr>
+<td><img src="docs/images/iphone/5-timer.jpg" alt="The timer dialog: a 30-minute countdown for Reading"></td>
+<td><img src="docs/images/iphone/6-timer-running.jpg" alt="The timer running under the grid"></td>
+<td><img src="docs/images/iphone/7-settings.jpg" alt="Settings: schedule, notifications, grid"></td>
+<td><img src="docs/images/iphone/8-routine.jpg" alt="Editing the Lunch routine"></td>
+</tr>
+<tr>
+<td><b>5.</b> Start Timer: count down or up, set a length in blocks, pick what to time.</td>
+<td><b>6.</b> The timer fills in the blocks it runs through, and is listed with its time left.</td>
+<td><b>7.</b> Settings: wake up, bedtime, wind down, notifications and the grid's gaps.</td>
+<td><b>8.</b> A routine, like Lunch every day at 12:00, is pre‑logged on the days it comes back.</td>
+</tr>
+</table>
+
+## How it works
 
 - **1 block = 5 minutes.** Rows are clock hours of 12 blocks; only your waking hours are shown.
 - **Read the time off the grid:** in Settings ▸ Grid, wider gaps split each hour row every 10, 15, 20 or 30 minutes
@@ -42,10 +97,9 @@ See [PLAN.md](PLAN.md) for the full design, decisions and milestones.
 
 Built: Mac app window, as wide as the day, with settings in a side panel that widens it (the gear in the day's top
 corner, or ⌘,), menu bar extra, notifications, and a WidgetKit widget in three sizes. Logs are saved one file per day.
-The app and widget run on iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow, with
-the settings beside it on an iPad and in a sheet on a phone. Logging, editing, timers and settings have been tried in
-the iPhone simulator. An Android app is under way: its core, TimeBlockKit in
-Kotlin, passes the same tests and reads and writes the same JSON; the app itself is next.
+The app and widget run on iPhone and iPad too: the day fills the screen, its blocks smaller where it's narrow.
+Logging, editing, timers and settings have been tried in the iPhone simulator. An Android app is under way: its core,
+TimeBlockKit in Kotlin, passes the same tests and reads and writes the same JSON; the app itself is next.
 Next up is a nudge for unlogged time; see the milestones in PLAN.md.
 
 ### Logging
